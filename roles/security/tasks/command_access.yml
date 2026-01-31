@@ -92,9 +92,9 @@
     fi
 
     echo "$LDD_OUTPUT" | while IFS= read -r line ; do
-      if [[ "$line" =~ =>\\s+([^\\s]+)\\s+\\(0x[0-9a-fA-F]+\\) ]]; then
+      if [[ "$line" =~ =>[[:space:]]+([^[:space:]]+)[[:space:]]+\(0x[0-9a-fA-F]+\) ]]; then
         LIB_PATH="${BASH_REMATCH[1]}"
-      elif [[ "$line" =~ ([^\\s]+)\\s+\\(0x[0-9a-fA-F]+\\) ]]; then # For ld-linux-x86-64.so.2 itself
+      elif [[ "$line" =~ ([^[:space:]]+)[[:space:]]+\(0x[0-9a-fA-F]+\) ]]; then # For ld-linux-x86-64.so.2 itself
         LIB_PATH="${BASH_REMATCH[1]}"
       else
         continue # Skip lines that don't match expected ldd output

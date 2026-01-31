@@ -7,13 +7,13 @@
   
 - name: Set performance variables based on memory
   ansible.builtin.set_fact:
-    innodb_buffer_pool_size: "{{ (ansible_memtotal_mb * 0.5)|int }}M"
-    innodb_log_buffer_size: "{{ [32, (ansible_memtotal_mb * 0.05)|int]|min }}M"
-    max_connections: "{{ [50, (ansible_memtotal_mb / 20)|int]|max }}"
-    query_cache_size: "{{ [0, (ansible_memtotal_mb * 0.10)|int]|min }}M"
-    table_open_cache: "{{ [400, (ansible_memtotal_mb / 2)|int]|max }}"
-    thread_cache_size: "{{ [25, (ansible_memtotal_mb / 100)|int]|max }}"
-    key_buffer_size: "{{ [16, (ansible_memtotal_mb * 0.05)|int]|min }}M"
+    innodb_buffer_pool_size: "{{ (ansible_memtotal_mb * 0.5) | int }}M"
+    innodb_log_buffer_size: "{{ [32, (ansible_memtotal_mb * 0.05) | int] | min }}M"
+    max_connections: "{{ [50, (ansible_memtotal_mb / 20) | int] | max }}"
+    query_cache_size: "{{ [0, (ansible_memtotal_mb * 0.10) | int] | min }}M"
+    table_open_cache: "{{ [400, (ansible_memtotal_mb / 2) | int] | max }}"
+    thread_cache_size: "{{ [25, (ansible_memtotal_mb / 100) | int] | max }}"
+    key_buffer_size: "{{ [16, (ansible_memtotal_mb * 0.05) | int] | min }}M"
   when: db_optimize_for_server | default(true)
 
 - name: Configure MariaDB server performance settings

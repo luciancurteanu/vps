@@ -3,11 +3,12 @@ name: Molecule Tests
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [main, master, develop]
     paths:
       - 'roles/**/*'
       - 'playbooks/**/*'
       - '.github/workflows/molecule-tests.yml'
+
   pull_request:
     branches: [ main, master, develop ]
     paths:
