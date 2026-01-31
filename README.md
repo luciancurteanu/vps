@@ -321,3 +321,4 @@ This project handles sensitive information such as passwords and server details.
 
 The `.gitignore` file is configured to exclude sensitive files, but always verify no secrets are being committed before pushing changes.
 
+# Trigger workflows
