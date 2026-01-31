@@ -3,7 +3,6 @@
   hosts: all
   become: true
   gather_facts: true
-  
   vars_files:
     - ../vars/secrets.yml
 
@@ -14,7 +13,6 @@
         update_cache: true
       changed_when: false
       when: ansible_os_family == "RedHat"
-      
     - name: Set hostname
       tags: ['setup']
       ansible.builtin.hostname:
@@ -42,11 +40,9 @@
       loop:
         - "domain"
         # Add other essential variables
-      
   roles:
     - role: common
       tags: ['common', 'setup']
-      
     - role: webmin
       tags: ['webmin', 'control_panel', 'setup']
       when: install_webmin | default(true)

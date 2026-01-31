@@ -67,9 +67,9 @@
 # If dynamic libraries are needed for sftp-server or other copied binaries:
 - name: "Copy required libraries for sftp-server for user {{ vhost_user_item.name }}"
   ansible.builtin.shell: |
-    set -e # Exit immediately if a command exits with a non-zero status.
+    set -e
     CHROOT_BASE="{{ vhost_user_item.home }}"
-    SFTP_SERVER_PATH="/usr/libexec/openssh/sftp-server" # Path to sftp-server on the host
+    SFTP_SERVER_PATH="/usr/libexec/openssh/sftp-server"
 
     if [ ! -f "$SFTP_SERVER_PATH" ]; then
       echo "sftp-server not found at $SFTP_SERVER_PATH"
