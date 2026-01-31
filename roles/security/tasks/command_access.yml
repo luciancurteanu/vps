@@ -65,7 +65,7 @@
 # if sftp-server itself is statically linked or has few dynamic dependencies not in a standard minimal set.
 
 # If dynamic libraries are needed for sftp-server or other copied binaries:
-- name: "Copy required libraries for sftp-server for user {{ vhost_user_item.name }}"
+- name: Copy required libraries for sftp-server
   ansible.builtin.shell: |
     set -e
     CHROOT_BASE="{{ vhost_user_item.home }}"

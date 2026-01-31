@@ -3,17 +3,14 @@
   hosts: all
   become: true
   gather_facts: true
-  
   vars_files:
     - ../vars/secrets.yml
-    
   vars:
     required_vars:
       - domain
       - user
     document_root: "/home/{{ domain }}/public_html"
     sftp_group: "sftp"
-    
   pre_tasks:
     - name: Verify required variables are defined
       ansible.builtin.assert:
@@ -30,7 +27,6 @@
       ansible.builtin.fail:
         msg: "Virtual host for {{ domain }} already exists. Please remove it first if you want to recreate it."
       when: nginx_conf.stat.exists
-      
   tasks:
     - name: Create system user if it doesn't exist
       ansible.builtin.user:
@@ -86,7 +82,7 @@
         
     - name: Configure PHP-FPM pool
       ansible.builtin.template:
-        src: ../templates/php/pool.conf.j2
+        src: "{{ playbook_dir }}/../templates/php/pool.conf.j2"
         dest: "/etc/php-fpm.d/{{ domain }}.conf"
         owner: root
         group: root
@@ -111,7 +107,7 @@
 
     - name: Configure Nginx virtual host
       ansible.builtin.template:
-        src: ../templates/nginx/vhost.conf.j2
+        src: "{{ playbook_dir }}/../templates/nginx/vhost.conf.j2"
         dest: "/etc/nginx/sites-available/{{ domain }}.conf"
         owner: root
         group: root
@@ -129,7 +125,7 @@
 
     - name: Copy template website files
       ansible.builtin.copy:
-        src: ../templates/website/
+        src: "{{ playbook_dir }}/../templates/website/"
         dest: "{{ document_root }}/"
         owner: "{{ user }}"
         group: "{{ user }}"
@@ -138,7 +134,7 @@
 
     - name: Create index.html from template
       ansible.builtin.template:
-        src: ../templates/website/index.html.j2
+        src: "{{ playbook_dir }}/../templates/website/index.html.j2"
         dest: "{{ document_root }}/index.html"
         owner: "{{ user }}"
         group: "{{ user }}"
@@ -213,10 +209,11 @@
       when: domain != master_domain
 
     - name: Configure mail subdomain if this is the master domain
+      when: domain == master_domain
       block:
         - name: Create mail subdomain configuration
           ansible.builtin.template:
-            src: ../templates/nginx/mail.conf.j2
+            src: "{{ playbook_dir }}/../templates/nginx/mail.conf.j2"
             dest: "/etc/nginx/sites-available/{{ mail_subdomain }}.conf"
             owner: root
             group: root
@@ -329,7 +326,7 @@
             - dovecot
             - opendkim
       when: domain != master_domain
-      
+
   handlers:
     - name: Restart Nginx
       ansible.builtin.service:
