@@ -1,0 +1,91 @@
+# {{ ansible_managed }}
+# Postfix main configuration file
+
+# Basic server settings
+myhostname = {{ mail_subdomain }}
+mydomain = {{ domain }}
+myorigin = $mydomain
+inet_interfaces = all
+inet_protocols = ipv4
+
+# Set trusted networks
+mynetworks = 127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128
+mynetworks_style = host
+
+# Virtual domains configuration
+virtual_mailbox_domains = mysql:/etc/postfix/mysql-virtual-mailbox-domains.cf
+virtual_mailbox_maps = mysql:/etc/postfix/mysql-virtual-mailbox-maps.cf
+virtual_alias_maps = mysql:/etc/postfix/mysql-virtual-alias-maps.cf
+
+# Mail delivery settings
+virtual_transport = lmtp:unix:private/dovecot-lmtp
+mailbox_size_limit = 0
+recipient_delimiter = +
+virtual_mailbox_base = /home/{{ domain }}/mail/virtual
+
+# TLS parameters
+smtp_use_tls = yes
+smtp_tls_security_level = may
+smtp_tls_loglevel = 1
+smtp_tls_session_cache_database = btree:${data_directory}/smtp_scache
+smtp_tls_cert_file = /etc/letsencrypt/live/{{ domain }}/fullchain.pem
+smtp_tls_key_file = /etc/letsencrypt/live/{{ domain }}/privkey.pem
+smtp_tls_CAfile = /etc/letsencrypt/live/{{ domain }}/chain.pem
+
+smtpd_use_tls = yes
+smtpd_tls_security_level = may
+smtpd_tls_loglevel = 1
+smtpd_tls_session_cache_database = btree:${data_directory}/smtpd_scache
+smtpd_tls_cert_file = /etc/letsencrypt/live/{{ domain }}/fullchain.pem
+smtpd_tls_key_file = /etc/letsencrypt/live/{{ domain }}/privkey.pem
+smtpd_tls_CAfile = /etc/letsencrypt/live/{{ domain }}/chain.pem
+
+# SMTP restrictions
+smtpd_helo_required = yes
+smtpd_helo_restrictions =
+    permit_mynetworks,
+    permit_sasl_authenticated,
+    reject_invalid_helo_hostname,
+    reject_non_fqdn_helo_hostname
+
+smtpd_sender_restrictions =
+    permit_mynetworks,
+    permit_sasl_authenticated,
+    reject_non_fqdn_sender,
+    reject_unknown_sender_domain
+
+smtpd_recipient_restrictions =
+    permit_mynetworks,
+    permit_sasl_authenticated,
+    reject_unauth_destination,
+    reject_non_fqdn_recipient,
+    reject_unknown_recipient_domain
+
+smtpd_client_restrictions =
+    permit_mynetworks,
+    permit_sasl_authenticated,
+    reject_unknown_client_hostname
+
+# MUA (Mail User Agent) restrictions for submission ports
+mua_client_restrictions = permit_sasl_authenticated,reject
+mua_helo_restrictions = permit_sasl_authenticated,reject
+mua_sender_restrictions = permit_sasl_authenticated,reject
+
+# SASL authentication
+smtpd_sasl_type = dovecot
+smtpd_sasl_path = private/auth
+smtpd_sasl_auth_enable = yes
+smtpd_sasl_security_options = noanonymous
+smtpd_sasl_local_domain = $myhostname
+
+# Milters for DKIM
+milter_default_action = accept
+milter_protocol = 6
+smtpd_milters = local:/var/run/opendkim/opendkim.sock
+non_smtpd_milters = local:/var/run/opendkim/opendkim.sock
+
+# Other settings
+biff = no
+append_dot_mydomain = no
+readme_directory = no
+compatibility_level = 2

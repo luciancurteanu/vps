@@ -1,0 +1,20 @@
+galaxy_info:
+  author: 'Lucian Curteanu'
+  namespace: lucian
+  role_name: goproxy
+  description: 'Ansible role for goproxy setup'
+  company: 'https://luciancurteanu.com'
+  license: 'MIT'
+  min_ansible_version: '2.9'
+
+  platforms:
+    - name: EL
+      versions:
+        - '9'
+
+  galaxy_tags:
+    - vps
+    - goproxy
+    - proxy
+
+dependencies: []

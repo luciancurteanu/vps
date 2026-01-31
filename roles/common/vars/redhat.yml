@@ -1,0 +1,32 @@
+---
+# Common role variables for redhat systems
+
+# Service names
+ssh_service_name: sshd
+
+# Package names for RedHat-based systems
+packages:
+  - curl
+  - wget
+  - tar
+  - gzip
+  - nano
+  - net-tools
+  - htop
+  - lsof
+  - bind-utils
+  - python3.13
+  - python3.13-pip
+  - chrony
+  - cronie
+  - logrotate
+  - policycoreutils-python-utils
+
+# Optional packages that may not be available in all environments
+optional_packages:
+  - iotop
+  - sysstat
+  - telnet
+  - nc
+  - traceroute
+  - atop

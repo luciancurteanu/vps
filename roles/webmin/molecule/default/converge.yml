@@ -1,0 +1,11 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    # Test-specific variables (override defaults only when needed)
+    domain: "test.local"
+    webmin_nginx_proxy: false  # Disable nginx proxy for testing (nginx not installed)
+    firewall_enabled: false  # Disable firewall for testing
+  roles:
+    - role: webmin

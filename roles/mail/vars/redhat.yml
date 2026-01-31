@@ -1,0 +1,15 @@
+---
+# OS-specific variables for RedHat family
+mail_packages:
+  - nginx
+  - mariadb-server
+  - python3-PyMySQL
+  - cronie
+  - policycoreutils-python-utils
+# Default domain used for Molecule tests; override in inventory as needed
+domain: vps.test
+# Database root credentials for local MariaDB used in Molecule tests
+db_root_user: root
+db_root_password: ''
+# Service users
+user: nginx

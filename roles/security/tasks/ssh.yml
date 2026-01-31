@@ -1,0 +1,38 @@
+---
+# SSH basic installation and hardening tasks
+
+- name: Ensure SSH service is installed
+  ansible.builtin.package:
+    name: openssh-server
+    state: present
+
+- name: Generate SSH host keys if they do not exist
+  ansible.builtin.command: ssh-keygen -A
+  args:
+    creates: /etc/ssh/ssh_host_rsa_key
+  when: ansible_os_family == 'RedHat' # Or adjust if needed for other OS families
+
+- name: Ensure SSH service is enabled and running
+  ansible.builtin.service:
+    name: "{{ security_ssh_service_name }}"
+    state: started
+    enabled: true
+  when: ansible_virtualization_type != 'docker' # Skip in Docker environment
+
+- name: Backup SSH configuration
+  ansible.builtin.copy:
+    src: /etc/ssh/sshd_config
+    dest: /etc/ssh/sshd_config.bak
+    remote_src: yes
+    force: no
+  ignore_errors: yes
+
+- name: Configure SSH
+  ansible.builtin.template:
+    src: ssh/sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: '0600'
+    validate: '/usr/sbin/sshd -t -f %s'
+  notify: restart ssh

@@ -1,0 +1,12 @@
+---
+# Development role: Default variables
+
+# Node.js configuration
+nodejs_version: "22"  # Update to latest LTS version as of April 2025
+install_nodejs: true
+
+# Laravel configuration
+install_laravel: true
+
+# Composer configuration
+composer_version: "latest"

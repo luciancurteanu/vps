@@ -1,0 +1,20 @@
+---
+# Install PHP base package and extensions
+- name: Install PHP core and extensions (RedHat)
+  ansible.builtin.dnf:
+    name:
+      - php
+      - php-fpm
+      - php-mysqlnd
+      - php-zip
+      - php-gd
+      - php-mcrypt
+      - php-curl
+      - php-pear
+      - php-bcmath
+      - php-gmp
+      - php-json
+      - php-pecl-apcu
+    state: present
+  notify: Restart php-fpm
+  when: ansible_os_family == "RedHat"

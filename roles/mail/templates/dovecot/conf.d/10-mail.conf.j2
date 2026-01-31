@@ -1,0 +1,36 @@
+# {{ ansible_managed }}
+# Dovecot mail configuration
+
+# Mail location
+mail_location = maildir:/home/{{ domain }}/mail/virtual/%d/%n
+
+# System user/group for mail access
+mail_uid = vmail
+mail_gid = vmail
+
+# Setting hard limits
+mail_max_userip_connections = 20
+mail_fsync = optimized
+
+# Mailbox configuration
+namespace inbox {
+  inbox = yes
+  location = 
+  mailbox Drafts {
+    auto = subscribe
+    special_use = \Drafts
+  }
+  mailbox Junk {
+    auto = subscribe
+    special_use = \Junk
+  }
+  mailbox Sent {
+    auto = subscribe
+    special_use = \Sent
+  }
+  mailbox Trash {
+    auto = subscribe
+    special_use = \Trash
+  }
+  prefix =
+}

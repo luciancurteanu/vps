@@ -1,0 +1,18 @@
+---
+# Variables specific to web servers
+
+# Nginx configuration
+nginx_worker_processes: auto
+nginx_worker_connections: 2048
+nginx_keepalive_timeout: 65
+nginx_client_max_body_size: "64M"
+
+# PHP-FPM configuration
+php_memory_limit: "256M"
+php_max_execution_time: 60
+php_upload_max_filesize: "64M"
+php_post_max_size: "64M"
+
+# Default virtual host settings
+create_default_vhost: true
+default_server_name: "{{ inventory_hostname }}"

@@ -1,0 +1,29 @@
+---
+- name: Prepare container for Ansible
+  hosts: all
+  become: true
+  gather_facts: false # Speed up, gather later if needed
+
+  tasks:
+    - name: Ensure Python 3, pip, and dnf-utils are installed (AlmaLinux 9)
+      ansible.builtin.dnf:
+        name:
+          - python3
+          - python3-pip
+          - dnf-utils # For dnf config-manager
+        state: present
+        update_cache: yes # Run update_cache here
+        use_backend: dnf4
+
+    - name: Install Ansible via pip (AlmaLinux 9)
+      ansible.builtin.pip:
+        name: ansible
+        executable: pip3 # Ensure pip3 is used
+
+    - name: Ensure /usr/local/bin is in PATH for subsequent sessions
+      ansible.builtin.copy:
+        content: |
+          #!/bin/sh
+          export PATH="/usr/local/bin:$PATH"
+        dest: /etc/profile.d/99-ansible-path.sh
+        mode: '0755'

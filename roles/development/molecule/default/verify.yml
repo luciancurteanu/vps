@@ -1,0 +1,82 @@
+---
+- name: Verify Development Role
+  hosts: all
+  become: true
+  gather_facts: true # Ensure facts like ansible_service_mgr are available
+  vars:
+    laravel_install: false # Default for verifier, actual value comes from instance config
+    nodejs_install: false # Default for verifier
+
+  tasks:
+    # - name: Gather service facts (for php-fpm check)
+    #   ansible.builtin.service_facts:
+    #   register: services_state
+    #   when: ansible_service_mgr == "systemd" # Ensure this fact is available
+    #   tags:
+    #     - php
+    #     - development-verify
+
+    # Verification for PHP (dependency)
+    - name: Verify PHP CLI is installed
+      ansible.builtin.command: php --version
+      register: php_cli_check
+      changed_when: false
+      failed_when: php_cli_check.rc != 0
+      tags:
+        - php
+        - development-verify
+
+    # Verification for Development tools
+
+    # Example: Check for 'git' (assuming it's part of dev_dependencies)
+    # You should add checks for actual packages listed in 'dev_dependencies'
+    - name: Verify 'git' is installed
+      ansible.builtin.command: git --version
+      register: git_check
+      changed_when: false
+      failed_when: git_check.rc != 0
+      tags:
+        - git
+        - development-verify
+
+    - name: Verify Composer is installed
+      ansible.builtin.command: composer --version # Assumes composer is in PATH after installation
+      register: composer_check
+      changed_when: false
+      failed_when: composer_check.rc != 0
+      tags:
+        - composer
+        - development-verify
+
+    - name: Verify Laravel Installer is available
+      ansible.builtin.command: "laravel --version" # Check PATH directly
+      register: laravel_check
+      changed_when: false
+      # Use hostvars to get the actual laravel_install value from the instance
+      # Fail only if laravel_install was true for the instance AND the command fails
+      failed_when: "hostvars[inventory_hostname].laravel_install | default(false) and laravel_check.rc != 0"
+      when:
+        - hostvars[inventory_hostname].laravel_install | default(false)
+      tags:
+        - laravel
+        - development-verify
+
+    - name: Verify Node.js is installed
+      ansible.builtin.command: node --version
+      register: node_check
+      changed_when: false
+      failed_when: "hostvars[inventory_hostname].nodejs_install | default(true) and node_check.rc != 0"
+      when: hostvars[inventory_hostname].nodejs_install | default(true)
+      tags:
+        - nodejs
+        - development-verify
+
+    - name: Verify npm is installed
+      ansible.builtin.command: npm --version
+      register: npm_check
+      changed_when: false
+      failed_when: "hostvars[inventory_hostname].nodejs_install | default(true) and npm_check.rc != 0"
+      when: hostvars[inventory_hostname].nodejs_install | default(true)
+      tags:
+        - nodejs
+        - development-verify

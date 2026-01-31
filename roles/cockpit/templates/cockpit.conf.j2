@@ -1,0 +1,4 @@
+[WebService]
+Origins = {{ cockpit_origins | join(' ') }}
+ProtocolHeader = X-Forwarded-Proto
+AllowUnencrypted = {{ cockpit_allow_unencrypted | lower }}

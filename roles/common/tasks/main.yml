@@ -1,0 +1,57 @@
+---
+# Common role: Main tasks
+
+- name: Include OS-specific variables
+  ansible.builtin.include_vars: "{{ ansible_os_family | lower }}.yml"
+  when: ansible_os_family == 'RedHat'
+
+- name: Set hostname
+  ansible.builtin.hostname:
+    name: "{{ common_hostname }}"
+  when: hostname is defined
+  tags:
+    - molecule-notest
+
+- name: Configure timezone
+  ansible.builtin.timezone:
+    name: "{{ common_timezone }}"
+
+- name: Configure local RTC
+  ansible.builtin.command: timedatectl set-local-rtc {{ 'yes' if common_use_local_rtc else 'no' }}
+  changed_when: false
+  when: ansible_service_mgr == 'systemd'
+
+- name: Install EPEL repository first
+  ansible.builtin.package:
+    name: epel-release
+    state: present
+  when: ansible_os_family == 'RedHat'
+
+- name: Install common packages
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ packages }}"
+  ignore_errors: true
+  register: package_install
+  failed_when: false
+  tags:
+    - packages
+
+- name: Install optional packages (ignore failures)
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ optional_packages | default([]) }}"
+  ignore_errors: true
+  when: ansible_os_family == 'RedHat'
+  tags:
+    - packages
+    - optional
+
+- name: Include SSH hardening tasks
+  ansible.builtin.include_tasks: ssh.yml
+
+- name: Include user management tasks
+  ansible.builtin.include_tasks: users.yml
+  when: common_create_admin_user | bool

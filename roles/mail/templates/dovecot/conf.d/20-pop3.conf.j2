@@ -1,0 +1,18 @@
+# {{ ansible_managed }}
+# Dovecot POP3 configuration
+
+protocol pop3 {
+  mail_plugins = $mail_plugins
+  pop3_uidl_format = %08Xu%08Xv
+  pop3_client_workarounds = outlook-no-nuls oe-ns-eoh
+}
+
+service pop3-login {
+  inet_listener pop3 {
+    port = 110
+  }
+  inet_listener pop3s {
+    port = 995
+    ssl = yes
+  }
+}

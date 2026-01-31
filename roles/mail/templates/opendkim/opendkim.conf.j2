@@ -1,0 +1,27 @@
+# {{ ansible_managed }}
+# OpenDKIM configuration
+
+# Base options
+PidFile /var/run/opendkim/opendkim.pid
+Mode sv
+Syslog yes
+SyslogSuccess yes
+LogWhy yes
+
+# Common signing options
+Canonicalization relaxed/simple
+SignatureAlgorithm rsa-sha256
+ExternalIgnoreList refile:/etc/opendkim/TrustedHosts
+InternalHosts refile:/etc/opendkim/TrustedHosts
+
+# Key table and signing table setup
+KeyTable refile:/etc/opendkim/KeyTable
+SigningTable refile:/etc/opendkim/SigningTable
+
+# Socket options
+Socket local:/var/run/opendkim/opendkim.sock
+Umask 002
+UserID opendkim:opendkim
+
+# Additional options
+OversignHeaders From

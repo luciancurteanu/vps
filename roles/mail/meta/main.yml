@@ -1,0 +1,20 @@
+galaxy_info:
+  author: 'Lucian Curteanu'
+  namespace: lucian
+  role_name: mail
+  description: 'Ansible role for mail server setup'
+  company: 'https://luciancurteanu.com'
+  license: 'MIT'
+  min_ansible_version: '2.9'
+
+  platforms:
+    - name: EL
+      versions:
+        - '9'
+
+  galaxy_tags:
+    - vps
+    - mail
+    - email
+
+dependencies: []

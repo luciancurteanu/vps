@@ -1,0 +1,72 @@
+---
+# Nginx Site Management Playbook
+# Usage examples:
+#   Enable a site:  ansible-playbook site_management.yml -e "site_name=vps.test action=enable"
+#   Disable a site: ansible-playbook site_management.yml -e "site_name=vps.test action=disable"
+#   List sites:     ansible-playbook site_management.yml -e "action=list"
+
+- name: Nginx Site Management
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    supported_actions:
+      - enable
+      - disable
+      - list
+      - remove
+
+  pre_tasks:
+    - name: Validate required variables
+      ansible.builtin.fail:
+        msg: "Action must be specified. Supported actions: {{ supported_actions | join(', ') }}"
+      when: action is not defined or action not in supported_actions
+
+    - name: Validate site_name for enable/disable/remove actions
+      ansible.builtin.fail:
+        msg: "site_name must be specified for {{ action }} action"
+      when:
+        - action in ['enable', 'disable', 'remove']
+        - site_name is not defined
+
+  tasks:
+    - name: Enable nginx site
+      ansible.builtin.include_role:
+        name: nginx
+        tasks_from: site_helpers
+      vars:
+        site_name: "{{ site_name }}"
+      when: action == 'enable'
+
+    - name: Disable nginx site
+      ansible.builtin.include_role:
+        name: nginx
+        tasks_from: site_helpers
+      vars:
+        site_name: "{{ site_name }}"
+      when: action == 'disable'
+
+    - name: Remove nginx site
+      ansible.builtin.include_role:
+        name: nginx
+        tasks_from: site_management
+      vars:
+        nginx_site_name: "{{ site_name }}"
+        nginx_site_remove: true
+      when: action == 'remove'
+
+    - name: List available and enabled sites
+      ansible.builtin.include_role:
+        name: nginx
+        tasks_from: site_helpers
+      vars:
+        nginx_show_sites: true
+      when: action == 'list'
+
+  handlers:
+    - name: restart_nginx_service
+      ansible.builtin.systemd:
+        name: nginx
+        state: restarted
+        daemon_reload: true

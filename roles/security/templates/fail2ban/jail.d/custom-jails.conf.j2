@@ -1,0 +1,73 @@
+# {{ ansible_managed | default('# Managed by Ansible') }}
+# Custom Fail2ban jails drop-in configuration
+[DEFAULT]
+ignoreip = 127.0.0.1/8 192.168.0.1/16
+
+# Email notifications
+destemail = no-reply@<fq-hostname>
+sender = no-reply@<fq-hostname>
+action_lc = %(action_)s
+          %(mta)s-lc[sender="%(sender)s", dest="%(destemail)s", logpath="%(logpath)s", chain="%(chain)s"]
+
+# JAILS
+# Enable or disable jails based on the existence of log files
+
+[sshd]
+enabled = {% if stat_secure_log.stat.exists %}true{% else %}false{% endif %}
+port = ssh,sftp,{{ security_ssh_port }}
+filter = sshd[mode=aggressive]
+action = %(action_lc)s
+logpath = /var/log/secure
+maxretry = 3
+bantime = {{ security_fail2ban_bantime | default(600) }}
+findtime = 86400
+
+[postfix]
+enabled = {% if stat_maillog.stat.exists %}true{% else %}false{% endif %}
+port = pop3,pop3s,imap,imaps,smtp,smtps,submission
+filter = postfix[mode=aggressive]
+action = %(action_lc)s
+logpath = /var/log/maillog
+maxretry = 1
+bantime = {{ security_fail2ban_bantime | default(600) }}
+findtime = 86400
+
+[dovecot]
+enabled = {% if stat_maillog.stat.exists %}true{% else %}false{% endif %}
+port = pop3,pop3s,imap,imaps,smtp,smtps,submission
+filter = dovecot[mode=aggressive]
+action = %(action_lc)s
+logpath = /var/log/maillog
+maxretry = 1
+bantime = {{ security_fail2ban_bantime | default(600) }}
+findtime = 86400
+
+[mariadb]
+enabled = {% if stat_mariadb_log.stat.exists %}true{% else %}false{% endif %}
+port = 3306
+filter = mariadb
+action = %(action_lc)s
+logpath = /var/log/mariadb/error.log
+maxretry = 1
+bantime = {{ security_fail2ban_bantime | default(600) }}
+findtime = 86400
+
+[badbot]
+enabled = {% if have_access_logs %}true{% else %}false{% endif %}
+port = http,https
+filter = badbot
+action = %(action_lc)s
+logpath = /home/*/logs/access.log
+maxretry = 1
+bantime = {{ security_fail2ban_bantime | default(600) }}
+findtime = 86400
+
+[badurl]
+enabled = {% if have_access_logs %}true{% else %}false{% endif %}
+port = http,https
+filter = badurl
+action = %(action_lc)s
+logpath = /home/*/logs/access.log
+maxretry = 1
+bantime = {{ security_fail2ban_bantime | default(600) }}
+findtime = 86400

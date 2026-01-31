@@ -1,0 +1,55 @@
+<?php
+// {{ ansible_managed }}
+// Roundcube configuration
+
+// Database connection
+$config['db_dsnw'] = 'mysql://{{ roundcube_db_user }}:{{ roundcube_db_password }}@localhost/{{ roundcube_db_name }}';
+
+// Server settings
+$config['imap_host'] = 'localhost:143';
+$config['smtp_host'] = 'localhost:587';
+$config['smtp_port'] = 587;
+$config['smtp_user'] = '%u';
+$config['smtp_pass'] = '%p';
+$config['username_domain'] = '{{ mail_domain }}';
+$config['product_name'] = 'Webmail';
+
+// System settings
+$config['debug_level'] = 1;
+$config['log_dir'] = '{{ webmail_path }}/logs/';
+$config['temp_dir'] = '{{ webmail_path }}/temp/';
+$config['des_key'] = '{{ roundcube_des_key | default(lookup("password", "/dev/null length=24 chars=ascii_letters,digits")) }}';
+$config['plugins'] = array(
+    'archive',
+    'zipdownload',
+    'managesieve',
+);
+
+// User interface
+$config['skin'] = 'elastic';
+$config['timezone'] = '{{ timezone | default("UTC") }}';
+$config['create_default_folders'] = true;
+$config['quota_zero_as_unlimited'] = true;
+
+// User login
+$config['auto_create_user'] = true;
+$config['imap_auth_type'] = 'PLAIN';
+$config['smtp_auth_type'] = 'PLAIN';
+$config['smtp_helo_host'] = '{{ mail_subdomain }}';
+
+// Security settings
+$config['login_autocomplete'] = 2;
+$config['check_all_folders'] = true;
+$config['use_https'] = true;
+$config['force_https'] = true;
+$config['session_lifetime'] = 30;
+
+// Mail settings
+$config['default_charset'] = 'UTF-8';
+$config['htmleditor'] = true;
+$config['preview_pane'] = false;
+$config['draft_autosave'] = 60;
+$config['mime_param_folding'] = 0;
+$config['spellcheck_engine'] = 'pspell';
+
+return $config;

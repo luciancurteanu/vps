@@ -1,0 +1,98 @@
+---
+- name: Prepare container for Ansible and Docker CLI
+  hosts: all
+  become: true
+  gather_facts: true # Changed from false
+
+  tasks:
+    - name: Remove potentially stale MariaDB repo file before prepare
+      ansible.builtin.file:
+        path: /etc/yum.repos.d/mariadb.repo
+        state: absent
+
+    - name: List repo files to confirm removal (debug)
+      ansible.builtin.command: ls -al /etc/yum.repos.d/
+      register: ls_repo_files_after_remove
+      changed_when: false
+
+    - name: Print repo files list after removal (debug)
+      ansible.builtin.debug:
+        var: ls_repo_files_after_remove.stdout_lines
+
+    - name: Clean all DNF caches
+      ansible.builtin.command: dnf clean all
+      register: dnf_clean_all_result
+      # Consider changed if dnf actually cleaned something or completed successfully
+      changed_when: >
+        ("cleaning repos" in dnf_clean_all_result.stdout) or
+        ("Cleaning up everything" in dnf_clean_all_result.stdout) or
+        (dnf_clean_all_result.rc == 0 and dnf_clean_all_result.stdout | length > 0)
+
+    - name: Print dnf clean all result (debug)
+      ansible.builtin.debug:
+        var: dnf_clean_all_result
+
+    - name: Ensure Python 3, pip, and dnf-utils are installed (AlmaLinux 9)
+      ansible.builtin.dnf:
+        name:
+          - python3
+          - python3-pip
+          - dnf-utils # For dnf config-manager
+        state: present
+        update_cache: yes # Run update_cache here
+        use_backend: dnf4
+
+    - name: Install Ansible via pip (AlmaLinux 9)
+      ansible.builtin.pip:
+        name: ansible
+        executable: pip3 # Ensure pip3 is used
+
+    # Docker CLI installation tasks
+    - name: Ensure dnf-utils is installed
+      ansible.builtin.dnf:
+        name: dnf-utils
+        state: present
+        use_backend: dnf4
+      when: ansible_os_family == "RedHat"
+
+    - name: Remove potentially stale Docker CE repo file before adding
+      ansible.builtin.file:
+        path: /etc/yum.repos.d/docker-ce.repo
+        state: absent
+      when: ansible_os_family == "RedHat"
+
+    - name: Add Docker CE repository using dnf config-manager
+      ansible.builtin.command: dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+      args:
+        creates: /etc/yum.repos.d/docker-ce.repo # Ensures idempotency
+      when: ansible_os_family == "RedHat"
+      register: add_docker_repo_cmd_result
+      changed_when: "'Adding repo from:' in add_docker_repo_cmd_result.stdout or add_docker_repo_cmd_result.rc != 0" # Consider changed if command runs and succeeds or if it had to create the file
+
+    - name: Debug Add Docker CE repository command result
+      ansible.builtin.debug:
+        var: add_docker_repo_cmd_result
+      when: ansible_os_family == "RedHat"
+
+    - name: Update DNF cache after adding Docker CE repository
+      ansible.builtin.command: dnf makecache --timer
+      # Run if the repo was potentially added or if the timer allows, even if creates arg prevented command execution
+      when: ansible_os_family == "RedHat"
+      register: dnf_makecache_docker_result
+      changed_when: >
+        dnf_makecache_docker_result.stdout is defined and
+        ("metadata cache created" in dnf_makecache_docker_result.stdout | lower or
+         "timer: forcing repo metadata refresh" in dnf_makecache_docker_result.stdout | lower or
+         "cache is recent enough" not in dnf_makecache_docker_result.stdout | lower)
+
+    - name: Debug DNF makecache for Docker repo
+      ansible.builtin.debug:
+        var: dnf_makecache_docker_result
+      when: ansible_os_family == "RedHat"
+
+    - name: Install Docker CE CLI
+      ansible.builtin.dnf:
+        name: docker-ce-cli
+        state: present
+        use_backend: dnf4 # Keep dnf4 for consistency
+      when: ansible_os_family == "RedHat"

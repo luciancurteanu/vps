@@ -1,0 +1,4 @@
+# {{ ansible_managed }}
+# Sudo permissions for admin user
+
+{{ admin_user }} ALL=(ALL) {% if admin_sudo_nopasswd | bool %}NOPASSWD: {% endif %}ALL

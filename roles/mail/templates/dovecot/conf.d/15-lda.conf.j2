@@ -1,0 +1,18 @@
+# {{ ansible_managed }}
+# Dovecot Local Delivery Agent configuration
+
+protocol lda {
+  mail_plugins = $mail_plugins sieve
+}
+
+protocol lmtp {
+  mail_plugins = $mail_plugins sieve
+}
+
+service lmtp {
+  unix_listener /var/spool/postfix/private/dovecot-lmtp {
+    group = postfix
+    mode = 0600
+    user = postfix
+  }
+}

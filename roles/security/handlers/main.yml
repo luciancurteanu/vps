@@ -1,0 +1,19 @@
+---
+# Security role: Handlers
+
+- name: restart iptables
+  ansible.builtin.service:
+    name: iptables
+    state: restarted
+  when: ansible_virtualization_type | default('') != 'docker'
+
+- name: restart ip6tables
+  ansible.builtin.service:
+    name: ip6tables
+    state: restarted
+  when: ansible_virtualization_type | default('') != 'docker'
+
+- name: restart fail2ban
+  ansible.builtin.service:
+    name: fail2ban
+    state: restarted

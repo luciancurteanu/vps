@@ -1,0 +1,14 @@
+---
+# Development role variables for RedHat/CentOS systems
+
+dev_dependencies:
+  - gcc
+  - git
+  - unzip
+  - curl
+  - wget
+  - php
+  - php-cli
+  - php-json
+
+nodejs_package: nodejs

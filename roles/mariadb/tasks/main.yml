@@ -1,0 +1,162 @@
+---
+# MariaDB installation and configuration tasks
+
+- name: Install MariaDB server and client packages from AppStream
+  ansible.builtin.dnf:
+    name:
+      - mariadb-server
+      - mariadb
+      - python3-PyMySQL
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Create MariaDB log directory
+  ansible.builtin.file:
+    path: /var/log/mariadb
+    state: directory
+    owner: mysql
+    group: mysql
+    mode: '0755'
+
+- name: Create MariaDB configuration directory
+  ansible.builtin.file:
+    path: /etc/mysql/conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Backup MariaDB server.cnf
+  ansible.builtin.copy:
+    src: /etc/my.cnf.d/server.cnf
+    dest: /etc/my.cnf.d/server.cnf.bak
+    remote_src: yes
+    force: no
+  ignore_errors: yes
+
+- name: Configure MariaDB server
+  ansible.builtin.template:
+    src: server.cnf.j2
+    dest: /etc/my.cnf.d/server.cnf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart mariadb
+
+- name: Backup MariaDB client.cnf
+  ansible.builtin.copy:
+    src: /etc/my.cnf.d/client.cnf
+    dest: /etc/my.cnf.d/client.cnf.bak
+    remote_src: yes
+    force: no
+  ignore_errors: yes
+
+- name: Configure MariaDB client
+  ansible.builtin.template:
+    src: client.cnf.j2
+    dest: /etc/my.cnf.d/client.cnf
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Enable and start MariaDB
+  ansible.builtin.systemd:
+    name: mariadb
+    state: started
+    enabled: true
+
+- name: Check if MariaDB is already secured
+  ansible.builtin.stat:
+    path: /var/lib/mysql/.mysql_setup_complete
+    get_checksum: no
+  register: mysql_setup_stat
+
+- name: Set MySQL root password for the first time
+  ansible.builtin.shell: |
+    mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '{{ db_root_password }}'; FLUSH PRIVILEGES;"
+  register: set_root_password
+  failed_when: set_root_password.rc != 0 and "Access denied" not in set_root_password.stderr
+  changed_when: set_root_password.rc == 0
+  when: not mysql_setup_stat.stat.exists
+  no_log: true
+
+- name: Create root credentials file
+  ansible.builtin.template:
+    src: root.my.cnf.j2
+    dest: /root/.my.cnf
+    owner: root
+    group: root
+    mode: '0600'
+  when: not mysql_setup_stat.stat.exists
+
+- name: Secure MariaDB installation
+  block:
+    - name: Remove anonymous users
+      community.mysql.mysql_user:
+        login_unix_socket: /var/lib/mysql/mysql.sock
+        user: ""
+        host_all: yes
+        state: absent
+
+    - name: Remove test database
+      community.mysql.mysql_db:
+        login_unix_socket: /var/lib/mysql/mysql.sock
+        name: test
+        state: absent
+
+    - name: Disallow root login remotely
+      community.mysql.mysql_user:
+        login_unix_socket: /var/lib/mysql/mysql.sock
+        user: root
+        host: "{{ item }}"
+        state: absent
+      loop:
+        - "%"
+        - "::1"
+        - "localhost.localdomain"
+      ignore_errors: yes
+
+    - name: Create setup complete flag file
+      ansible.builtin.file:
+        path: /var/lib/mysql/.mysql_setup_complete
+        state: touch
+        owner: mysql
+        group: mysql
+        mode: '0600'
+  when: not mysql_setup_stat.stat.exists
+
+# Create specific database users matching the bash script implementation
+- name: Create standard database users
+  community.mysql.mysql_user:
+    login_unix_socket: /var/lib/mysql/mysql.sock
+    name: "{{ item.name }}"
+    password: "{{ item.password }}"
+    host: "{{ item.host }}"
+    priv: "{{ item.priv }}"
+    state: present
+  loop:
+    - { name: "{{ db_remote_user | default('remote_user') }}", password: "{{ db_remote_password | default(db_root_password) }}", host: '%', priv: '*.*:ALL' }
+    - { name: 'webclient', password: "{{ db_webclient_password | default(db_root_password) }}", host: 'localhost', priv: '*.*:ALL' }
+  no_log: true
+
+- name: Create database backup directory
+  ansible.builtin.file:
+    path: "{{ db_backup_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0750'
+
+- name: Setup automatic database backups
+  ansible.builtin.cron:
+    name: "Database backup"
+    hour: "3"
+    minute: "0"
+    job: "mysqldump --user=root --password={{ db_root_password }} --all-databases | gzip > {{ db_backup_dir }}/mysql-all-`date +\\%Y\\%m\\%d`.sql.gz"
+    user: root
+  no_log: true
+  when: setup_db_backups | default(true)
+
+- name: Configure tune-db settings
+  ansible.builtin.include_tasks: performance.yml
+  when: db_optimize_for_server | default(true)

@@ -1,0 +1,133 @@
+---
+# Firewall configuration tasks
+
+- name: Include OS-specific variables
+  ansible.builtin.include_vars: "{{ ansible_os_family | lower }}.yml"
+  when: ansible_os_family == 'RedHat'
+
+# RedHat/CentOS systems - Firewalld configuration
+- name: Install firewalld (RedHat)
+  ansible.builtin.package:
+    name: firewalld
+    state: present
+  when: ansible_os_family == 'RedHat' and security_firewall_service == "firewalld"
+
+- name: Ensure firewalld is enabled and running (RedHat)
+  ansible.builtin.service:
+    name: firewalld
+    state: started
+    enabled: true
+  when: 
+    - ansible_os_family == 'RedHat'
+    - security_firewall_service == "firewalld"
+    - not (ansible_virtualization_type | default('') == 'docker')
+
+- name: Configure firewalld - Add HTTP/HTTPS services
+  ansible.posix.firewalld:
+    service: "{{ item }}"
+    permanent: true
+    state: enabled
+    immediate: true
+  loop:
+    - http
+    - https
+  when: ansible_os_family == 'RedHat' and security_firewall_service == "firewalld"
+
+- name: Configure firewalld - Add SSH service
+  ansible.posix.firewalld:
+    service: ssh
+    permanent: true
+    state: enabled
+    immediate: true
+  when: ansible_os_family == 'RedHat' and security_firewall_service == "firewalld"
+
+- name: Configure firewalld - Add mail services
+  ansible.posix.firewalld:
+    port: "{{ item.port }}/{{ item.proto }}"
+    permanent: true
+    state: enabled
+    immediate: true
+  loop: "{{ security_mail_service_ports }}"
+  when: 
+    - ansible_os_family == 'RedHat'
+    - security_firewall_service == "firewalld"
+    - domain is defined
+    - domain == master_domain | default('')
+
+# RedHat/CentOS systems - Iptables configuration
+- name: Check if firewalld service exists
+  ansible.builtin.systemd:
+    name: firewalld
+  register: firewalld_status
+  when: ansible_os_family == 'RedHat' and security_firewall_service == "iptables"
+  ignore_errors: true
+
+- name: Stop and mask firewalld service (RedHat)
+  ansible.builtin.systemd:
+    name: firewalld
+    state: stopped
+    enabled: false
+    masked: true
+  when: 
+    - ansible_os_family == 'RedHat' 
+    - security_firewall_service == "iptables"
+    - firewalld_status is defined
+    - firewalld_status.status is defined
+    - firewalld_status.status.LoadState != "not-found"
+  ignore_errors: true
+
+- name: Ensure firewalld is not installed (RedHat)
+  ansible.builtin.package:
+    name: firewalld
+    state: absent
+  when: ansible_os_family == 'RedHat' and security_firewall_service == "iptables"
+
+- name: Install iptables packages (RedHat)
+  ansible.builtin.package:
+    name: 
+      - iptables
+      - iptables-services
+      - iptables-utils
+    state: present
+  when: ansible_os_family == 'RedHat'
+
+- name: Configure iptables rules (RedHat)
+  ansible.builtin.template:
+    src: firewall/iptables.rules.j2
+    dest: /etc/sysconfig/iptables
+    owner: root
+    group: root
+    mode: '0600'
+  when: ansible_os_family == 'RedHat'
+  notify: restart iptables
+
+- name: Configure ip6tables rules (RedHat)
+  ansible.builtin.template:
+    src: firewall/ip6tables.rules.j2
+    dest: /etc/sysconfig/ip6tables
+    owner: root
+    group: root
+    mode: '0600'
+  when: ansible_os_family == 'RedHat' and security_firewall_use_ipv6 | default(true)
+  notify: restart ip6tables
+
+- name: Ensure iptables service is enabled and running (RedHat)
+  ansible.builtin.service:
+    name: iptables
+    state: started
+    enabled: true
+  when: 
+    - ansible_os_family == 'RedHat'
+    - not (ansible_virtualization_type | default('') == 'docker')
+  ignore_errors: "{{ ansible_virtualization_type | default('') == 'docker' }}"
+
+- name: Ensure ip6tables service is enabled and running (RedHat)
+  ansible.builtin.service:
+    name: ip6tables
+    state: started
+    enabled: true
+  when: 
+    - ansible_os_family == 'RedHat' 
+    - security_firewall_use_ipv6 | default(true)
+    - not (ansible_virtualization_type | default('') == 'docker')
+  ignore_errors: "{{ ansible_virtualization_type | default('') == 'docker' }}"

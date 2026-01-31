@@ -1,0 +1,139 @@
+---
+# Tasks for enabling minimal environment in chroot for SFTP users
+
+# This task file is expected to be included with a loop or with_items
+# providing `vhost_user_item` which contains:
+#   vhost_user_item.name: username
+#   vhost_user_item.home: /path/to/user/home (e.g., /sftp/username)
+#   vhost_user_item.sftp_only: boolean
+
+- name: "Ensure vhost_user_item is defined for chroot setup"
+  ansible.builtin.assert:
+    that:
+      - vhost_user_item is defined
+      - vhost_user_item.name is defined
+      - vhost_user_item.home is defined
+      - vhost_user_item.sftp_only is defined
+    fail_msg: "vhost_user_item with name, home, and sftp_only flag must be defined when including command_access.yml for chroot setup."
+  when: security_setup_chroot_sftp | default(false) | bool
+
+- name: "Create minimal directory structure for chroot SFTP for user {{ vhost_user_item.name }}"
+  ansible.builtin.file:
+    path: "{{ vhost_user_item.home }}/{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  with_items:
+    - "bin"
+    - "lib64"
+    - "lib"
+    - "dev" # For /dev/null, /dev/zero etc.
+    - "etc" # For passwd, group if needed by some commands (though internal-sftp might not need)
+  when:
+    - security_setup_chroot_sftp | default(false) | bool
+    - vhost_user_item.sftp_only | default(false) | bool
+
+- name: "Copy essential files for SFTP functionality for user {{ vhost_user_item.name }}"
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ vhost_user_item.home }}{{ item.dest }}"
+    mode: "{{ item.mode | default('0755') }}"
+    owner: root
+    group: root
+    remote_src: yes
+  with_items:
+    # internal-sftp doesn't strictly need bash, but some minimal commands might be useful for debugging if ever needed.
+    # For a pure SFTP setup, these might be omitted.
+    # - { src: "/bin/ls", dest: "/bin/ls" }
+    # - { src: "/bin/mkdir", dest: "/bin/mkdir" }
+    # - { src: "/bin/rm", dest: "/bin/rm" }
+    - { src: "/usr/libexec/openssh/sftp-server", dest: "/bin/sftp-server" } # Ensure sftp-server is in chroot
+    # Basic devices (optional, but can prevent some errors with certain sftp clients or tools)
+    # These require `mount --bind` or `mknod` in a more complex setup.
+    # For simplicity, we'll skip direct creation of /dev/null, /dev/zero for now.
+    # If issues arise, they can be created with mknod if the filesystem allows.
+  ignore_errors: true # Some files might not exist on all systems, or we might not want to fail if one copy fails.
+  when:
+    - security_setup_chroot_sftp | default(false) | bool
+    - vhost_user_item.sftp_only | default(false) | bool
+
+# The ldd-based library copying is complex and can be fragile.
+# For internal-sftp, it usually has minimal dependencies.
+# A more robust approach for general commands is to use a tool like `makejail` or build a static binary.
+# Given we are focusing on `internal-sftp`, extensive library copying might not be necessary
+# if sftp-server itself is statically linked or has few dynamic dependencies not in a standard minimal set.
+
+# If dynamic libraries are needed for sftp-server or other copied binaries:
+- name: "Copy required libraries for sftp-server for user {{ vhost_user_item.name }}"
+  ansible.builtin.shell: |
+    set -e # Exit immediately if a command exits with a non-zero status.
+    CHROOT_BASE="{{ vhost_user_item.home }}"
+    SFTP_SERVER_PATH="/usr/libexec/openssh/sftp-server" # Path to sftp-server on the host
+
+    if [ ! -f "$SFTP_SERVER_PATH" ]; then
+      echo "sftp-server not found at $SFTP_SERVER_PATH"
+      exit 1
+    fi
+
+    # Ensure target directories exist
+    mkdir -p "$CHROOT_BASE/$(dirname $SFTP_SERVER_PATH)"
+    mkdir -p "$CHROOT_BASE/lib64"
+    mkdir -p "$CHROOT_BASE/lib"
+
+    # Copy sftp-server itself if not done by the copy task above (e.g. if path differs)
+    # cp -f "$SFTP_SERVER_PATH" "$CHROOT_BASE/$(dirname $SFTP_SERVER_PATH)/"
+
+    # Get list of libraries
+    LDD_OUTPUT=$(ldd "$SFTP_SERVER_PATH" 2>/dev/null)
+    if [ -z "$LDD_OUTPUT" ]; then
+      echo "Could not determine dependencies for $SFTP_SERVER_PATH. It might be statically linked."
+      exit 0 # Not an error if statically linked
+    fi
+
+    echo "$LDD_OUTPUT" | while IFS= read -r line ; do
+      if [[ "$line" =~ =>\\s+([^\\s]+)\\s+\\(0x[0-9a-fA-F]+\\) ]]; then
+        LIB_PATH="${BASH_REMATCH[1]}"
+      elif [[ "$line" =~ ([^\\s]+)\\s+\\(0x[0-9a-fA-F]+\\) ]]; then # For ld-linux-x86-64.so.2 itself
+        LIB_PATH="${BASH_REMATCH[1]}"
+      else
+        continue # Skip lines that don't match expected ldd output
+      fi
+
+      if [ -f "$LIB_PATH" ]; then
+        DEST_DIR="$CHROOT_BASE$(dirname "$LIB_PATH")"
+        mkdir -p "$DEST_DIR"
+        if [ ! -f "$CHROOT_BASE$LIB_PATH" ]; then # Copy only if not already there
+          cp -L "$LIB_PATH" "$DEST_DIR/"
+          echo "Copied $LIB_PATH to $DEST_DIR/"
+        fi
+      else
+        echo "Warning: Library $LIB_PATH not found on host."
+      fi
+    done
+  args:
+    executable: /bin/bash
+    # Check if sftp-server is present in chroot to avoid re-running if already set up.
+    # This is a basic check; a more robust check would verify all libs.
+    creates: "{{ vhost_user_item.home }}/bin/sftp-server"
+  register: copy_libs_result
+  changed_when: "'Copied' in copy_libs_result.stdout"
+  when:
+    - security_setup_chroot_sftp | default(false) | bool
+    - vhost_user_item.sftp_only | default(false) | bool
+
+- name: "Create basic device nodes for chroot SFTP for user {{ vhost_user_item.name }}"
+  ansible.builtin.command: "mknod -m 666 {{ vhost_user_item.home }}/dev/{{ item.name }} {{ item.type }} {{ item.major }} {{ item.minor }}"
+  with_items:
+    - { name: "null", type: "c", major: 1, minor: 3 }
+    - { name: "zero", type: "c", major: 1, minor: 5 }
+    - { name: "random", type: "c", major: 1, minor: 8 }
+    - { name: "urandom", type: "c", major: 1, minor: 9 }
+  when:
+    - security_setup_chroot_sftp | default(false) | bool
+    - vhost_user_item.sftp_only | default(false) | bool
+    - security_chroot_create_device_nodes | default(true) | bool # Add a var to control this
+  ignore_errors: true # mknod can fail if not permitted or device already exists in a certain way
+
+# Note: The `security_chroot_user` variable is no longer used directly in this file.
+# This task file now expects to be included with `vhost_user_item` when setting up chroot for a specific user.

@@ -1,0 +1,72 @@
+---
+# Webmin installation and configuration
+
+- name: Check if Webmin is already installed
+  ansible.builtin.stat:
+    path: /etc/webmin/version
+  register: webmin_installed
+
+- name: Read existing Webmin version
+  ansible.builtin.slurp:
+    src: /etc/webmin/version
+  register: webmin_version_content
+  when: webmin_installed.stat.exists
+  changed_when: false
+
+- name: Set fact for installed version
+  ansible.builtin.set_fact:
+    webmin_current_version: "{{ webmin_version_content.content | b64decode | trim }}"
+  when: webmin_installed.stat.exists
+
+- name: Display current Webmin version
+  ansible.builtin.debug:
+    msg: "Webmin {{ webmin_current_version }} is already installed"
+  when: webmin_installed.stat.exists
+
+- name: Add Webmin repository
+  ansible.builtin.yum_repository:
+    name: Webmin
+    description: Webmin Distribution Neutral
+    baseurl: "{{ webmin_repo_url }}"
+    enabled: true
+    gpgcheck: true
+    gpgkey: "{{ webmin_gpg_key }}"
+  when: ansible_os_family == 'RedHat'
+
+- name: Install Webmin package
+  ansible.builtin.dnf:
+    name: "webmin{% if webmin_version is defined and webmin_version %}-{{ webmin_version }}{% endif %}"
+    state: present
+    disable_gpg_check: false
+  when: not webmin_installed.stat.exists or (webmin_current_version is defined and webmin_version is defined and webmin_version and webmin_current_version != webmin_version)
+  notify: Restart webmin
+
+- name: Ensure Webmin service is enabled and started
+  ansible.builtin.systemd:
+    name: webmin
+    enabled: true
+    state: started
+
+- name: Configure firewall for Webmin
+  ansible.builtin.iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_port: "{{ webmin_port }}"
+    jump: ACCEPT
+    comment: Allow Webmin web interface
+  when: firewall_enabled | default(true)
+  notify: Save iptables rules
+
+- name: Verify Webmin is accessible
+  ansible.builtin.uri:
+    url: "{{ 'https' if webmin_ssl_enabled | default(false) else 'http' }}://{{ ansible_host }}:{{ webmin_port }}"
+    method: GET
+    status_code: [200, 302, 401]
+    timeout: 10
+    validate_certs: false
+  register: webmin_check
+  retries: 3
+  delay: 5
+  until: webmin_check is succeeded
+  changed_when: false
+  ignore_errors: true

@@ -1,0 +1,18 @@
+---
+# Webmin handlers
+
+- name: Restart webmin
+  ansible.builtin.systemd:
+    name: webmin
+    state: restarted
+
+- name: Reload nginx
+  ansible.builtin.systemd:
+    name: nginx
+    state: reloaded
+  when: nginx_installed is defined and nginx_installed
+
+- name: Save iptables rules
+  ansible.builtin.shell: iptables-save > /etc/sysconfig/iptables
+  when: ansible_os_family == 'RedHat'
+  changed_when: false

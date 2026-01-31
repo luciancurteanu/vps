@@ -1,0 +1,42 @@
+---
+# Mail role: Default variables
+
+# Mail domain settings
+mail_domain: "{{ domain }}"
+mail_subdomain: "mail.{{ domain }}"
+mail_hostname: "{{ mail_subdomain }}"
+
+# Email administrator contact info
+mail_admin_email: "admin@{{ domain }}"
+postmaster_email: "postmaster@{{ domain }}"
+
+# Database settings for mail services
+mail_db_name: "mailserver"
+mail_db_user: "mailuser"
+mail_db_password: "{{ vault_mail_db_password | default(lookup('env', 'MAIL_DB_PASSWORD'), true) }}"
+db_root_user: root
+db_root_password: ''
+db_login_unix_socket: /var/lib/mysql/mysql.sock
+
+# Webmail settings
+webmail_path: "/home/{{ domain }}/roundcube"
+webmail_version: "1.6.10"
+
+# Roundcube database settings
+roundcube_db_name: "roundcube"
+roundcube_db_user: "roundcube"
+roundcube_db_password: "{{ vault_roundcube_db_password | default(lookup('env', 'ROUNDCUBE_DB_PASSWORD'), true) }}"
+
+# Mail system users
+mail_user: "vmail"
+mail_group: "vmail"
+mail_uid: 5000
+mail_gid: 5000
+mail_enable_opendkim: false  # Disabled: dependencies not available on AlmaLinux 9
+mail_enable_roundcube: true   # Enabled: Roundcube webmail installation
+mail_enable_nginx: true
+mail_enable_ssl: false  # Disabled: SSL certificates not generated yet
+mail_ssl_enabled: true
+mail_ssl_cert: /etc/pki/dovecot/certs/dovecot.pem
+mail_ssl_key: /etc/pki/dovecot/private/dovecot.pem
+mail_ssl_ca: ''

@@ -1,0 +1,36 @@
+---
+# MariaDB role: Default variables
+
+# MariaDB version and repository settings
+mariadb_version: "11.4"
+mariadb_repo_url: "https://yum.mariadb.org/{{ mariadb_version }}/centos9-amd64"
+mariadb_repo_key: "https://yum.mariadb.org/RPM-GPG-KEY-MariaDB"
+
+# Database root user settings (should be in vault)
+db_root_password: "{{ vault_db_root_password | default(lookup('env', 'MARIADB_ROOT_PASSWORD'), true) }}"
+db_root_user: "root"
+
+# Database user passwords
+db_webclient_password: "{{ vault_db_webclient_password | default(lookup('env', 'MARIADB_WEBCLIENT_PASSWORD'), true) }}"
+db_remote_password: "{{ vault_db_remote_password | default(lookup('env', 'MARIADB_REMOTE_PASSWORD'), true) }}"
+db_remote_user: "{{ vault_db_remote_user | default('remote_user') }}"
+
+# Database backup settings
+db_backup_dir: "/var/backups/mysql"
+setup_db_backups: true
+
+# Performance tuning
+db_optimize_for_server: true
+
+# Default character set and collation
+db_character_set: "utf8mb4"
+db_collation: "utf8mb4_unicode_ci"
+
+# Network settings
+db_bind_address: "127.0.0.1"  # Only listen on localhost by default
+db_port: 3306
+
+# Security settings
+db_allow_remote_root: false
+db_remove_test_database: true
+db_remove_anonymous_users: true

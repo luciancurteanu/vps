@@ -1,0 +1,32 @@
+# {{ ansible_managed }}
+# Dovecot authentication configuration
+
+# Authentication processes
+auth_username_format = %n
+auth_mechanisms = plain login
+
+# SQL driver
+!include auth-sql.conf.ext
+
+# Authentication socket for Postfix
+service auth {
+  unix_listener auth-userdb {
+    mode = 0600
+    user = vmail
+    group = vmail
+  }
+
+  unix_listener /var/spool/postfix/private/auth {
+    mode = 0666
+    user = postfix
+    group = postfix
+  }
+
+  unix_listener auth-master {
+    mode = 0600
+    user = vmail
+    group = vmail
+  }
+
+  user = dovecot
+}

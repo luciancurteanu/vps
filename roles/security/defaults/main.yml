@@ -1,0 +1,65 @@
+---
+# Security role: Default variables
+
+# Firewall settings
+firewall_enabled: true
+firewall_service: iptables  # iptables (recommended) or firewalld
+firewall_use_ipv6: true     # Enable IPv6 firewall rules
+firewall_initialize: true   # Run the commands to initialize fail2ban chains on first run
+
+# Prefixed firewall settings to avoid collisions
+security_firewall_enabled: "{{ firewall_enabled }}"
+security_firewall_service: "{{ firewall_service }}"
+security_firewall_use_ipv6: "{{ firewall_use_ipv6 }}"
+security_firewall_initialize: "{{ firewall_initialize }}"
+
+# Default SSH port (should match common role's ssh_port)
+# This gets overridden by group_vars/all.yml or inventory
+security_ssh_port: "{{ ssh_port }}"
+security_ssh_service_name: "{{ ssh_service_name | default('sshd') }}"
+
+# Default allowed services
+firewall_allowed_services:
+  - { proto: tcp, port: 80 }    # HTTP
+  - { proto: tcp, port: 443 }   # HTTPS
+
+security_firewall_allowed_services: "{{ firewall_allowed_services }}"
+  
+# Mail service ports (used when domain is master_domain)
+mail_service_ports:
+  - { proto: tcp, port: 25 }    # SMTP
+  - { proto: tcp, port: 587 }   # SMTP (submission)
+  - { proto: tcp, port: 465 }   # SMTPS
+  - { proto: tcp, port: 110 }   # POP3
+  - { proto: tcp, port: 995 }   # POP3S
+  - { proto: tcp, port: 143 }   # IMAP
+  - { proto: tcp, port: 993 }   # IMAPS
+
+security_mail_service_ports: "{{ mail_service_ports }}"
+
+# Fail2ban configuration
+fail2ban_enabled: true
+fail2ban_services:
+  - sshd
+  - postfix
+  - dovecot
+  - mariadb
+  - badbot
+  - badurl
+
+security_fail2ban_enabled: "{{ fail2ban_enabled }}"
+security_fail2ban_services: "{{ fail2ban_services }}"
+security_fail2ban_socket_timeout: "{{ fail2ban_socket_timeout | default(30) }}"
+
+# List of IPs to whitelist in fail2ban
+allowed_ips: "149.102.153.46/32 66.249.64.0/19 31.5.191.35/32"
+
+security_allowed_ips: "{{ allowed_ips }}"
+
+# Webmin exposure controls
+security_install_webmin: "{{ install_webmin | default(true) }}"
+security_webmin_port: "{{ webmin_port | default(10000) }}"
+
+# Cockpit exposure controls  
+security_install_cockpit: "{{ install_cockpit | default(false) }}"  # Disabled by default (webmin is primary)
+security_cockpit_port: "{{ cockpit_port | default(9090) }}"

@@ -1,0 +1,30 @@
+{%- set config = {
+	"server": {
+		"mode": goproxy_server_mode,
+		"address": "127.0.0.1:{}".format(goproxy_port),
+		"headers": {
+			"access-control-allow-origin": "*"
+		},
+		"whitelist": {
+			"enable": goproxy_whitelist_enable,
+			"addresses": goproxy_whitelist_addresses
+		}
+	},
+	"logging": {
+		"filepath": goproxy_log_file,
+		"stderr": true
+	},
+	"clients": {
+		"timeout": goproxy_client_timeout,
+		"cookies": {
+			"persist": goproxy_cookies_persist
+		},
+		"proxy": {
+			"protocol": "tcp",
+			"address": "127.0.0.1:{}".format(tor_socks_port),
+			"test": goproxy_proxy_test_url
+		}
+	},
+	"database": {}
+} -%}
+{{ config | to_nice_json }}

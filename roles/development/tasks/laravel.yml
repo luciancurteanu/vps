@@ -1,0 +1,48 @@
+---
+# Laravel installation tasks
+
+- name: Determine Composer global bin directory
+  ansible.builtin.shell: composer global config bin-dir --absolute
+  args:
+    executable: /bin/bash
+  register: composer_bin_dir
+  changed_when: false
+
+- name: Check if Laravel installer is already present
+  ansible.builtin.stat:
+    path: "{{ composer_bin_dir.stdout | trim }}/laravel"
+  register: laravel_binary
+
+- name: Install Laravel installer via Composer
+  ansible.builtin.shell: composer global require "laravel/installer:^5.0" --no-interaction
+  args:
+    executable: /bin/bash
+  register: laravel_install
+  changed_when: "'Nothing to install, update or remove' not in laravel_install.stdout"
+  when: not laravel_binary.stat.exists
+
+- name: Add Composer global bin directory to PATH
+  ansible.builtin.lineinfile:
+    path: /etc/profile
+    line: 'export PATH="$PATH:{{ composer_bin_dir.stdout | trim }}"'
+    state: present
+  when: composer_bin_dir is succeeded
+
+- name: Apply PATH changes
+  ansible.builtin.shell: source /etc/profile
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: Verify Laravel installer version
+  ansible.builtin.shell: "{{ composer_bin_dir.stdout | trim }}/laravel --version"
+  args:
+    executable: /bin/bash
+  register: laravel_version
+  changed_when: false
+  failed_when: false
+
+- name: Display Laravel installer version
+  ansible.builtin.debug:
+    msg: "Installed Laravel version: {{ laravel_version.stdout }}"
+  when: laravel_version.rc == 0

@@ -1,0 +1,21 @@
+---
+# Enable and install PHP module stream from Remi
+- name: Reset PHP module stream
+  ansible.builtin.command: "dnf module reset php -y"
+  register: php_module_reset
+  changed_when: "'Resetting module' in php_module_reset.stdout or 'Nothing to do' in php_module_reset.stdout"
+  ignore_errors: true
+  when: ansible_os_family == "RedHat"
+
+- name: Enable remi-{{ php_version }} PHP module stream
+  ansible.builtin.command: "dnf module enable php:remi-{{ php_version }} -y"
+  register: php_module_enable
+  changed_when: "'Enabling module stream' in php_module_enable.stdout"
+  when: ansible_os_family == "RedHat"
+
+- name: Install PHP module stream
+  ansible.builtin.command: "dnf module install php:remi-{{ php_version }} -y"
+  register: php_module_install
+  changed_when: "('Installing:' in php_module_install.stdout or 'Installed:' in php_module_install.stdout) and 'Nothing to do' not in php_module_install.stdout"
+  notify: Restart php-fpm
+  when: ansible_os_family == "RedHat"

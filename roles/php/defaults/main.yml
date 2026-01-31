@@ -1,0 +1,23 @@
+---
+# Default variables for PHP role
+
+# PHP version to install from Remi repository
+php_version: "8.4"
+
+# Nginx user and group for PHP-FPM integration
+nginx_user: nginx
+nginx_group: nginx
+
+# PHP-FPM settings
+php_fpm_user: nginx
+php_fpm_group: nginx
+php_fpm_listen: /var/run/php-fpm/php-fpm.sock
+
+# PHP OPcache settings
+php_opcache_enable: 1
+php_opcache_memory_consumption: 128
+php_opcache_interned_strings_buffer: 8
+php_opcache_max_accelerated_files: 4000
+php_opcache_revalidate_freq: 2
+php_opcache_fast_shutdown: 1
+php_opcache_enable_cli: 1

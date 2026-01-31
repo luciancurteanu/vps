@@ -1,0 +1,40 @@
+---
+# SSH hardening tasks
+
+- name: Ensure SSH service is installed
+  ansible.builtin.package:
+    name: openssh-server
+    state: present
+
+- name: Generate SSH host keys for testing
+  ansible.builtin.command: ssh-keygen -A
+  when: ansible_virtualization_type == "docker"
+  tags:
+    - molecule-notest
+
+- name: Backup SSH configuration
+  ansible.builtin.copy:
+    src: /etc/ssh/sshd_config
+    dest: /etc/ssh/sshd_config.bak
+    remote_src: yes
+    force: no
+  ignore_errors: yes
+
+- name: Configure SSH
+  ansible.builtin.template:
+    src: ssh/sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: '0600'
+    validate: "{{ 'sshd -t -f %s' if ansible_virtualization_type != 'docker' else omit }}"
+  notify: restart ssh
+
+- name: Ensure SSH service is enabled and running
+  ansible.builtin.service:
+    name: "{{ common_ssh_service_name }}"
+    state: started
+    enabled: true
+  when: ansible_virtualization_type != "docker"
+  tags:
+    - molecule-notest

@@ -1,0 +1,214 @@
+---
+# Mail role: Main tasks for mail server setup
+
+- name: Include OS-specific variables
+  ansible.builtin.include_vars: "{{ ansible_os_family | lower }}.yml"
+  when: ansible_os_family == 'RedHat'
+
+- name: Ensure mail system group exists
+  ansible.builtin.group:
+    name: "{{ mail_group }}"
+    gid: "{{ mail_gid | default(omit) }}"
+    system: true
+    state: present
+
+- name: Ensure mail system user exists
+  ansible.builtin.user:
+    name: "{{ mail_user }}"
+    uid: "{{ mail_uid | default(omit) }}"
+    group: "{{ mail_group }}"
+    create_home: false
+    system: true
+    shell: /sbin/nologin
+
+- block:
+    - name: Install mail server packages
+      ansible.builtin.package:
+        name: "{{ mail_packages }}"
+        state: present
+
+    - name: Ensure MariaDB service is running for mail database
+      ansible.builtin.systemd:
+        name: mariadb
+        state: started
+        enabled: true
+      when: "'mariadb-server' in mail_packages"
+
+    - name: Ensure mail database exists
+      community.mysql.mysql_db:
+        name: "{{ mail_db_name }}"
+        state: present
+        login_user: "{{ db_root_user }}"
+        login_password: "{{ db_root_password }}"
+        login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
+
+    - name: Ensure mail database user exists (localhost)
+      community.mysql.mysql_user:
+        name: "{{ mail_db_user }}"
+        password: "{{ mail_db_password }}"
+        host: localhost
+        priv: "{{ mail_db_name }}.*:ALL"
+        state: present
+        login_user: "{{ db_root_user }}"
+        login_password: "{{ db_root_password }}"
+        login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
+
+    - name: Ensure mail database user exists (127.0.0.1)
+      community.mysql.mysql_user:
+        name: "{{ mail_db_user }}"
+        password: "{{ mail_db_password }}"
+        host: 127.0.0.1
+        priv: "{{ mail_db_name }}.*:ALL"
+        state: present
+        login_user: "{{ db_root_user }}"
+        login_password: "{{ db_root_password }}"
+        login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
+
+    - name: Ensure mail database schema exists (domains)
+      community.mysql.mysql_query:
+        login_db: "{{ mail_db_name }}"
+        login_user: "{{ db_root_user }}"
+        login_password: "{{ db_root_password }}"
+        login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
+        query: |
+          CREATE TABLE IF NOT EXISTS domains (
+            domain VARCHAR(255) NOT NULL PRIMARY KEY
+          );
+      changed_when: false
+
+    - name: Ensure mail database schema exists (users)
+      community.mysql.mysql_query:
+        login_db: "{{ mail_db_name }}"
+        login_user: "{{ db_root_user }}"
+        login_password: "{{ db_root_password }}"
+        login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
+        query: |
+          CREATE TABLE IF NOT EXISTS users (
+            email VARCHAR(255) NOT NULL PRIMARY KEY,
+            password VARCHAR(255) NOT NULL,
+            domain VARCHAR(255) NOT NULL
+          );
+      changed_when: false
+
+    - name: Ensure mail database schema exists (aliases)
+      community.mysql.mysql_query:
+        login_db: "{{ mail_db_name }}"
+        login_user: "{{ db_root_user }}"
+        login_password: "{{ db_root_password }}"
+        login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
+        query: |
+          CREATE TABLE IF NOT EXISTS aliases (
+            source VARCHAR(255) NOT NULL PRIMARY KEY,
+            destination VARCHAR(255) NOT NULL
+          );
+      changed_when: false
+  when: domain == master_domain
+
+# Postfix configuration
+- name: Configure Postfix
+  ansible.builtin.include_tasks: postfix.yml
+  tags: ['postfix', 'mail']
+
+# Dovecot configuration  
+- name: Configure Dovecot
+  ansible.builtin.include_tasks: dovecot.yml
+  tags: ['dovecot', 'mail']
+
+# OpenDKIM configuration
+- name: Configure OpenDKIM
+  ansible.builtin.include_tasks: opendkim.yml
+  when: mail_enable_opendkim | default(false)
+  tags: ['opendkim', 'mail']
+
+# Roundcube installation and configuration
+- name: Configure Roundcube webmail
+  ansible.builtin.include_tasks: roundcube.yml
+  when: mail_enable_roundcube | default(true)
+  tags: ['roundcube', 'webmail']
+
+# Mail directories and permissions
+- name: Create mail directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ mail_user }}"
+    group: "{{ mail_group }}"
+    mode: '0770'
+  with_items:
+    - "/home/{{ domain }}/mail"
+    - "/home/{{ domain }}/mail/virtual"
+    - "/home/{{ domain }}/mail/spool"
+
+- name: Ensure mail log directory exists (preserve nginx ownership)
+  ansible.builtin.file:
+    path: "/home/{{ domain }}/logs"
+    state: directory
+    owner: nginx
+    group: nginx
+    mode: '0755'
+
+- name: Create mail log files with nginx ownership
+  ansible.builtin.file:
+    path: "/home/{{ domain }}/logs/{{ item }}"
+    state: touch
+    owner: nginx
+    group: nginx
+    mode: '0644'
+    modification_time: preserve
+    access_time: preserve
+  with_items:
+    - mail-access.log
+    - mail-error.log
+
+- name: Set SELinux context for domain log directories
+  community.general.sefcontext:
+    target: '/home/.*/logs(/.*)?'
+    setype: httpd_log_t
+    state: present
+  when: ansible_selinux.status == "enabled"
+
+- name: Apply SELinux context to mail log directory
+  ansible.builtin.command: restorecon -Rv /home/{{ domain }}/logs
+  when: ansible_selinux.status == "enabled"
+  changed_when: false
+
+- name: Configure Nginx for mail services
+  ansible.builtin.template:
+    src: nginx/mail.conf.j2
+    dest: "/etc/nginx/sites-available/{{ mail_subdomain }}.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart nginx
+  when: mail_enable_nginx | default(true)
+
+- name: Enable mail subdomain site
+  ansible.builtin.file:
+    src: "/etc/nginx/sites-available/{{ mail_subdomain }}.conf"
+    dest: "/etc/nginx/sites-enabled/{{ mail_subdomain }}.conf"
+    state: link
+  notify: restart nginx
+  when: mail_enable_nginx | default(true)
+
+- name: Configure Nginx for Roundcube (included in mail subdomain config)
+  ansible.builtin.template:
+    src: nginx/roundcube.conf.j2
+    dest: "/etc/nginx/sites-available/roundcube.{{ domain }}.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart nginx
+  when:
+    - mail_enable_nginx | default(true)
+    - mail_enable_roundcube | default(false)
+
+- name: Enable roundcube site (if separate from mail subdomain)
+  ansible.builtin.file:
+    src: "/etc/nginx/sites-available/roundcube.{{ domain }}.conf"
+    dest: "/etc/nginx/sites-enabled/roundcube.{{ domain }}.conf"
+    state: link
+  notify: restart nginx
+  when:
+    - mail_enable_nginx | default(true)
+    - mail_enable_roundcube | default(false)
+    - mail_roundcube_separate_domain | default(false)

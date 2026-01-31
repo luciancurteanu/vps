@@ -1,0 +1,9 @@
+---
+- name: Verify Python Role
+  hosts: all
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Include python role to verify its state
+      ansible.builtin.include_role:
+        name: python

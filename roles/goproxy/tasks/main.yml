@@ -1,0 +1,349 @@
+---
+# Tasks for installing and configuring GoProxy
+
+- name: Ensure EPEL repository is enabled on RedHat systems
+  ansible.builtin.package:
+    name: epel-release
+    state: present
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Install GoProxy dependencies
+  ansible.builtin.package:
+    name: "{{ ((goproxy_dependencies | default([])) + (proxy_dependencies | default([])) + ['python3']) | unique }}"
+    state: present
+
+- name: Ensure GoProxy system user exists
+  ansible.builtin.user:
+    name: "{{ goproxy_user }}"
+    home: "{{ goproxy_home }}"
+    create_home: true
+    shell: /sbin/nologin
+    system: true
+
+- name: Ensure GoProxy home directory permissions
+  ansible.builtin.file:
+    path: "{{ goproxy_home }}"
+    state: directory
+    owner: "{{ goproxy_user }}"
+    group: "{{ goproxy_user }}"
+    mode: '0750'
+
+- name: Check installed Go version
+  ansible.builtin.command: "{{ go_binary_path }} version"
+  register: go_version_check
+  failed_when: false
+  changed_when: false
+
+- name: Determine if Go installation is required
+  ansible.builtin.set_fact:
+    go_install_required: "{{ go_version_check.rc != 0 or ('go' ~ go_version) not in go_version_check.stdout }}"
+
+- name: Define Go archive path
+  ansible.builtin.set_fact:
+    go_archive_path: "/tmp/go{{ go_version }}.linux-amd64.tar.gz"
+
+- name: Download Go archive
+  ansible.builtin.get_url:
+    url: "https://go.dev/dl/go{{ go_version }}.linux-amd64.tar.gz"
+    dest: "{{ go_archive_path }}"
+    mode: '0644'
+  when: go_install_required
+
+- name: Remove existing Go installation when updating
+  ansible.builtin.file:
+    path: "{{ go_install_dir }}"
+    state: absent
+  when: go_install_required
+
+- name: Extract Go archive
+  ansible.builtin.unarchive:
+    src: "{{ go_archive_path }}"
+    dest: "{{ go_install_dir | dirname }}"
+    remote_src: true
+  when: go_install_required
+
+- name: Clean up Go archive
+  ansible.builtin.file:
+    path: "{{ go_archive_path }}"
+    state: absent
+  when: go_install_required
+
+- name: Backup Go profile script
+  ansible.builtin.copy:
+    src: "{{ go_profile_script }}"
+    dest: "{{ go_profile_script }}.bak"
+    remote_src: yes
+    force: no
+  ignore_errors: yes
+
+- name: Configure Go profile script
+  ansible.builtin.template:
+    src: go.sh.j2
+    dest: "{{ go_profile_script }}"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Ensure GOPATH directory exists
+  ansible.builtin.file:
+    path: "{{ goproxy_home }}/go"
+    state: directory
+    owner: "{{ goproxy_user }}"
+    group: "{{ goproxy_user }}"
+    mode: '0750'
+
+- name: Ensure GoProxy log directory exists
+  ansible.builtin.file:
+    path: "{{ goproxy_home }}/{{ goproxy_log_file | dirname }}"
+    state: directory
+    owner: "{{ goproxy_user }}"
+    group: "{{ goproxy_user }}"
+    mode: '0750'
+
+- name: Define Go environment for build commands
+  ansible.builtin.set_fact:
+    goproxy_command_env:
+      PATH: "{{ go_install_dir }}/bin:{{ ansible_env.PATH }}"
+      GOROOT: "{{ go_install_dir }}"
+      GOPATH: "{{ goproxy_home }}/go"
+      HOME: "{{ goproxy_home }}"
+
+- name: Check if GoProxy binary exists
+  ansible.builtin.stat:
+    path: "{{ goproxy_home }}/goproxy"
+  register: goproxy_binary_stat
+
+- name: Ensure GoProxy source directory exists
+  ansible.builtin.file:
+    path: "{{ goproxy_install_dir }}"
+    state: directory
+    owner: "{{ goproxy_user }}"
+    group: "{{ goproxy_user }}"
+    mode: '0755'
+
+- name: Check if GoProxy repository already exists
+  ansible.builtin.stat:
+    path: "{{ goproxy_install_dir }}/.git"
+  register: goproxy_repo_stat
+
+- name: Reset GoProxy repository before update
+  ansible.builtin.command: git reset --hard HEAD
+  args:
+    chdir: "{{ goproxy_install_dir }}"
+  become: true
+  become_user: "{{ goproxy_user }}"
+  when: goproxy_repo_stat.stat.exists
+  changed_when: false
+
+- name: Clean untracked files from GoProxy repository before update
+  ansible.builtin.command: git clean -fd
+  args:
+    chdir: "{{ goproxy_install_dir }}"
+  become: true
+  become_user: "{{ goproxy_user }}"
+  when: goproxy_repo_stat.stat.exists
+  changed_when: false
+
+- name: Clone GoProxy repository
+  ansible.builtin.git:
+    repo: "{{ goproxy_repo_url }}"
+    dest: "{{ goproxy_install_dir }}"
+    version: HEAD
+    depth: 1
+    update: true
+  register: goproxy_source
+  become: true
+  become_user: "{{ goproxy_user }}"
+
+- name: Determine if GoProxy build is required
+  ansible.builtin.set_fact:
+    goproxy_build_required: "{{ (goproxy_source.changed | default(false)) or (go_install_required | default(false)) or (not goproxy_binary_stat.stat.exists) }}"
+
+- name: Ensure GoProxy repository ownership
+  ansible.builtin.file:
+    path: "{{ goproxy_install_dir }}"
+    state: directory
+    owner: "{{ goproxy_user }}"
+    group: "{{ goproxy_user }}"
+    recurse: true
+    mode: '0755'
+  when: goproxy_source.changed
+
+- name: Download Go module dependencies
+  ansible.builtin.command: "{{ go_binary_path }} mod download"
+  args:
+    chdir: "{{ goproxy_install_dir }}"
+  environment: "{{ goproxy_command_env }}"
+  become: true
+  become_user: "{{ goproxy_user }}"
+  when: goproxy_build_required | bool
+
+- name: Tidy Go modules
+  ansible.builtin.command: "{{ go_binary_path }} mod tidy"
+  args:
+    chdir: "{{ goproxy_install_dir }}"
+  environment: "{{ goproxy_command_env }}"
+  become: true
+  become_user: "{{ goproxy_user }}"
+  when: goproxy_build_required | bool
+
+- name: Build GoProxy binary
+  ansible.builtin.command: "{{ go_binary_path }} build -o {{ goproxy_home }}/goproxy"
+  args:
+    chdir: "{{ goproxy_install_dir }}"
+  environment: "{{ goproxy_command_env }}"
+  become: true
+  become_user: "{{ goproxy_user }}"
+  when: goproxy_build_required | bool
+
+- name: Refresh GoProxy binary metadata
+  ansible.builtin.stat:
+    path: "{{ goproxy_home }}/goproxy"
+  register: goproxy_binary_stat
+
+- name: Flag GoProxy binary ownership corrections
+  ansible.builtin.set_fact:
+    goproxy_binary_fix_required: >-
+      {{
+        (goproxy_binary_stat.stat.exists | default(false)) and (
+          (goproxy_binary_stat.stat.pw_name | default(None)) != goproxy_user or
+          (goproxy_binary_stat.stat.gr_name | default(None)) != goproxy_user or
+          (goproxy_binary_stat.stat.mode | default('')) != '0100750'
+        )
+      }}
+
+- name: Ensure GoProxy binary ownership
+  ansible.builtin.file:
+    path: "{{ goproxy_home }}/goproxy"
+    state: file
+    owner: "{{ goproxy_user }}"
+    group: "{{ goproxy_user }}"
+    mode: '0750'
+  when:
+    - goproxy_binary_stat.stat.exists
+    - goproxy_binary_fix_required | default(true)
+
+- name: Set SELinux context for GoProxy binary
+  community.general.sefcontext:
+    target: "{{ goproxy_home }}/goproxy"
+    setype: bin_t
+    state: present
+  when:
+    - ansible_selinux.status == "enabled"
+    - goproxy_binary_stat.stat.exists
+
+- name: Apply SELinux context to GoProxy binary
+  ansible.builtin.command: restorecon -v {{ goproxy_home }}/goproxy
+  when:
+    - ansible_selinux.status == "enabled"
+    - goproxy_binary_stat.stat.exists
+  changed_when: false
+
+- name: Run GoProxy installer
+  ansible.builtin.command: "python3 install.py --path={{ goproxy_home }} --user={{ goproxy_user }}"
+  args:
+    chdir: "{{ goproxy_install_dir }}"
+  environment:
+    PATH: "{{ go_install_dir }}/bin:{{ ansible_env.PATH }}"
+  when: goproxy_build_required | bool
+
+- name: Reset GoProxy repository to HEAD after build
+  ansible.builtin.command: git reset --hard HEAD
+  args:
+    chdir: "{{ goproxy_install_dir }}"
+  become: true
+  become_user: "{{ goproxy_user }}"
+  when: goproxy_build_required | bool
+  changed_when: false
+
+- name: Clean untracked files from GoProxy repository
+  ansible.builtin.command: git clean -fd
+  args:
+    chdir: "{{ goproxy_install_dir }}"
+  become: true
+  become_user: "{{ goproxy_user }}"
+  when: goproxy_build_required | bool
+  changed_when: false
+
+- name: Backup GoProxy configuration
+  ansible.builtin.copy:
+    src: "{{ goproxy_home }}/config.json"
+    dest: "{{ goproxy_home }}/config.json.bak"
+    remote_src: yes
+    force: no
+  ignore_errors: yes
+
+- name: Deploy GoProxy configuration
+  ansible.builtin.template:
+    src: goproxy/config.j2
+    dest: "{{ goproxy_home }}/config.json"
+    owner: "{{ goproxy_user }}"
+    group: "{{ goproxy_user }}"
+    mode: '0640'
+  notify: restart goproxy
+
+- name: Install GoProxy systemd service
+  ansible.builtin.template:
+    src: goproxy.service.j2
+    dest: /etc/systemd/system/goproxy.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - reload systemd
+    - restart goproxy
+
+- name: Deploy Tor repository configuration (RedHat family)
+  ansible.builtin.template:
+    src: tor/torproject.repo.j2
+    dest: /etc/yum.repos.d/torproject.repo
+    owner: root
+    group: root
+    mode: '0644'
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Import Tor GPG key (RedHat family)
+  ansible.builtin.rpm_key:
+    state: present
+    key: https://rpm.torproject.org/centos/public_gpg.key
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Install torsocks dependency on RedHat systems
+  ansible.builtin.package:
+    name: torsocks
+    state: present
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Install Tor
+  ansible.builtin.package:
+    name: tor
+    state: present
+
+- name: Backup Tor configuration
+  ansible.builtin.copy:
+    src: /etc/tor/torrc
+    dest: /etc/tor/torrc.bak
+    remote_src: yes
+    force: no
+  ignore_errors: yes
+
+- name: Deploy tor configuration
+  ansible.builtin.template:
+    src: tor/torrc.j2
+    dest: /etc/tor/torrc
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart tor
+
+- name: Ensure Tor service is enabled and running
+  ansible.builtin.systemd:
+    name: tor
+    enabled: true
+    state: started
+
+- name: Ensure GoProxy service is enabled and running
+  ansible.builtin.systemd:
+    name: goproxy
+    enabled: true
+    state: started

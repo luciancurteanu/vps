@@ -1,0 +1,6 @@
+# {{ ansible_managed }}
+# BadBot fail2ban filter
+
+[Definition]
+failregex = ^<HOST> -.*"(GET|POST|HEAD).*HTTP.*"(?:(Sogou web spider|Baiduspider|Aboundex|YandexBot|MJ12bot|AhrefsBot|PaperLiBot|SemrushBot))"
+ignoreregex = .*googl(e)?(bot)?.*

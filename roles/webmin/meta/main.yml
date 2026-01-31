@@ -1,0 +1,22 @@
+---
+# Webmin role metadata
+
+galaxy_info:
+  author: 'Lucian Curteanu'
+  namespace: lucian
+  role_name: webmin
+  description: 'Webmin server management panel for AlmaLinux'
+  company: 'https://luciancurteanu.com'
+  license: MIT
+  min_ansible_version: "2.9"
+  platforms:
+    - name: EL
+      versions:
+        - "9"
+  galaxy_tags:
+    - webmin
+    - system
+    - management
+    - server
+
+dependencies: []

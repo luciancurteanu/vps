@@ -1,0 +1,71 @@
+# {{ ansible_managed }}
+# Fail2ban jail configuration
+
+[DEFAULT]
+# Global settings
+ignoreip = 127.0.0.1/8 192.168.0.1/16 149.102.153.46/32 66.249.64.0/19 31.5.191.35/32 {{ allowed_ips | default('') }}
+bantime = -1
+findtime = 86400
+maxretry = 3
+# Email notifications
+destemail = {{ mail_admin_email | default('no-reply@' + domain) }}
+sender = {{ mail_admin_email | default('no-reply@' + domain) }}
+mta = sendmail
+action = %(action_)s
+         %(mta)s-lc[sender="%(sender)s", dest="%(destemail)s", logpath="%(logpath)s", chain="%(chain)s"]
+
+# JAILS
+
+[sshd]
+enabled = true
+port = ssh,sftp,{{ ssh_port | default(22) }}
+filter = sshd[mode=aggressive]
+logpath = /var/log/secure
+maxretry = 3
+bantime = -1
+findtime = 86400
+
+[postfix]
+enabled = false
+port = pop3,pop3s,imap,imaps,smtp,smtps,submission
+filter = postfix[mode=aggressive]
+logpath = /var/log/maillog
+maxretry = 1
+bantime = -1
+findtime = 86400
+
+[dovecot]
+enabled = false
+port = pop3,pop3s,imap,imaps,smtp,smtps,submission
+filter = dovecot[mode=aggressive]
+logpath = /var/log/maillog
+maxretry = 1
+bantime = -1
+findtime = 86400
+
+[mariadb]
+enabled = false
+port = 3306
+filter = mariadb
+logpath = /var/log/mariadb/error.log
+maxretry = 1
+bantime = -1
+findtime = 86400
+
+[badbot]
+enabled = false
+port = http,https
+filter = badbot
+logpath = /home/*/logs/access.log
+maxretry = 1
+bantime = -1
+findtime = 86400
+
+[badurl]
+enabled = false
+port = http,https
+filter = badurl
+logpath = /home/*/logs/access.log
+maxretry = 1
+bantime = -1
+findtime = 86400

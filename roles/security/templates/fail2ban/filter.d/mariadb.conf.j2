@@ -1,0 +1,10 @@
+# {{ ansible_managed }}
+# MariaDB fail2ban filter
+
+[Definition]
+failregex = ^(.*)MariaDB: Access denied for user.*\[<HOST>\]
+            ^(.*)mysqld\[\d+\]: Access denied for user.*\[<HOST>\]
+            ^(.*)ERROR \d+.*Access denied for user.*@ '(<HOST>)'
+            ^(.*)ERROR \d+.*Host '(<HOST>)' is blocked because of many connection errors
+            
+ignoreregex =

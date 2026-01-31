@@ -1,0 +1,21 @@
+---
+# Cockpit default variables
+
+# Cockpit port
+cockpit_port: 9090
+
+# Cockpit subdomain configuration
+cockpit_subdomain: "cpanel.{{ domain }}"
+
+# Enable nginx proxy for Cockpit
+cockpit_nginx_proxy: true
+
+# Allowed origins for Cockpit web service
+cockpit_origins:
+  - "http://{{ cockpit_subdomain }}"
+  - "https://{{ cockpit_subdomain }}"
+  - "http://{{ ansible_default_ipv4.address }}:{{ cockpit_port }}"
+  - "https://{{ ansible_default_ipv4.address }}:{{ cockpit_port }}"
+
+# Allow unencrypted connections (proxy handles SSL if needed)
+cockpit_allow_unencrypted: true

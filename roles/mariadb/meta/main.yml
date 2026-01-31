@@ -1,0 +1,21 @@
+galaxy_info:
+  author: 'Lucian Curteanu'
+  namespace: lucian
+  role_name: mariadb
+  description: 'Ansible role for MariaDB server setup'
+  company: 'https://luciancurteanu.com'
+  license: 'MIT'
+  min_ansible_version: '2.9'
+
+  platforms:
+    - name: EL
+      versions:
+        - '9'
+
+  galaxy_tags:
+    - vps
+    - mariadb
+    - mysql
+    - database
+
+dependencies: []

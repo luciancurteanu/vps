@@ -1,0 +1,19 @@
+---
+- name: Verify Mail Role
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    domain: vps.test
+    master_domain: vps.test
+    mail_db_password: mailpass
+    roundcube_db_password: roundcubepass
+    db_root_user: root
+    db_root_password: ''
+    mail_enable_opendkim: false
+    mail_enable_roundcube: false
+    mail_enable_nginx: false
+  tasks:
+    - name: Include mail role to verify its state
+      ansible.builtin.include_role:
+        name: mail

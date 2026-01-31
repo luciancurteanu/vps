@@ -1,0 +1,46 @@
+# {{ ansible_managed }}
+# SSH server configuration
+
+Port {{ common_ssh_port }}
+Protocol 2
+AddressFamily inet
+ListenAddress 0.0.0.0
+
+# Authentication settings
+PermitRootLogin {{ common_ssh_permit_root_login }}
+PubkeyAuthentication {{ common_ssh_pubkey_authentication }}
+PasswordAuthentication {{ common_ssh_password_authentication }}
+PermitEmptyPasswords no
+ChallengeResponseAuthentication no
+UsePAM yes
+
+# Forwarding settings
+AllowAgentForwarding {{ common_ssh_allow_agent_forwarding }}
+AllowTcpForwarding {{ common_ssh_allow_tcp_forwarding }}
+X11Forwarding {{ common_ssh_x11_forwarding }}
+
+# Connection settings
+MaxAuthTries {{ common_ssh_max_auth_tries }}
+MaxSessions {{ common_ssh_max_sessions }}
+ClientAliveInterval {{ common_ssh_client_alive_interval }}
+ClientAliveCountMax {{ common_ssh_client_alive_count_max }}
+
+# Disable host-based auth
+HostbasedAuthentication no
+IgnoreRhosts yes
+
+# Logging
+SyslogFacility AUTH
+LogLevel INFO
+
+# Accept locale-related environment variables
+AcceptEnv LANG LC_*
+
+# Override default of no subsystems
+Subsystem sftp internal-sftp
+
+# This is the default in newer versions
+#UsePrivilegeSeparation sandbox
+
+# Hardening
+StrictModes yes

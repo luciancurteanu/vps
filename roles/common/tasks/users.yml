@@ -1,0 +1,42 @@
+---
+# User management tasks
+
+- name: Install passlib for password hashing
+  ansible.builtin.pip:
+    name: passlib
+    executable: pip3.13
+    state: present
+
+- name: Create admin group
+  ansible.builtin.group:
+    name: "{{ common_admin_group }}"
+    state: present
+
+- name: Create admin user
+  ansible.builtin.user:
+    name: "{{ common_admin_user }}"
+    group: "{{ common_admin_group }}"
+    shell: "{{ common_admin_shell }}"
+    system: no  # Regular user, not system user (needed for SSH login)
+    home: "/home/{{ common_admin_user }}"
+    createhome: true
+    password: "{{ common_admin_password | password_hash('sha512') if common_admin_password is defined else omit }}"
+    update_password: on_create
+
+- name: Set up authorized keys for admin user
+  ansible.builtin.authorized_key:
+    user: "{{ common_admin_user }}"
+    key: "{{ common_admin_ssh_key }}"
+    state: present
+  when:
+    - common_admin_ssh_key is defined
+    - common_admin_ssh_key not in [omit, '', None]
+
+- name: Add admin user to sudoers
+  ansible.builtin.template:
+    src: sudoers/admin.j2
+    dest: "/etc/sudoers.d/{{ common_admin_user }}"
+    owner: root
+    group: root
+    mode: '0440'
+    validate: '/usr/sbin/visudo -cf %s'

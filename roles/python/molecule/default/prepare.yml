@@ -1,0 +1,35 @@
+---
+- name: Prepare container for Ansible and Docker CLI
+  hosts: all
+  become: true
+  gather_facts: false # Speed up, gather later if needed
+
+  tasks:
+    - name: Ensure Python 3, pip, and dnf-utils are installed (AlmaLinux 9)
+      ansible.builtin.dnf:
+        name:
+          - python3
+          - python3-pip
+          - dnf-utils # For dnf config-manager
+        state: present
+        update_cache: yes # Run update_cache here
+        use_backend: dnf4
+
+    - name: Install Ansible via pip (AlmaLinux 9)
+      ansible.builtin.pip:
+        name: ansible
+        executable: pip3 # Ensure pip3 is used
+
+    # Docker CLI installation tasks
+    # The 'Install Docker CE CLI prerequisites' task is covered by dnf-utils above
+
+    - name: Add Docker CE repository (AlmaLinux 9)
+      ansible.builtin.command: dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+      args:
+        creates: /etc/yum.repos.d/docker-ce.repo
+
+    - name: Install Docker CE CLI (AlmaLinux 9)
+      ansible.builtin.dnf:
+        name: docker-ce-cli
+        state: present
+        use_backend: dnf4

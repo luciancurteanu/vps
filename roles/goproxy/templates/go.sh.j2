@@ -1,0 +1,6 @@
+# {{ ansible_managed }}
+# Go toolchain environment
+
+export GOROOT={{ go_install_dir }}
+export GOPATH={{ goproxy_home }}/go
+export PATH=$PATH:{{ go_install_dir }}/bin

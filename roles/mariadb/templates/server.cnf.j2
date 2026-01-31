@@ -1,0 +1,50 @@
+# {{ ansible_managed }}
+# MariaDB server configuration
+
+[server]
+# Basic settings
+user = mysql
+pid-file = /var/run/mariadb/mariadb.pid
+socket = /var/lib/mysql/mysql.sock
+port = {{ db_port }}
+bind-address = {{ db_bind_address }}
+basedir = /usr
+datadir = /var/lib/mysql
+tmpdir = /tmp
+lc_messages_dir = /usr/share/mysql
+lc_messages = en_US
+
+# Character set
+character-set-server = {{ db_character_set }}
+collation-server = {{ db_collation }}
+
+# Default storage engine
+default_storage_engine = InnoDB
+
+# Event scheduler
+event_scheduler = ON
+
+# MyISAM settings
+key_buffer_size = 32M
+myisam_recover_options = FORCE,BACKUP
+
+# Safety features
+max_allowed_packet = 16M
+max_connect_errors = 1000000
+skip-name-resolve
+sql_mode = NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES
+
+# Binary logging
+log_bin = mysql-bin
+expire_logs_days = 7
+sync_binlog = 1
+binlog_format = ROW
+
+# Logging
+log_error = /var/log/mariadb/mariadb.log
+slow_query_log = 1
+slow_query_log_file = /var/log/mariadb/slow-queries.log
+long_query_time = 2
+
+# Include other configuration files
+!includedir /etc/my.cnf.d/

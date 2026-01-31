@@ -1,0 +1,70 @@
+# {{ ansible_managed }}
+# SSH server configuration
+
+Port {{ security_ssh_port }}
+Protocol 2
+AddressFamily inet
+ListenAddress 0.0.0.0
+
+# Authentication settings
+PermitRootLogin {{ security_ssh_permit_root_login }}
+PubkeyAuthentication {{ security_ssh_pubkey_authentication }}
+
+# Password authentication should be disabled if key-based auth is used for admin.
+# Or if explicitly set to 'no'.
+PasswordAuthentication {{ security_ssh_password_authentication | default('yes' if admin_auth == 'password' else 'no') }}
+
+# Allow client to pass locale environment variables
+AcceptEnv LANG LC_*
+
+# Forwarding settings
+AllowAgentForwarding {{ security_ssh_allow_agent_forwarding }}
+AllowTcpForwarding {{ security_ssh_allow_tcp_forwarding }}
+X11Forwarding {{ security_ssh_x11_forwarding }}
+
+# Connection settings
+MaxAuthTries {{ security_ssh_max_auth_tries }}
+MaxSessions {{ security_ssh_max_sessions }}
+ClientAliveInterval {{ security_ssh_client_alive_interval }}
+ClientAliveCountMax {{ security_ssh_client_alive_count_max }}
+
+# Disable host-based auth
+HostbasedAuthentication no
+IgnoreRhosts yes
+
+# Logging
+SyslogFacility AUTH
+LogLevel INFO
+
+# Override default of no subsystems
+Subsystem sftp internal-sftp
+
+# This is the default in newer versions
+#UsePrivilegeSeparation sandbox
+
+# Hardening
+StrictModes yes
+
+{% if sftp_chroot_enabled | default(false) | bool %}
+# SFTP Chroot settings for the dedicated SFTP group
+Match Group {{ sftp_chroot_group }}
+    # Force the connection to use internal-sftp
+    ForceCommand internal-sftp
+    # Prevent TCP forwarding, agent forwarding, X11 forwarding, and TTY allocation for this group
+    PermitTunnel no
+    AllowAgentForwarding no
+    AllowTcpForwarding no
+    X11Forwarding no
+    PermitTTY no # No interactive shell for SFTP-only users
+    # Chroot users to their home directory. %h is replaced by the user's home directory.
+    # The user's home directory (e.g., /sftp/username) must be owned by root and not writable by others.
+    ChrootDirectory %h
+    # PasswordAuthentication can be enabled for this group if desired, even if globally off for others.
+    # This allows SFTP users to log in with passwords if they don't have keys.
+    # Ensure PasswordAuthentication is 'yes' globally or specifically for admin if admin uses password.
+    # If admin_auth is 'password', global PasswordAuthentication will be 'yes'.
+    # If admin_auth is 'key', global PasswordAuthentication will be 'no'.
+    # We can explicitly allow password auth for the SFTP group here if needed.
+    PasswordAuthentication {{ 'no' if admin_auth == 'key' else 'yes' }}
+    PubkeyAuthentication yes # Allow key-based auth for SFTP group as well
+{% endif %}

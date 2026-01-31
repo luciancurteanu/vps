@@ -1,0 +1,49 @@
+---
+# Node.js installation tasks
+
+- name: Check if Node.js is already installed
+  ansible.builtin.command: node -v
+  register: nodejs_existing
+  changed_when: false
+  failed_when: false
+
+- name: Download NodeSource setup script
+  ansible.builtin.get_url:
+    url: https://rpm.nodesource.com/setup_{{ nodejs_version | default('20') }}.x
+    dest: /tmp/nodesource_setup.sh
+    mode: '0755'
+  register: nodejs_download
+  when: nodejs_existing.rc != 0
+
+- name: Run NodeSource setup script
+  ansible.builtin.shell: bash /tmp/nodesource_setup.sh
+  args:
+    creates: /etc/yum.repos.d/nodesource-el*.repo
+  when:
+    - nodejs_existing.rc != 0
+    - nodejs_download is changed
+  become: yes
+
+- name: Install Node.js
+  ansible.builtin.package:
+    name: "{{ nodejs_package | default('nodejs') }}"
+    state: present
+
+- name: Clean up NodeSource setup script
+  ansible.builtin.file:
+    path: /tmp/nodesource_setup.sh
+    state: absent
+  when:
+    - nodejs_existing.rc != 0
+    - nodejs_download is changed
+
+- name: Check Node.js version
+  ansible.builtin.command: node -v
+  register: nodejs_version_output
+  changed_when: false
+  failed_when: false
+
+- name: Display Node.js version
+  ansible.builtin.debug:
+    msg: "Installed Node.js version: {{ nodejs_version_output.stdout }}"
+  when: nodejs_version_output.rc == 0

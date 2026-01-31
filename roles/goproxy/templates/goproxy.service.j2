@@ -1,0 +1,18 @@
+[Unit]
+Description=GoProxy Service
+After=network.target
+
+[Service]
+User=goproxy
+Group=goproxy
+WorkingDirectory=/home/goproxy
+# The install.py script builds the executable to args.path (which is /home/goproxy)
+# and the executable name defaults to args.name (which is goproxy)
+ExecStart=/home/goproxy/goproxy -config=/home/goproxy/config.json
+Restart=on-failure
+# Add any necessary environment variables here, for example:
+# Environment="GIN_MODE=release"
+# Environment="GOPROXY_CONFIG_PATH=/home/goproxy/config.json"
+
+[Install]
+WantedBy=multi-user.target

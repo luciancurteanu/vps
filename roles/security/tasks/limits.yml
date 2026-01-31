@@ -1,0 +1,17 @@
+---
+# System limits configuration (moved from common role)
+
+- name: Set custom limits.conf
+  ansible.builtin.template:
+    src: system/limits.conf.j2
+    dest: /etc/security/limits.d/30-custom.conf
+    owner: root
+    group: root
+    mode: '0644'
+
+# Note: The sysctl configuration part from the original common/tasks/limits.yml
+# (related to system/sysctl.conf.j2 and 'reload sysctl' handler)
+# will remain in the common role for now, as sysctl settings like fs.file-max
+# are general system settings, not strictly user/security specific.
+# If we decide later that specific sysctl settings are purely for security,
+# they can be moved and managed by the security role.

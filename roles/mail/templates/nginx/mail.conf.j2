@@ -1,0 +1,77 @@
+# Mail server Nginx configuration for {{ mail_subdomain }}
+server {
+    listen 80;
+    server_name {{ mail_subdomain }};
+    
+    root {{ webmail_path }};
+    index index.php index.html;
+    
+    access_log /home/{{ domain }}/logs/mail-access.log;
+    error_log /home/{{ domain }}/logs/mail-error.log;
+
+    # PHP handling
+    location ~ \.php$ {
+        try_files $uri =404;
+        fastcgi_split_path_info ^(.+\.php)(/.+)$;
+        fastcgi_pass unix:/var/run/php-fpm/{{ domain }}.sock;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+        fastcgi_intercept_errors on;
+    }
+    
+    # Deny access to dotfiles
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+    
+    # Only redirect to HTTPS if SSL certificate exists
+    {% if mail_enable_ssl | default(false) %}
+    location / {
+        return 301 https://$host$request_uri;
+    }
+    {% endif %}
+}
+
+{% if mail_enable_ssl | default(false) %}
+server {
+    listen 443 ssl http2;
+    server_name {{ mail_subdomain }};
+    
+    root {{ webmail_path }};
+    index index.php index.html;
+    
+    access_log /home/{{ domain }}/logs/mail-access.log;
+    error_log /home/{{ domain }}/logs/mail-error.log;
+
+    # SSL configuration (will be managed by Certbot)
+    ssl_certificate /etc/letsencrypt/live/{{ domain }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ domain }}/privkey.pem;
+    ssl_trusted_certificate /etc/letsencrypt/live/{{ domain }}/chain.pem;
+    
+    # Security headers
+    add_header X-Content-Type-Options nosniff;
+    add_header X-XSS-Protection "1; mode=block";
+    add_header X-Frame-Options SAMEORIGIN;
+    
+    # PHP handling
+    location ~ \.php$ {
+        try_files $uri =404;
+        fastcgi_split_path_info ^(.+\.php)(/.+)$;
+        fastcgi_pass unix:/var/run/php-fpm/{{ domain }}.sock;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+        fastcgi_intercept_errors on;
+    }
+    
+    # Deny access to dotfiles
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+}
+{% endif %}

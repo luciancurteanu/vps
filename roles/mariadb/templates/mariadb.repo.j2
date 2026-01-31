@@ -1,0 +1,10 @@
+# {{ ansible_managed }}
+# MariaDB YUM repository configuration
+
+[mariadb]
+name = MariaDB
+baseurl = {{ mariadb_repo_url }}
+gpgkey = {{ mariadb_repo_key }}
+gpgcheck = 1
+enabled = 1
+module_hotfixes = 1

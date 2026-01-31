@@ -1,0 +1,71 @@
+---
+ # Example: canonical defaults copied from `group_vars/all.yml`
+ # Copy or review before using; keep secrets in `vars/secrets.yml` and encrypt with Ansible Vault.
+
+ ########################
+ # SYSTEM CONFIGURATION #
+ ########################
+
+ # Default user configuration
+ default_user: admin
+
+ # Admin SSH key configuration
+ admin_ssh_public_key: "{{ vault_admin_ssh_public_key | default(omit) }}"
+
+ # SSH configuration
+ ssh_port: 22  # SSH port (default is 22)
+ # SSH security settings
+security_ssh_permit_root_login: 'no'
+# NOTE: After first successful deployment, update inventory/hosts to change ansible_user=root to ansible_user=admin for key-based auth
+
+
+ # Firewall settings
+ firewall_enabled: true
+ firewall_service: iptables
+
+ #########################
+ # DOMAIN CONFIGURATION  #
+ #########################
+
+ # Master domain configuration
+ # If `--domain` is provided by the wrapper (`vps.sh`) it will be used;
+ # otherwise fall back to the inventory hostname so `domain == master_domain`
+ # will still match when running without extra-vars.
+ master_domain: "{{ domain | default(inventory_hostname) }}"
+
+
+ #########################
+ # SOFTWARE VERSIONS     #
+ #########################
+
+ # Web stack versions
+ php_version: "8.4"
+ mariadb_version: "11.4"
+
+ # Control panel versions
+ install_development_tools: true
+
+ #########################
+ # MAIL CONFIGURATION    #
+ #########################
+
+ # Email domain settings
+ mail_subdomain: "mail.{{ domain }}"
+ mail_admin_email: "admin@{{ domain }}"
+
+ # Webmail settings
+ webmail_path: "/home/{{ master_domain }}/roundcube"
+ webmail_version: "1.6.11"
+
+ # Database settings for mail services
+ mail_db_name: "mailserver"  # Store mail accounts, domains, and delivery information
+ mail_db_user: "mailuser"
+ mail_db_password: "{{ vault_mail_db_password }}"  # Reference to vault variable
+
+ #########################
+ # WEBMIN CONFIGURATION  #
+ #########################
+
+ # Webmin control panel settings
+ webmin_port: 10000  # Webmin port (default is 10000)
+ webmin_subdomain: "cpanel.{{ domain }}"

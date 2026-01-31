@@ -1,0 +1,21 @@
+---
+# defaults file for goproxy
+go_version: "{{ GO_VERSION | default('1.21.0') }}"  # Default version, should match your environment variable
+go_install_dir: "/usr/lib/go"
+go_profile_script: "/etc/profile.d/go.sh"
+go_binary_path: "{{ go_install_dir }}/bin/go"
+goproxy_repo_url: "{{ lookup('env', 'GOPROXY_REPO_URL') | default('https://github.com/luciancurteanu/goproxy.git', true) }}"
+goproxy_install_dir: "/usr/lib/goproxy"
+goproxy_user: "goproxy"
+goproxy_home: "/home/{{ goproxy_user }}"
+goproxy_port: 8080
+goproxy_socks_port: 1080
+tor_socks_port: 9050
+tor_control_port: 9051
+goproxy_server_mode: "release"
+goproxy_whitelist_enable: false
+goproxy_whitelist_addresses: []
+goproxy_log_file: "logs/access.log"
+goproxy_client_timeout: 90
+goproxy_cookies_persist: false
+goproxy_proxy_test_url: "https://icanhazip.com"

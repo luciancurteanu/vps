@@ -1,0 +1,100 @@
+---
+- name: Verify Webmin Role State
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    expected_webmin_port: "{{ webmin_port | default('10000') }}"
+
+  tasks:
+    # Webmin Installation Verification
+    - name: Check if Webmin is installed
+      ansible.builtin.stat:
+        path: /etc/webmin/version
+      register: webmin_version_file
+
+    - name: Verify Webmin version file exists
+      ansible.builtin.assert:
+        that:
+          - webmin_version_file.stat.exists
+        fail_msg: "Webmin version file not found"
+        quiet: true
+
+    - name: Read Webmin version
+      ansible.builtin.slurp:
+        src: /etc/webmin/version
+      register: webmin_version_content
+
+    - name: Display Webmin version
+      ansible.builtin.debug:
+        msg: "Webmin version: {{ webmin_version_content.content | b64decode | trim }}"
+
+    # Webmin Service Verification
+    - name: Check Webmin service status
+      ansible.builtin.systemd:
+        name: webmin
+      register: webmin_service
+
+    - name: Verify Webmin service is enabled and running
+      ansible.builtin.assert:
+        that:
+          - webmin_service.status.ActiveState == "active"
+          - webmin_service.status.UnitFileState == "enabled"
+        fail_msg: "Webmin service not running or enabled"
+        quiet: true
+
+    # Webmin Port Configuration Verification
+    - name: Check Webmin port configuration
+      ansible.builtin.slurp:
+        src: /etc/webmin/miniserv.conf
+      register: miniserv_config
+
+    - name: Verify Webmin port is configured
+      ansible.builtin.assert:
+        that:
+          - "'port=' ~ expected_webmin_port in (miniserv_config.content | b64decode)"
+        fail_msg: "Webmin port not configured correctly"
+        quiet: true
+
+    # Webmin Process Verification
+    - name: Check Webmin process
+      ansible.builtin.shell: "ps aux | grep -v grep | grep /usr/libexec/webmin/miniserv.pl"
+      register: webmin_process
+      changed_when: false
+      failed_when: false
+
+    - name: Verify Webmin process is running
+      ansible.builtin.assert:
+        that:
+          - webmin_process.rc == 0
+        fail_msg: "Webmin process not running"
+        quiet: true
+
+    # Webmin Accessibility Verification
+    - name: Check Webmin web interface accessibility
+      ansible.builtin.uri:
+        url: "{{ 'https' if webmin_ssl_enabled | default(false) else 'http' }}://{{ ansible_host }}:{{ expected_webmin_port }}"
+        method: GET
+        status_code: [200, 302, 401]
+        timeout: 10
+        validate_certs: false
+      register: webmin_http_check
+      retries: 3
+      delay: 5
+
+    - name: Verify Webmin is accessible
+      ansible.builtin.assert:
+        that:
+          - webmin_http_check.status in [200, 302, 401]
+        fail_msg: "Webmin web interface not accessible"
+        quiet: true
+
+    # Summary
+    - name: Display verification summary
+      ansible.builtin.debug:
+        msg:
+          - "Webmin verification complete"
+          - "Version: {{ webmin_version_content.content | b64decode | trim }}"
+          - "Service: {{ webmin_service.status.ActiveState }}"
+          - "Port: {{ expected_webmin_port }}"
+          - "Web interface: accessible"

@@ -1,0 +1,17 @@
+---
+# GoProxy role variables for RedHat/CentOS systems
+
+goproxy_dependencies:
+  - epel-release
+  - git
+  - gcc
+  - make
+  - curl
+  - wget
+  - unzip
+  - python3
+  - python3-pip
+
+proxy_dependencies:
+  - curl
+  - lsof

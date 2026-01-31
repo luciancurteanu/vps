@@ -1,0 +1,31 @@
+---
+galaxy_info:
+  author: 'Lucian Curteanu'
+  namespace: lucian
+  role_name: python
+  description: 'Python utilities and web automation tools'
+  company: 'https://luciancurteanu.com'
+  license: 'MIT'
+  min_ansible_version: '2.9'
+
+  platforms:
+    - name: EL
+      versions:
+        - '9'
+    - name: Debian
+      versions:
+        - bullseye
+        - bookworm
+    - name: Ubuntu
+      versions:
+        - jammy
+        - focal
+
+  galaxy_tags:
+    - python
+    - web
+    - automation
+    - scraping
+    - chrome
+
+dependencies: []

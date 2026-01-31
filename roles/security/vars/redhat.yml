@@ -1,0 +1,10 @@
+---
+# Variables specific to RedHat family OS for the security role
+
+security_packages:
+  - policycoreutils-python-utils  # SELinux policy core utilities (for semanage, etc.)
+
+security_firewall_packages:
+  - iptables-services
+  - fail2ban
+  - whois

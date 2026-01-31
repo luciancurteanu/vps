@@ -1,0 +1,61 @@
+---
+# Cockpit installation and configuration
+
+- name: Install Cockpit packages
+  ansible.builtin.dnf:
+    name:
+      - cockpit
+      - cockpit-storaged
+      - cockpit-networkmanager
+      - cockpit-podman
+      - cockpit-packagekit
+    state: present
+
+- name: Enable and start Cockpit socket
+  ansible.builtin.systemd:
+    name: cockpit.socket
+    enabled: true
+    state: started
+
+- name: Backup Cockpit configuration
+  ansible.builtin.copy:
+    src: /etc/cockpit/cockpit.conf
+    dest: /etc/cockpit/cockpit.conf.bak
+    remote_src: yes
+    force: no
+  ignore_errors: yes
+
+- name: Configure Cockpit for proxy access
+  ansible.builtin.template:
+    src: cockpit.conf.j2
+    dest: /etc/cockpit/cockpit.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart cockpit
+
+- name: Add admin user to wheel group for sudo access
+  ansible.builtin.user:
+    name: "{{ default_user }}"
+    groups: wheel
+    append: true
+
+- name: Configure firewall for Cockpit
+  ansible.builtin.iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_port: "{{ cockpit_port }}"
+    jump: ACCEPT
+    comment: Allow Cockpit web interface
+  notify: Save iptables rules
+  when: firewall_enabled | default(true)
+
+- name: Create nginx proxy configuration for Cockpit
+  ansible.builtin.template:
+    src: nginx/cockpit.conf.j2
+    dest: /etc/nginx/conf.d/{{ cockpit_subdomain }}.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload nginx
+  when: cockpit_nginx_proxy | default(true)

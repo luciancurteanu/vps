@@ -1,0 +1,216 @@
+---
+- name: VPS Complete Setup
+  hosts: all
+  become: true
+  gather_facts: true
+  
+  vars_files:
+    - ../vars/secrets.yml
+
+  pre_tasks:
+    - name: Update package cache
+      tags: ['setup']
+      ansible.builtin.dnf:
+        update_cache: true
+      changed_when: false
+      when: ansible_os_family == "RedHat"
+      
+    - name: Set hostname
+      tags: ['setup']
+      ansible.builtin.hostname:
+        name: "{{ domain }}"
+      when: domain is defined
+
+    - name: Create domain home directory structure
+      tags: ['setup']
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      loop:
+        - "/home/{{ domain }}"
+        - "/home/{{ domain }}/logs"
+      when: domain is defined
+
+    - name: Validate required variables
+      tags: ['setup']
+      ansible.builtin.fail:
+        msg: "Required variable '{{ item }}' is not defined"
+      when: vars[item] is not defined
+      loop:
+        - "domain"
+        # Add other essential variables
+      
+  roles:
+    - role: common
+      tags: ['common', 'setup']
+      
+    - role: webmin
+      tags: ['webmin', 'control_panel', 'setup']
+      when: install_webmin | default(true)
+
+    - role: cockpit
+      tags: ['cockpit', 'control_panel', 'setup']
+      when: install_cockpit | default(false)  # Disabled by default (webmin is primary control panel)
+      
+    - role: nginx
+      tags: ['nginx', 'web', 'setup']
+
+    - role: php
+      tags: ['php', 'web', 'setup']
+
+    - role: mariadb
+      tags: ['mariadb', 'database', 'setup']
+
+    - role: mail
+      tags: ['mail', 'setup']
+      when: install_mail | default(true)
+
+    - role: python
+      tags: ['python', 'scraping', 'setup']
+
+    - role: goproxy
+      tags: ['goproxy', 'proxy', 'setup']
+      when: install_goproxy | default(true)
+      
+    - role: development
+      tags: ['development', 'setup']
+      when: install_development_tools | default(false)
+      
+    - role: security
+      tags: ['security', 'setup']
+      
+  post_tasks:
+    - name: Create main domain vhost configuration
+      tags: ['setup', 'nginx']
+      ansible.builtin.template:
+        src: ../templates/nginx/vhost.conf.j2
+        dest: "/etc/nginx/sites-available/{{ domain }}.conf"
+        owner: root
+        group: root
+        mode: '0644'
+      vars:
+        vhost_domain: "{{ domain }}"
+        vhost_root: "/home/{{ domain }}/public_html"
+        vhost_user: "{{ domain_user | default(domain.split('.')[0]) }}"
+      when: domain is defined
+      notify: Restart Nginx
+
+    - name: Enable main domain vhost
+      tags: ['setup', 'nginx']
+      ansible.builtin.file:
+        src: "/etc/nginx/sites-available/{{ domain }}.conf"
+        dest: "/etc/nginx/sites-enabled/{{ domain }}.conf"
+        state: link
+      when: domain is defined
+      notify: Restart Nginx
+
+    - name: Create main domain public_html directory
+      tags: ['setup', 'nginx']
+      ansible.builtin.file:
+        path: "/home/{{ domain }}/public_html"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      when: domain is defined
+
+    - name: Create default index.html for main domain
+      tags: ['setup', 'nginx']
+      ansible.builtin.template:
+        src: ../templates/website/index.html.j2
+        dest: "/home/{{ domain }}/public_html/index.html"
+        owner: root
+        group: root
+        mode: '0644'
+        force: true
+      when: domain is defined
+
+    - name: Set SELinux context for domain logs directory
+      tags: ['setup', 'nginx', 'selinux']
+      community.general.sefcontext:
+        target: "/home/{{ domain }}/logs(/.*)?"
+        setype: httpd_log_t
+        state: present
+      when: 
+        - domain is defined
+        - ansible_selinux.status is defined
+        - ansible_selinux.status == "enabled"
+
+    - name: Apply SELinux context to domain logs
+      tags: ['setup', 'nginx', 'selinux']
+      ansible.builtin.command: restorecon -Rv /home/{{ domain }}/logs
+      when: 
+        - domain is defined
+        - ansible_selinux.status is defined
+        - ansible_selinux.status == "enabled"
+      changed_when: false
+
+    - name: Set SELinux context for domain public_html directory
+      tags: ['setup', 'nginx', 'selinux']
+      community.general.sefcontext:
+        target: "/home/{{ domain }}/public_html(/.*)?"
+        setype: httpd_sys_content_t
+        state: present
+      when: 
+        - domain is defined
+        - ansible_selinux.status is defined
+        - ansible_selinux.status == "enabled"
+
+    - name: Apply SELinux context to domain public_html
+      tags: ['setup', 'nginx', 'selinux']
+      ansible.builtin.command: restorecon -Rv /home/{{ domain }}/public_html
+      when: 
+        - domain is defined
+        - ansible_selinux.status is defined
+        - ansible_selinux.status == "enabled"
+      changed_when: false
+
+    - name: Set ownership for domain logs directory
+      tags: ['setup', 'nginx']
+      ansible.builtin.file:
+        path: "/home/{{ domain }}/logs"
+        owner: nginx
+        group: nginx
+        mode: '0755'
+        recurse: yes
+      when: domain is defined
+
+    - name: Ensure firewall is running
+      tags: ['setup']
+      ansible.builtin.service:
+        name: "{{ firewall_service }}"
+        state: started
+        enabled: true
+      when: firewall_enabled | default(true)
+      
+    - name: Verify all services are running
+      tags: ['setup']
+      ansible.builtin.command: systemctl status {{ item }}
+      register: service_status
+      changed_when: false
+      failed_when: false
+      loop:
+        - nginx
+        - php-fpm
+        - mariadb
+        - postfix
+        - dovecot
+      
+    - name: Display service status
+      tags: ['setup']
+      ansible.builtin.debug:
+        msg: "Service check results: {{ service_status.results | map(attribute='stdout') | list }}"
+      
+    - name: Setup complete notification
+      tags: ['setup']
+      ansible.builtin.debug:
+        msg: "VPS setup completed successfully for {{ domain }}. Server is ready to use."
+
+  handlers:
+    - name: Restart Nginx
+      ansible.builtin.service:
+        name: nginx
+        state: restarted

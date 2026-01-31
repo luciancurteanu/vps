@@ -1,0 +1,20 @@
+---
+# Webmin role default variables
+
+# Webmin installation
+webmin_enabled: true
+webmin_port: 10000
+webmin_version: ""  # Empty = latest version; specify version like "2.520" to pin
+
+# Webmin subdomain configuration (for nginx proxy)
+webmin_subdomain: "cpanel.{{ domain }}"
+
+# Repository configuration
+webmin_repo_url: "https://download.webmin.com/download/yum"
+webmin_gpg_key: "https://download.webmin.com/jcameron-key.asc"
+
+# Nginx reverse proxy for Webmin (optional)
+webmin_nginx_proxy: false  # Set to true if you want nginx proxy
+
+# SSL configuration (Webmin runs on HTTP by default)
+webmin_ssl_enabled: false

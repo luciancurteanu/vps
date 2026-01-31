@@ -1,0 +1,157 @@
+---
+# PHP installation and configuration tasks
+
+- name: Add Remi Repository (RedHat)
+  ansible.builtin.dnf:
+    name: "https://rpms.remirepo.net/enterprise/remi-release-9.rpm"
+    state: present
+    disable_gpg_check: true
+  when: ansible_os_family == "RedHat"
+
+- name: Enable PHP module from Remi (RedHat)
+  ansible.builtin.shell: "dnf module enable php:remi-{{ php_version }} -y"
+  when: ansible_os_family == "RedHat"
+  register: php_module_enabled
+  changed_when: "'Enabling' in php_module_enabled.stdout"
+
+- name: Ensure nginx group exists for PHP-FPM ownership
+  ansible.builtin.group:
+    name: nginx
+    system: yes
+    state: present
+
+- name: Ensure nginx user exists for PHP-FPM ownership
+  ansible.builtin.user:
+    name: nginx
+    group: nginx
+    system: yes
+    shell: /sbin/nologin
+    home: /var/cache/nginx
+    create_home: no
+
+- name: Install PHP and PHP-FPM (RedHat)
+  ansible.builtin.dnf:
+    name:
+      - php
+      - php-fpm
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Install PHP extensions (RedHat)
+  ansible.builtin.dnf:
+    name:
+      - php-mysqlnd
+      - php-zip
+      - php-gd
+      - php-curl
+      - php-pear
+      - php-bcmath
+      - php-gmp
+      - php-json
+      - php-pecl-apcu
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Backup PHP-FPM www.conf
+  ansible.builtin.copy:
+    src: /etc/php-fpm.d/www.conf
+    dest: /etc/php-fpm.d/www.conf.bak
+    remote_src: yes
+    force: no
+
+- name: Configure PHP-FPM to use Unix socket
+  ansible.builtin.lineinfile:
+    path: /etc/php-fpm.d/www.conf
+    regexp: '^listen\s*='
+    line: 'listen = /run/php-fpm/www.sock'
+  notify: Restart php-fpm
+
+- name: Configure PHP-FPM user and group
+  ansible.builtin.replace:
+    path: /etc/php-fpm.d/www.conf
+    regexp: '{{ item.regexp }}'
+    replace: '{{ item.replace }}'
+  loop:
+    - { regexp: '^user = apache', replace: 'user = nginx' }
+    - { regexp: '^group = apache', replace: 'group = nginx' }
+    - { regexp: '^;listen\.owner = nobody', replace: 'listen.owner = nginx' }
+    - { regexp: '^;listen\.group = nobody', replace: 'listen.group = nginx' }
+    - { regexp: '^;listen\.mode = 0660', replace: 'listen.mode = 0660' }
+    - { regexp: '^listen\.acl_users.*', replace: ';listen.acl_users' }
+  notify: Restart php-fpm
+
+- name: Configure PHP OPcache
+  ansible.builtin.blockinfile:
+    path: /etc/php.ini
+    block: |
+      [opcache]
+      opcache.enable=1
+      opcache.memory_consumption=128
+      opcache.interned_strings_buffer=8
+      opcache.max_accelerated_files=4000
+      opcache.revalidate_freq=2
+      opcache.fast_shutdown=1
+      opcache.enable_cli=1
+  notify: Restart php-fpm
+
+- name: Create PHP-FPM run directory if it doesn't exist
+  ansible.builtin.file:
+    path: /var/run/php-fpm
+    state: directory
+    mode: '0755'
+
+- name: Set proper ownership for PHP-FPM logs
+  ansible.builtin.file:
+    path: /var/log/php-fpm
+    owner: nginx
+    group: root
+    state: directory
+
+- name: Set proper ownership for PHP directory
+  ansible.builtin.file:
+    path: /var/lib/php
+    owner: root
+    group: nginx
+    recurse: yes
+
+- name: Set secure permissions for PHP session directory
+  ansible.builtin.file:
+    path: /var/lib/php/session
+    mode: '0700'
+    recurse: yes
+
+- name: Apply PHP-FPM configuration changes
+  meta: flush_handlers
+
+- name: Enable and start PHP-FPM service
+  ansible.builtin.systemd:
+    name: php-fpm
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Capture php-fpm service status
+  ansible.builtin.command: systemctl status php-fpm --no-pager
+  register: php_fpm_status
+  changed_when: false
+  failed_when: false
+
+- name: Show php-fpm service status
+  ansible.builtin.debug:
+    var: php_fpm_status.stdout_lines
+
+- name: Tail php-fpm error log
+  ansible.builtin.command: tail -n 50 /var/log/php-fpm/error.log
+  register: php_fpm_log
+  changed_when: false
+  failed_when: false
+
+- name: Show php-fpm error log
+  ansible.builtin.debug:
+    var: php_fpm_log.stdout_lines
+
+- name: Wait for PHP-FPM socket to be created
+  ansible.builtin.wait_for:
+    path: /run/php-fpm/www.sock
+    delay: 2
+    timeout: 60

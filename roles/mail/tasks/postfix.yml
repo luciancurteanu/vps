@@ -1,0 +1,135 @@
+---
+# Postfix configuration tasks
+
+- name: Install Postfix packages
+  ansible.builtin.package:
+    name: 
+      - postfix
+      - postfix-mysql
+      - cyrus-sasl-plain
+    state: present
+
+- name: Check existing Postfix virtual path
+  ansible.builtin.stat:
+    path: /etc/postfix/virtual
+  register: postfix_virtual_path
+
+- name: Ensure Postfix virtual directory exists when not a file
+  ansible.builtin.file:
+    path: /etc/postfix/virtual
+    state: directory
+    owner: postfix
+    group: postfix
+    mode: '0755'
+  when: postfix_virtual_path.stat.isdir | default(False)
+
+- name: Ensure Postfix virtual spool directory exists
+  ansible.builtin.file:
+    path: /var/spool/postfix/virtual
+    state: directory
+    owner: postfix
+    group: postfix
+    mode: '0755'
+
+- name: Backup Postfix main.cf
+  ansible.builtin.copy:
+    src: /etc/postfix/main.cf
+    dest: /etc/postfix/main.cf.bak
+    remote_src: yes
+    force: no
+  ignore_errors: yes
+
+- name: Configure main Postfix configuration
+  ansible.builtin.template:
+    src: postfix/main.cf.j2
+    dest: /etc/postfix/main.cf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart postfix
+
+- name: Backup Postfix master.cf
+  ansible.builtin.copy:
+    src: /etc/postfix/master.cf
+    dest: /etc/postfix/master.cf.bak
+    remote_src: yes
+    force: no
+  ignore_errors: yes
+
+- name: Configure Postfix master settings
+  ansible.builtin.template:
+    src: postfix/master.cf.j2
+    dest: /etc/postfix/master.cf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart postfix
+
+- name: Configure virtual mailbox domains
+  ansible.builtin.template:
+    src: postfix/mysql-virtual-mailbox-domains.cf.j2
+    dest: /etc/postfix/mysql-virtual-mailbox-domains.cf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart postfix
+
+- name: Configure virtual mailbox maps
+  ansible.builtin.template:
+    src: postfix/mysql-virtual-mailbox-maps.cf.j2
+    dest: /etc/postfix/mysql-virtual-mailbox-maps.cf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart postfix
+
+- name: Configure virtual alias maps
+  ansible.builtin.template:
+    src: postfix/mysql-virtual-alias-maps.cf.j2
+    dest: /etc/postfix/mysql-virtual-alias-maps.cf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart postfix
+
+- name: Configure email domains
+  community.mysql.mysql_query:
+    login_db: "{{ mail_db_name }}"
+    login_user: "{{ mail_db_user }}"
+    login_password: "{{ mail_db_password }}"
+    query: "INSERT INTO domains (domain) VALUES ('{{ domain }}') ON DUPLICATE KEY UPDATE domain='{{ domain }}'"
+  when: domain is defined
+
+- name: Generate password hash for default email accounts
+  ansible.builtin.shell: |
+    python3 -c "import crypt; print(crypt.crypt('{{ vault_mail_default_password }}', crypt.mksalt(crypt.METHOD_SHA512)))"
+  register: mail_password_hash_result
+  changed_when: false
+  no_log: true
+  when: domain is defined and vault_mail_default_password is defined
+
+- name: Set password hash fact
+  ansible.builtin.set_fact:
+    admin_password_hash: "{{ mail_password_hash_result.stdout }}"
+  when: mail_password_hash_result is defined and mail_password_hash_result.stdout is defined
+  no_log: true
+
+- name: Create default email accounts
+  community.mysql.mysql_query:
+    login_db: "{{ mail_db_name }}"
+    login_user: "{{ mail_db_user }}"
+    login_password: "{{ mail_db_password }}"
+    query: "INSERT INTO users (email, password, domain) VALUES ('{{ item }}@{{ domain }}', '{{ admin_password_hash }}', '{{ domain }}') ON DUPLICATE KEY UPDATE password='{{ admin_password_hash }}'"
+  with_items:
+    - admin
+    - contact
+    - postmaster
+    - webmaster
+  when: domain is defined and admin_password_hash is defined
+  no_log: true
+
+- name: Ensure Postfix service is running and enabled
+  ansible.builtin.service:
+    name: postfix
+    state: started
+    enabled: true

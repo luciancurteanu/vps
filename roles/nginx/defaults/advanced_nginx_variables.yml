@@ -1,0 +1,182 @@
+# Advanced Nginx Configuration Variables
+# These variables provide fine-grained control over nginx performance, security, and logging
+
+# ================================
+# Performance Optimization Settings
+# ================================
+
+# Asynchronous I/O for large files
+nginx_directio_size: "4m"                          # Enable directio for files larger than this size
+
+# Open file cache optimization
+nginx_open_file_cache: "max=10000 inactive=20s"    # Cache up to 10000 files, inactive after 20s
+nginx_open_file_cache_valid: "30s"                 # Check if file info is still valid every 30s
+nginx_open_file_cache_min_uses: "2"                # Minimum uses before caching
+nginx_open_file_cache_errors: "on"                 # Cache file not found errors
+
+# Enhanced connection handling
+nginx_output_buffers: "1 32k"                      # Output buffer configuration
+nginx_postpone_output: "1460"                      # Postpone output until this many bytes
+
+# ================================
+# Enhanced SSL Configuration
+# ================================
+
+# SSL session management
+nginx_ssl_session_cache_size: "50m"                # SSL session cache size
+nginx_ssl_session_timeout: "1d"                    # SSL session timeout
+nginx_ssl_session_tickets: "off"                   # Disable SSL session tickets for security
+nginx_ssl_stapling: "on"                           # Enable OCSP stapling
+nginx_ssl_stapling_verify: "on"                    # Verify OCSP responses
+
+# SSL optimization
+nginx_ssl_buffer_size: "16k"                       # SSL buffer size for better performance
+nginx_ssl_trusted_certificate: "/etc/ssl/certs/ca-certificates.crt"  # Trusted certificate for OCSP
+
+# Enhanced resolver configuration
+nginx_resolver: "8.8.8.8 8.8.4.4 1.1.1.1 1.0.0.1"  # DNS resolvers
+nginx_resolver_valid: "300s"                       # Resolver cache validity
+nginx_resolver_timeout: "10s"                      # Resolver timeout
+
+# ================================
+# Advanced Logging Configuration
+# ================================
+
+# Enable advanced logging with conditional filtering
+nginx_advanced_logging: false                      # Enable advanced logging features
+
+# ================================
+# Security Enhancement Settings
+# ================================
+
+# Bot blocking
+nginx_bot_blocking: false                          # Enable bad bot blocking
+
+# Geo IP filtering
+nginx_geo_filtering: false                         # Enable geographic IP filtering
+
+# Rate limiting
+nginx_rate_limiting: false                         # Enable rate limiting
+nginx_rate_limit_zone: "general"                   # Rate limit zone to use
+nginx_rate_limit_burst: 10                         # Burst size for rate limiting
+
+# OCSP Stapling
+nginx_ocsp_stapling: false                         # Enable OCSP stapling per site
+
+# ================================
+# Enhanced Security Headers
+# ================================
+
+# HSTS Configuration
+nginx_hsts_max_age: "31536000"                     # HSTS max age (1 year default)
+nginx_hsts_preload: false                          # Enable HSTS preload
+
+# Content Security Policy
+nginx_csp_enabled: false                           # Enable Content Security Policy
+nginx_csp_policy: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'self'"
+
+# Additional Security Headers
+nginx_x_frame_options: "SAMEORIGIN"                # X-Frame-Options header value
+nginx_referrer_policy: "strict-origin-when-cross-origin"  # Referrer Policy header
+nginx_permissions_policy: "geolocation=(), microphone=(), camera=()"  # Permissions Policy
+
+# ================================
+# Static File Handling
+# ================================
+
+# Cache expiration times
+nginx_dynamic_expires: "1h"                        # Cache time for dynamic content
+nginx_assets_expires: "1y"                         # Cache time for CSS/JS assets
+nginx_media_expires: "1M"                          # Cache time for media files
+nginx_fonts_expires: "1M"                          # Cache time for font files
+
+# CORS support
+nginx_cors_enabled: false                          # Enable CORS headers for media files
+
+# ================================
+# Advanced Features
+# ================================
+
+# Maintenance mode
+nginx_maintenance_mode: false                      # Enable maintenance mode support
+
+# Basic authentication
+nginx_basic_auth: false                            # Enable basic authentication
+nginx_auth_realm: "Restricted Area"                # Authentication realm
+nginx_auth_file: "/etc/nginx/.htpasswd"            # htpasswd file location
+
+# Custom error pages
+nginx_custom_errors: false                         # Enable custom error pages
+
+# Health check endpoint
+nginx_health_check: false                          # Enable health check endpoint
+nginx_health_check_path: "/health"                 # Health check endpoint path
+
+# ================================
+# API and Location-specific Settings
+# ================================
+
+# API endpoints configuration
+nginx_api_locations: []
+# Example:
+# nginx_api_locations:
+#   - path: "/api"
+#     rate_limit: true
+#     rate_limit_zone: "api"
+#     burst: 5
+#     auth_required: true
+#     auth_realm: "API Access"
+#     auth_file: "/etc/nginx/.htpasswd_api"
+#     proxy_pass: "http://backend"
+#     custom_headers:
+#       - name: "X-API-Version"
+#         value: "v1"
+
+# Protected locations configuration
+nginx_protected_locations: []
+# Example:
+# nginx_protected_locations:
+#   - path: "/admin"
+#     allowed_ips:
+#       - "192.168.1.0/24"
+#       - "10.0.0.0/8"
+#   - path: "/.git"
+#     deny_all: true
+
+# ================================
+# Rate Limiting Zones (Global)
+# ================================
+
+# These are configured globally in nginx.conf and referenced in vhosts
+# api zone: 10r/s for API endpoints
+# login zone: 1r/s for login attempts
+# general zone: 30r/s for general traffic
+
+# ================================
+# Global Mappings
+# ================================
+
+# The following mappings are configured globally in nginx.conf:
+# $bad_bot - Identifies malicious bots and scanners
+# $log_uri - Conditional logging based on URI patterns
+# $log_ip - Conditional logging based on IP addresses
+# $loggable - Combined logging decision based on URI and IP
+# $geo_restricted - Geographic IP filtering
+
+# ================================
+# Usage Examples
+# ================================
+
+# Enable advanced security for a production site:
+# nginx_advanced_logging: true
+# nginx_bot_blocking: true
+# nginx_geo_filtering: true
+# nginx_rate_limiting: true
+# nginx_csp_enabled: true
+# nginx_hsts_preload: true
+# nginx_custom_errors: true
+
+# Enable basic optimizations for a development site:
+# nginx_cors_enabled: true
+# nginx_health_check: true
+# nginx_maintenance_mode: true

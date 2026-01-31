@@ -1,0 +1,11 @@
+---
+- name: Destroy
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  no_log: "{{ molecule_no_log }}"
+  tasks:
+    - name: Remove Ansible run log for the scenario
+      ansible.builtin.file:
+        path: "{{ molecule_scenario_directory }}/ansible_molecule_output.log"
+        state: absent

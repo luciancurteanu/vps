@@ -1,0 +1,94 @@
+---
+- name: Remove Virtual Host
+  hosts: all
+  become: true
+  gather_facts: false
+  
+  vars_files:
+    - ../vars/secrets.yml
+    
+  vars:
+    required_vars:
+      - domain
+      - user
+    document_root: "/home/{{ domain }}"
+    
+  pre_tasks:
+    - name: Verify required variables are defined
+      ansible.builtin.assert:
+        that: "{{ item }} is defined"
+        fail_msg: "Required variable '{{ item }}' is not defined"
+      loop: "{{ required_vars }}"
+
+    - name: Check if virtual host exists
+      ansible.builtin.stat:
+        path: "/etc/nginx/sites-available/{{ domain }}.conf"
+      register: nginx_conf
+
+    - name: Fail if virtual host doesn't exist
+      ansible.builtin.fail:
+        msg: "Virtual host for {{ domain }} does not exist."
+      when: not nginx_conf.stat.exists
+      
+  tasks:
+    - name: Backup website files
+      ansible.builtin.archive:
+        path: "{{ document_root }}"
+        dest: "/var/backups/{{ domain }}-{{ ansible_date_time.date }}.tar.gz"
+        format: gz
+      register: backup_result
+      failed_when: false
+
+    - name: Remove Nginx virtual host configuration
+      ansible.builtin.file:
+        path: "/etc/nginx/sites-available/{{ domain }}.conf"
+        state: absent
+      notify: Restart Nginx
+
+    - name: Remove Nginx site symlink
+      ansible.builtin.file:
+        path: "/etc/nginx/sites-enabled/{{ domain }}.conf"
+        state: absent
+      notify: Restart Nginx
+
+    - name: Remove PHP-FPM pool configuration
+      ansible.builtin.file:
+        path: "/etc/php-fpm.d/{{ domain }}.conf"
+        state: absent
+      notify: Restart PHP-FPM
+
+    - name: Remove website files (with confirmation)
+      ansible.builtin.file:
+        path: "{{ document_root }}"
+        state: absent
+      when: remove_files | default(true)
+
+    - name: Remove SSL certificates
+      ansible.builtin.file:
+        path: "/etc/letsencrypt/live/{{ domain }}"
+        state: absent
+      when: remove_ssl | default(true)
+      failed_when: false
+
+    - name: Remove system user (optional)
+      ansible.builtin.user:
+        name: "{{ user }}"
+        state: absent
+        remove: true
+      when: remove_user | default(false)
+
+    - name: Display backup information
+      ansible.builtin.debug:
+        msg: "Website backup created at: {{ backup_result.dest | default('Backup failed') }}"
+      when: backup_result is defined
+      
+  handlers:
+    - name: Restart Nginx
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
+        
+    - name: Restart PHP-FPM
+      ansible.builtin.service:
+        name: php-fpm
+        state: restarted

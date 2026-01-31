@@ -1,0 +1,52 @@
+---
+# Nginx site management tasks for sites-available/sites-enabled pattern
+
+# Site Creation and Management
+- name: Create virtual host configuration in sites-available
+  ansible.builtin.template:
+    src: "{{ nginx_vhost_template | default('vhost.conf.j2') }}"
+    dest: "/etc/nginx/sites-available/{{ nginx_site_name }}.conf"
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+  when: nginx_site_name is defined
+  notify: restart_nginx_service
+
+- name: Enable site by creating symlink in sites-enabled
+  ansible.builtin.file:
+    src: "/etc/nginx/sites-available/{{ nginx_site_name }}.conf"
+    dest: "/etc/nginx/sites-enabled/{{ nginx_site_name }}.conf"
+    state: link
+    owner: root
+    group: root
+  when: 
+    - nginx_site_name is defined
+    - nginx_site_enabled | default(true)
+  notify: restart_nginx_service
+
+- name: Disable site by removing symlink from sites-enabled
+  ansible.builtin.file:
+    path: "/etc/nginx/sites-enabled/{{ nginx_site_name }}.conf"
+    state: absent
+  when: 
+    - nginx_site_name is defined
+    - not (nginx_site_enabled | default(true))
+  notify: restart_nginx_service
+
+- name: Remove site configuration from sites-available
+  ansible.builtin.file:
+    path: "/etc/nginx/sites-available/{{ nginx_site_name }}.conf"
+    state: absent
+  when: 
+    - nginx_site_name is defined
+    - nginx_site_remove | default(false)
+  notify: restart_nginx_service
+
+- # Configuration Testing
+  name: Test nginx configuration after site changes
+  ansible.builtin.command: nginx -t
+  register: nginx_config_test
+  changed_when: false
+  failed_when: nginx_config_test.rc != 0
+  when: nginx_site_name is defined

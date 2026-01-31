@@ -1,0 +1,17 @@
+[Unit]
+Description=GoProxy HTTP(S) Proxy Service
+After=network.target tor.service
+Wants=tor.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=/usr/bin/proxy http -p :{{ goproxy_port }} --daemon
+ExecStartPost=/usr/bin/proxy socks -p :{{ goproxy_socks_port }} --daemon
+Restart=on-failure
+RestartSec=10
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

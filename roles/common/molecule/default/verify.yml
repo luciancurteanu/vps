@@ -1,0 +1,122 @@
+﻿---
+- name: Verify Common Role State
+  hosts: all
+  become: true
+  gather_facts: false
+  vars:
+    expected_timezone: "{{ timezone | default('Europe/London') }}"
+    expected_admin_user: "{{ admin_user | default('admin') }}"
+    expected_packages:
+      - curl
+      - wget
+      - tar
+      - gzip
+      - nano
+      - net-tools
+      - htop
+      - lsof
+      - bind-utils
+      - python3.13
+      - python3.13-pip
+      - chrony
+      - cronie
+      - logrotate
+      - policycoreutils-python-utils
+      - epel-release
+
+  tasks:
+    - name: Gather fresh facts from the instance
+      ansible.builtin.setup:
+
+    # Timezone Verification
+    - name: Check current timezone
+      ansible.builtin.command: timedatectl status
+      register: timedatectl_output
+      changed_when: false
+
+    - name: Verify timezone is correct
+      ansible.builtin.assert:
+        that:
+          - "'Time zone: ' ~ expected_timezone in timedatectl_output.stdout"
+        fail_msg: "Timezone is not '{{ expected_timezone }}'"
+        quiet: true
+
+    # Package Installation Verification
+    - name: Check if expected packages are installed
+      ansible.builtin.package:
+        name: "{{ item }}"
+        state: present
+      check_mode: true
+      register: package_check
+      loop: "{{ expected_packages }}"
+      when: ansible_facts.os_family == 'RedHat'
+      ignore_errors: true
+
+    - name: Assert packages are installed
+      ansible.builtin.assert:
+        that:
+          - not item.changed
+        fail_msg: "Package {{ item.item }} not installed"
+        quiet: true
+      loop: "{{ package_check.results | default([]) }}"
+      when: ansible_facts.os_family == 'RedHat'
+
+    # Admin User Verification
+    - name: Check admin user exists
+      ansible.builtin.getent:
+        database: passwd
+        key: "{{ expected_admin_user }}"
+      register: admin_check
+      failed_when: false
+
+    - name: Verify admin user created
+      ansible.builtin.assert:
+        that:
+          - admin_check.ansible_facts.getent_passwd[expected_admin_user] is defined
+        fail_msg: "Admin user not created"
+        quiet: true
+
+    - name: Check sudoers file exists
+      ansible.builtin.stat:
+        path: "/etc/sudoers.d/{{ expected_admin_user }}"
+      register: sudoers_file
+
+    - name: Verify sudoers file
+      ansible.builtin.assert:
+        that:
+          - sudoers_file.stat.exists
+        fail_msg: "Sudoers file missing"
+        quiet: true
+
+    # SSH Configuration Verification
+    - name: Check SSH config exists
+      ansible.builtin.stat:
+        path: /etc/ssh/sshd_config
+      register: sshd_config
+
+    - name: Read SSH config
+      ansible.builtin.slurp:
+        src: /etc/ssh/sshd_config
+      register: sshd_content
+
+    - name: Verify SSH settings
+      ansible.builtin.assert:
+        that:
+          - "'Port 22' in (sshd_content.content | b64decode)"
+          - "'PermitRootLogin no' in (sshd_content.content | b64decode)"
+          - "'PasswordAuthentication yes' in (sshd_content.content | b64decode)"
+        fail_msg: "SSH configuration incorrect"
+        quiet: true
+
+    # Python 3.13 Verification
+    - name: Check Python 3.13
+      ansible.builtin.command: python3.13 --version
+      register: python_ver
+      changed_when: false
+
+    - name: Verify Python 3.13
+      ansible.builtin.assert:
+        that:
+          - "'Python 3.13' in python_ver.stdout"
+        fail_msg: "Python 3.13 not installed"
+        quiet: true

@@ -1,0 +1,35 @@
+---
+# MariaDB performance tuning tasks
+
+- name: Identify server memory size
+  ansible.builtin.setup:
+    filter: ansible_memtotal_mb
+  
+- name: Set performance variables based on memory
+  ansible.builtin.set_fact:
+    innodb_buffer_pool_size: "{{ (ansible_memtotal_mb * 0.5)|int }}M"
+    innodb_log_buffer_size: "{{ [32, (ansible_memtotal_mb * 0.05)|int]|min }}M"
+    max_connections: "{{ [50, (ansible_memtotal_mb / 20)|int]|max }}"
+    query_cache_size: "{{ [0, (ansible_memtotal_mb * 0.10)|int]|min }}M"
+    table_open_cache: "{{ [400, (ansible_memtotal_mb / 2)|int]|max }}"
+    thread_cache_size: "{{ [25, (ansible_memtotal_mb / 100)|int]|max }}"
+    key_buffer_size: "{{ [16, (ansible_memtotal_mb * 0.05)|int]|min }}M"
+  when: db_optimize_for_server | default(true)
+
+- name: Configure MariaDB server performance settings
+  ansible.builtin.template:
+    src: performance.cnf.j2
+    dest: /etc/my.cnf.d/performance.cnf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart mariadb
+
+- name: Configure InnoDB settings
+  ansible.builtin.template:
+    src: innodb.cnf.j2
+    dest: /etc/my.cnf.d/innodb.cnf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart mariadb

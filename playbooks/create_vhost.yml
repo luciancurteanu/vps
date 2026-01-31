@@ -1,0 +1,347 @@
+---
+- name: Create Virtual Host
+  hosts: all
+  become: true
+  gather_facts: true
+  
+  vars_files:
+    - ../vars/secrets.yml
+    
+  vars:
+    required_vars:
+      - domain
+      - user
+    document_root: "/home/{{ domain }}/public_html"
+    sftp_group: "sftp"
+    
+  pre_tasks:
+    - name: Verify required variables are defined
+      ansible.builtin.assert:
+        that: "{{ item }} is defined"
+        fail_msg: "Required variable '{{ item }}' is not defined"
+      loop: "{{ required_vars }}"
+
+    - name: Check if virtual host already exists
+      ansible.builtin.stat:
+        path: "/etc/nginx/sites-available/{{ domain }}.conf"
+      register: nginx_conf
+
+    - name: Fail if virtual host already exists
+      ansible.builtin.fail:
+        msg: "Virtual host for {{ domain }} already exists. Please remove it first if you want to recreate it."
+      when: nginx_conf.stat.exists
+      
+  tasks:
+    - name: Create system user if it doesn't exist
+      ansible.builtin.user:
+        name: "{{ user }}"
+        comment: "Virtual host user for {{ domain }}"
+        create_home: true
+        home: "/home/{{ user }}"
+        shell: /bin/bash
+        password: "{{ vault_domain_user_password | password_hash('sha512') }}"
+        update_password: on_create
+
+    - name: Create document root directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ user }}"
+        group: "{{ user }}"
+        mode: '0755'
+      with_items:
+        - "/home/{{ domain }}"
+        - "{{ document_root }}"
+        - "/home/{{ domain }}/logs"
+        - "/home/{{ domain }}/ssl"
+        - "/home/{{ domain }}/backup"
+        - "/home/{{ domain }}/tmp"
+
+    - name: Create log files
+      ansible.builtin.file:
+        path: "/home/{{ domain }}/logs/{{ item }}"
+        state: touch
+        owner: "{{ user }}"
+        group: "{{ user }}"
+        mode: '0644'
+      with_items:
+        - "access.log"
+        - "error.log"
+
+    - name: Set proper permissions for logs directory
+      ansible.builtin.file:
+        path: "/home/{{ domain }}/logs"
+        owner: "{{ user }}"
+        group: "{{ user }}"
+        mode: '0755'
+        recurse: true
+
+    - name: Set proper permissions for tmp directory
+      ansible.builtin.file:
+        path: "/home/{{ domain }}/tmp"
+        owner: "{{ user }}"
+        group: "{{ user }}"
+        mode: '0700'
+        recurse: true
+        
+    - name: Configure PHP-FPM pool
+      ansible.builtin.template:
+        src: ../templates/php/pool.conf.j2
+        dest: "/etc/php-fpm.d/{{ domain }}.conf"
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Restart php-fpm
+
+    - name: Ensure nginx sites-available directory exists
+      ansible.builtin.file:
+        path: /etc/nginx/sites-available
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Ensure nginx sites-enabled directory exists
+      ansible.builtin.file:
+        path: /etc/nginx/sites-enabled
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Configure Nginx virtual host
+      ansible.builtin.template:
+        src: ../templates/nginx/vhost.conf.j2
+        dest: "/etc/nginx/sites-available/{{ domain }}.conf"
+        owner: root
+        group: root
+        mode: '0644'
+      vars:
+        nginx_ssl_enabled: false
+      notify: Restart Nginx
+
+    - name: Enable site by creating symlink
+      ansible.builtin.file:
+        src: "/etc/nginx/sites-available/{{ domain }}.conf"
+        dest: "/etc/nginx/sites-enabled/{{ domain }}.conf"
+        state: link
+      notify: Restart Nginx
+
+    - name: Copy template website files
+      ansible.builtin.copy:
+        src: ../templates/website/
+        dest: "{{ document_root }}/"
+        owner: "{{ user }}"
+        group: "{{ user }}"
+        mode: '0644'
+        directory_mode: '0755'
+
+    - name: Create index.html from template
+      ansible.builtin.template:
+        src: ../templates/website/index.html.j2
+        dest: "{{ document_root }}/index.html"
+        owner: "{{ user }}"
+        group: "{{ user }}"
+        mode: '0644'
+        force: true
+
+    - name: Set SELinux context for document root
+      ansible.builtin.command: chcon -R -t httpd_sys_content_t {{ document_root }}
+      when: ansible_selinux.status == "enabled"
+      changed_when: false
+
+    - name: Set SELinux context for log directory
+      ansible.builtin.command: chcon -R -t httpd_log_t /home/{{ domain }}/logs
+      when: ansible_selinux.status == "enabled"
+      changed_when: false
+
+    - name: Set specific permissions for PHP files
+      ansible.builtin.shell: find {{ document_root }} -type f -name "*.php" -exec chmod 640 {} \;
+      changed_when: false
+
+    - name: Set specific permissions for non-PHP files
+      ansible.builtin.shell: find {{ document_root }} -type f ! -name "*.php" -exec chmod 755 {} \;
+      changed_when: false
+
+    - name: Create SFTP group if it doesn't exist
+      ansible.builtin.group:
+        name: "{{ sftp_group }}"
+        gid: 222
+        state: present
+      when: domain == master_domain
+
+    - name: Configure SSH for SFTP
+      ansible.builtin.blockinfile:
+        path: /etc/ssh/sshd_config
+        block: |
+          Match Group {{ sftp_group }}
+          ForceCommand internal-sftp
+          PasswordAuthentication yes
+          ChrootDirectory /home
+          PermitTunnel no
+          AllowAgentForwarding no
+          AllowTcpForwarding no
+          X11Forwarding no
+        marker: "# {mark} ANSIBLE MANAGED SFTP CONFIGURATION"
+      notify: Restart SSH
+      when: domain == master_domain
+
+    - name: Add user to SFTP group
+      ansible.builtin.user:
+        name: "{{ user }}"
+        groups: "{{ sftp_group }}"
+        append: true
+      when: domain == master_domain
+      
+    - name: Configure hosts file for master domain
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        line: "{{ item }}"
+        state: present
+      with_items:
+        - "127.0.0.1 localhost.localdomain localhost"
+        - "127.0.0.1 {{ domain }} www.{{ domain }}"
+        - "127.0.0.1 mail.{{ domain }}"
+        - "127.0.0.1 cpanel.{{ domain }}"
+      when: domain == master_domain
+
+    - name: Configure hosts file for regular domain
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        line: "127.0.0.1 {{ domain }} www.{{ domain }}"
+        state: present
+      when: domain != master_domain
+
+    - name: Configure mail subdomain if this is the master domain
+      block:
+        - name: Create mail subdomain configuration
+          ansible.builtin.template:
+            src: ../templates/nginx/mail.conf.j2
+            dest: "/etc/nginx/sites-available/{{ mail_subdomain }}.conf"
+            owner: root
+            group: root
+            mode: '0644'
+          notify: Restart Nginx
+
+        - name: Enable mail subdomain site
+          ansible.builtin.file:
+            src: "/etc/nginx/sites-available/{{ mail_subdomain }}.conf"
+            dest: "/etc/nginx/sites-enabled/{{ mail_subdomain }}.conf"
+            state: link
+          notify: Restart Nginx
+
+        - name: Create mail subdomain directories
+          ansible.builtin.file:
+            path: "/home/{{ domain }}/mail"
+            state: directory
+            owner: "{{ user }}"
+            group: "{{ user }}"
+            mode: '0755'
+      when: domain == master_domain
+
+    - name: Configure Postfix for regular domain
+      block:
+        - name: Add domain to mail database
+          community.mysql.mysql_query:
+            login_db: "{{ mail_db_name }}"
+            login_user: "{{ db_root_user }}"
+            login_password: "{{ db_root_password }}"
+            login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
+            query: "INSERT IGNORE INTO domains (domain) VALUES ('{{ domain }}')"
+          changed_when: true
+
+        - name: Create individual mailboxes in database
+          community.mysql.mysql_query:
+            login_db: "{{ mail_db_name }}"
+            login_user: "{{ db_root_user }}"
+            login_password: "{{ db_root_password }}"
+            login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
+            query: |
+              INSERT IGNORE INTO users (email, password, domain) 
+              VALUES ('{{ item }}@{{ domain }}', '{{ vault_mail_default_password | password_hash('sha512') }}', '{{ domain }}')
+          with_items:
+            - "contact"
+            - "support"
+            - "no-reply"
+            - "copyright"
+            - "privacy"
+          changed_when: true
+
+        - name: Create mailbox directories
+          ansible.builtin.file:
+            path: "/home/{{ master_domain }}/mail/virtual/{{ domain }}/{{ item }}"
+            state: directory
+            owner: "{{ mail_user }}"
+            group: "{{ mail_group }}"
+            mode: '0770'
+            recurse: true
+          with_items:
+            - "contact"
+            - "support"
+            - "no-reply"
+            - "copyright"
+            - "privacy"
+      when: domain != master_domain
+
+    - name: Configure OpenDKIM for regular domain
+      block:
+        - name: Create OpenDKIM directory for domain
+          ansible.builtin.file:
+            path: "/etc/opendkim/keys/{{ domain }}"
+            state: directory
+            mode: '0700'
+
+        - name: Generate OpenDKIM keys
+          ansible.builtin.shell: cd /etc/opendkim/keys/{{ domain }} && opendkim-genkey -r -b 2048 -d {{ domain }}
+          args:
+            creates: "/etc/opendkim/keys/{{ domain }}/default.private"
+
+        - name: Set permissions for OpenDKIM keys
+          ansible.builtin.file:
+            path: "/etc/opendkim/keys/{{ domain }}"
+            mode: '0700'
+            recurse: true
+
+        - name: Set permissions for OpenDKIM key files
+          ansible.builtin.shell: find /etc/opendkim/keys/{{ domain }} -type f -exec chmod 600 {} \;
+          changed_when: true
+
+        - name: Add domain to OpenDKIM KeyTable
+          ansible.builtin.lineinfile:
+            path: /etc/opendkim/KeyTable
+            line: "default._domainkey.{{ domain }} {{ domain }}:default:/etc/opendkim/keys/{{ domain }}/default.private"
+            state: present
+            create: true
+
+        - name: Add domain to OpenDKIM SigningTable
+          ansible.builtin.lineinfile:
+            path: /etc/opendkim/SigningTable
+            line: "*@{{ domain }} default._domainkey.{{ domain }}"
+            state: present
+            create: true
+
+        - name: Reload mail services
+          ansible.builtin.service:
+            name: "{{ item }}"
+            state: reloaded
+          with_items:
+            - postfix
+            - dovecot
+            - opendkim
+      when: domain != master_domain
+      
+  handlers:
+    - name: Restart Nginx
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
+        
+    - name: Restart PHP-FPM
+      ansible.builtin.service:
+        name: php-fpm
+        state: restarted
+        
+    - name: Restart SSH
+      ansible.builtin.service:
+        name: sshd
+        state: restarted

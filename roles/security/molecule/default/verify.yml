@@ -1,0 +1,128 @@
+---
+- name: Verify Security Role
+  hosts: all
+  become: false
+  gather_facts: true
+  tasks:
+    # -----------------------------------------------------------------------------
+    # Firewall Configuration Verification
+    # -----------------------------------------------------------------------------
+    - name: Verify iptables configuration file exists
+      ansible.builtin.stat:
+        path: /etc/sysconfig/iptables
+      register: iptables_config
+      when: ansible_os_family == 'RedHat'
+
+    - name: Assert iptables configuration exists
+      ansible.builtin.assert:
+        that:
+          - iptables_config.stat.exists
+        fail_msg: "iptables configuration file /etc/sysconfig/iptables does not exist."
+        success_msg: "iptables configuration file exists."
+      when: ansible_os_family == 'RedHat'
+
+    - name: Read iptables configuration
+      ansible.builtin.slurp:
+        src: /etc/sysconfig/iptables
+      register: iptables_content
+      when: ansible_os_family == 'RedHat' and iptables_config.stat.exists
+
+    - name: Verify basic iptables rules are present
+      ansible.builtin.assert:
+        that:
+          - "'INPUT DROP' in (iptables_content.content | b64decode)"
+          - "'ssh' in (iptables_content.content | b64decode) or '22' in (iptables_content.content | b64decode)"
+          - "'80' in (iptables_content.content | b64decode)"
+          - "'443' in (iptables_content.content | b64decode)"
+        fail_msg: "Required iptables rules not found in configuration."
+        success_msg: "Basic iptables rules are correctly configured."
+      when: ansible_os_family == 'RedHat' and iptables_content.content is defined
+
+    # -----------------------------------------------------------------------------
+    # Fail2Ban Configuration Verification
+    # -----------------------------------------------------------------------------
+    - name: Verify fail2ban is installed
+      ansible.builtin.package_facts:
+        manager: auto
+
+    - name: Assert fail2ban package is installed
+      ansible.builtin.assert:
+        that:
+          - "'fail2ban' in ansible_facts.packages"
+        fail_msg: "fail2ban package is not installed."
+        success_msg: "fail2ban package is installed."
+
+    - name: Verify fail2ban jail configuration exists
+      ansible.builtin.stat:
+        path: /etc/fail2ban/jail.local
+      register: jail_config
+
+    - name: Assert fail2ban jail configuration exists
+      ansible.builtin.assert:
+        that:
+          - jail_config.stat.exists
+        fail_msg: "fail2ban jail configuration /etc/fail2ban/jail.local does not exist."
+        success_msg: "fail2ban jail configuration exists."
+
+    - name: Read fail2ban jail configuration
+      ansible.builtin.slurp:
+        src: /etc/fail2ban/jail.local
+      register: jail_content
+      when: jail_config.stat.exists
+
+    - name: Verify fail2ban services are configured
+      ansible.builtin.assert:
+        that:
+          - "'[sshd]' in (jail_content.content | b64decode)"
+          - "'enabled = true' in (jail_content.content | b64decode)"
+        fail_msg: "Required fail2ban services not configured in jail.local."
+        success_msg: "fail2ban services are correctly configured."
+      when: jail_content.content is defined
+
+    # -----------------------------------------------------------------------------
+    # Service Status Verification (when not in Docker)
+    # -----------------------------------------------------------------------------
+    - name: Check fail2ban service status
+      ansible.builtin.service_facts:
+      when: not (ansible_virtualization_type | default('') == 'docker')
+
+    - name: Verify fail2ban service is running
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.services['fail2ban.service'].state == 'running'
+          - ansible_facts.services['fail2ban.service'].status == 'enabled'
+        fail_msg: "fail2ban service is not running or not enabled."
+        success_msg: "fail2ban service is running and enabled."
+      when: 
+        - not (ansible_virtualization_type | default('') == 'docker')
+        - ansible_facts.services is defined
+        - "'fail2ban.service' in ansible_facts.services"
+
+    # -----------------------------------------------------------------------------
+    # Filter Files Verification
+    # -----------------------------------------------------------------------------
+    - name: Verify fail2ban filter files exist
+      ansible.builtin.stat:
+        path: "/etc/fail2ban/filter.d/{{ item }}.conf"
+      register: filter_files
+      loop:
+        - postfix
+        - dovecot
+        - mariadb
+        - badbot
+        - badurl
+
+    - name: Assert fail2ban filter files exist
+      ansible.builtin.assert:
+        that:
+          - item.stat.exists
+        fail_msg: "fail2ban filter file {{ item.item }}.conf does not exist."
+        success_msg: "fail2ban filter files are present."
+      loop: "{{ filter_files.results }}"
+
+    # -----------------------------------------------------------------------------
+    # Final verification message
+    # -----------------------------------------------------------------------------
+    - name: Security role verification completed
+      ansible.builtin.debug:
+        msg: "✅ Security role verification passed! Firewall and fail2ban are properly configured."

@@ -1,0 +1,15 @@
+---
+# Add and configure Remi repository for PHP on RedHat/CentOS
+- name: Import Remi GPG key
+  ansible.builtin.rpm_key:
+    state: present
+    key: https://rpms.remirepo.net/RPM-GPG-KEY-remi2021
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution_major_version == "9"
+
+- name: Add Remi repository package
+  ansible.builtin.dnf:
+    name: "https://rpms.remirepo.net/enterprise/remi-release-{{ ansible_distribution_major_version }}.rpm"
+    state: present
+  when: ansible_os_family == "RedHat"

@@ -1,0 +1,25 @@
+---
+# Development role: Main tasks
+
+- name: Include OS-specific variables
+  ansible.builtin.include_vars: "{{ ansible_os_family | lower }}.yml"
+  when: ansible_os_family == 'RedHat'
+
+- name: Install development dependencies
+  ansible.builtin.package:
+    name: "{{ dev_dependencies }}"
+    state: present
+
+- name: Install Composer
+  ansible.builtin.include_tasks: composer.yml
+  tags: ['composer', 'development']
+
+- name: Install Laravel
+  ansible.builtin.include_tasks: laravel.yml
+  tags: ['laravel', 'development']
+  when: install_laravel | default(true)
+
+- name: Install Node.js
+  ansible.builtin.include_tasks: nodejs.yml
+  tags: ['nodejs', 'development']
+  when: install_nodejs | default(true)

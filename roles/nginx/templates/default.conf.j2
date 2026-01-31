@@ -1,0 +1,21 @@
+# Default server configuration
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+
+    access_log /var/log/nginx/default-access.log;
+    error_log /var/log/nginx/default-error.log;
+
+    # Include default.d configurations
+    include /etc/nginx/default.d/*.conf;
+
+    # Return 444 for unknown hosts
+    return 444;
+
+    # Alternative: Show a simple message
+    # root /usr/share/nginx/html;
+    # location / {
+    #     return 404 "No site configured for this domain.";
+    # }
+}

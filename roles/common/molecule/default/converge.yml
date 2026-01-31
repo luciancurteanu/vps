@@ -1,0 +1,11 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    # Test variables for common role
+    domain: "test.local"
+    vault_admin_password: "TestAdminPass123!"
+    vault_admin_ssh_public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC test@molecule"
+  roles:
+    - role: common

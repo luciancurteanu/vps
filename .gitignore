@@ -1,0 +1,61 @@
+# Vault and secrets
+.vault_pass
+*.vault
+/vars/secrets.yml
+!/vars/secrets.yml.example
+
+# OS & editors
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+.env/
+
+# Build / packaging
+dist/
+build/
+*.egg-info/
+
+# Ansible / runtime
+*.retry
+.vagrant/
+.molecule/
+inventory/hosts
+!/inventory/hosts.example
+
+# Keys and credentials
+*.pem
+*.key
+id_rsa
+id_*.pem
+*.ppk
+
+# Logs and temp
+logs/
+*.log
+tmp/
+*.tmp
+*.bak
+*.swp
+*~
+temp/
+
+# VirtualBox / VM artifacts (if accidentally placed in repo)
+*.iso
+*.vdi
+*.vmdk
+*.vbox
+*.vbox-prev
+VirtualBox VMs/
+.VirtualBox/
+
+# VM launcher runtime logs
+scripts/vm-launcher/logs/

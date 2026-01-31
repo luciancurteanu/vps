@@ -1,0 +1,67 @@
+# {{ ansible_managed }}
+# Iptables rules for {{ inventory_hostname }}
+*filter
+:INPUT DROP [0:0]
+:FORWARD DROP [0:0]
+:OUTPUT ACCEPT [0:0]
+{% if security_fail2ban_enabled | default(true) %}
+:f2b-sshd - [0:0]
+{% for service in security_fail2ban_services | default(['sshd']) %}
+{% if service != 'sshd' %}
+:f2b-{{ service }} - [0:0]
+{% endif %}
+{% endfor %}
+{% endif %}
+
+# Allow loopback traffic
+-A INPUT -i lo -j ACCEPT
+
+# Allow established and related connections
+-A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+# Allow ICMP (ping)
+-A INPUT -p icmp -j ACCEPT
+
+{% if security_fail2ban_enabled | default(true) %}
+# Fail2ban chain for SSH
+-A INPUT -p tcp --dport {{ security_ssh_port | default(22) }} -j f2b-sshd
+{% endif %}
+
+# Allow SSH
+-A INPUT -p tcp --dport {{ security_ssh_port | default(22) }} -j ACCEPT
+
+# Allow defined services
+{% for service in security_firewall_allowed_services %}
+-A INPUT -p {{ service.proto | default('tcp') }} --dport {{ service.port }} -j ACCEPT
+{% endfor %}
+
+# Mail service ports (when this is the master domain)
+{% if (domain is defined) and (master_domain is defined) and (domain == master_domain) %}
+{% for service in security_mail_service_ports %}
+-A INPUT -p {{ service.proto | default('tcp') }} --dport {{ service.port }} -j ACCEPT
+{% endfor %}
+{% endif %}
+
+# Allow Cockpit web interface
+-A INPUT -p tcp --dport 9090 -m comment --comment "Allow Cockpit web interface" -j ACCEPT
+
+# Allow Webmin (if installed)
+{% if security_install_webmin | default(true) %}
+-A INPUT -p tcp --dport {{ security_webmin_port | default(10000) }} -m comment --comment "Allow Webmin" -j ACCEPT
+{% endif %}
+
+{% if security_fail2ban_enabled | default(true) %}
+# Fail2ban return chains
+-A f2b-sshd -j RETURN
+{% for service in security_fail2ban_services | default(['sshd']) %}
+{% if service != 'sshd' %}
+-A f2b-{{ service }} -j RETURN
+{% endif %}
+{% endfor %}
+{% endif %}
+
+# Log and drop all other traffic
+-A INPUT -j LOG --log-prefix "IPTABLES DROP: " --log-level 4
+-A INPUT -j DROP
+
+COMMIT

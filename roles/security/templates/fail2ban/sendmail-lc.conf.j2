@@ -1,0 +1,27 @@
+# {{ ansible_managed }}
+# Fail2ban custom sendmail action for logging
+
+[Definition]
+actionstart = 
+actionstop = 
+actioncheck = 
+actionban = printf %%b "Subject: [Fail2Ban] <name>: banned <ip> from <fq-hostname>
+            Date: `date -u "+%%a, %%d %%h %%Y %%T %%z"`
+            From: <sender>
+            To: <dest>
+            
+            Hi,
+            
+            The IP <ip> has just been banned by Fail2Ban after
+            <failures> attempts against <name>.
+            
+            Hostname: <fq-hostname>
+            Timestamp: `date -u "+%%a, %%d %%h %%Y %%T %%z"`
+            Chain: <chain>
+            Logpath: <logpath>
+            
+            Regards,
+            
+            Fail2Ban" | /usr/sbin/sendmail -f <sender> <dest>
+
+actionunban = 

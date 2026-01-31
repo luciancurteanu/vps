@@ -1,0 +1,134 @@
+---
+# Roundcube webmail configuration tasks
+
+- name: Install Roundcube dependencies
+  package:
+    name:
+      - tar
+      - wget
+      - php-pdo
+      - php-mbstring
+      - php-intl
+      - php-xml
+      - php-zip
+      - php-mysql
+      - php-gd
+      - php-curl
+    state: present
+
+- name: Create Roundcube directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: nginx
+    group: nginx
+    mode: '0755'
+  with_items:
+    - "{{ webmail_path }}"
+    - "{{ webmail_path }}/temp"
+    - "{{ webmail_path }}/logs"
+
+- name: Check if Roundcube is already installed
+  stat:
+    path: "{{ webmail_path }}/index.php"
+  register: roundcube_installed
+
+- name: Download Roundcube
+  get_url:
+    url: "https://github.com/roundcube/roundcubemail/releases/download/{{ webmail_version }}/roundcubemail-{{ webmail_version }}-complete.tar.gz"
+    dest: /tmp/roundcube.tar.gz
+    mode: '0644'
+  when: not roundcube_installed.stat.exists
+
+- name: Extract Roundcube archive
+  unarchive:
+    src: /tmp/roundcube.tar.gz
+    dest: /tmp
+    remote_src: yes
+  when: not roundcube_installed.stat.exists
+
+- name: Move Roundcube files to webmail directory
+  shell: cp -r /tmp/roundcubemail-{{ webmail_version }}/* {{ webmail_path }}/
+  args:
+    creates: "{{ webmail_path }}/index.php"
+  when: not roundcube_installed.stat.exists
+
+- name: Configure Roundcube
+  template:
+    src: roundcube/config.inc.php.j2
+    dest: "{{ webmail_path }}/config/config.inc.php"
+    owner: nginx
+    group: nginx
+    mode: '0640'
+
+- name: Create Roundcube database
+  mysql_db:
+    name: "{{ roundcube_db_name | default('roundcube') }}"
+    state: present
+    login_user: "{{ db_root_user }}"
+    login_password: "{{ db_root_password }}"
+
+- name: Create Roundcube database user
+  mysql_user:
+    name: "{{ roundcube_db_user | default('roundcube') }}"
+    password: "{{ roundcube_db_password }}"
+    priv: "{{ roundcube_db_name | default('roundcube') }}.*:ALL"
+    state: present
+    login_user: "{{ db_root_user }}"
+    login_password: "{{ db_root_password }}"
+
+- name: Import Roundcube database schema
+  mysql_db:
+    name: "{{ roundcube_db_name | default('roundcube') }}"
+    state: import
+    target: "{{ webmail_path }}/SQL/mysql.initial.sql"
+    login_user: "{{ db_root_user }}"
+    login_password: "{{ db_root_password }}"
+  when: not roundcube_installed.stat.exists
+
+- name: Set proper permissions for Roundcube
+  file:
+    path: "{{ webmail_path }}"
+    owner: nginx
+    group: nginx
+    mode: '0755'
+    recurse: yes
+
+- name: Ensure temp and logs directories are writable
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: nginx
+    group: nginx
+    mode: '0770'
+  with_items:
+    - "{{ webmail_path }}/temp"
+    - "{{ webmail_path }}/logs"
+
+- name: Set SELinux context for Roundcube content
+  community.general.sefcontext:
+    target: "{{ webmail_path }}(/.*)?"
+    setype: httpd_sys_content_t
+    state: present
+  when: ansible_selinux.status == "enabled"
+
+- name: Set SELinux context for writable directories
+  community.general.sefcontext:
+    target: "{{ item }}(/.*)?"
+    setype: httpd_sys_rw_content_t
+    state: present
+  with_items:
+    - "{{ webmail_path }}/temp"
+    - "{{ webmail_path }}/logs"
+  when: ansible_selinux.status == "enabled"
+
+- name: Apply SELinux context to Roundcube
+  command: restorecon -Rv {{ webmail_path }}
+  when: ansible_selinux.status == "enabled"
+  changed_when: false
+
+- name: Disable Roundcube installer directory
+  command: mv {{ webmail_path }}/installer {{ webmail_path }}/installer.disabled
+  args:
+    creates: "{{ webmail_path }}/installer.disabled"
+  when: roundcube_installed.stat.exists or not roundcube_installed.stat.exists

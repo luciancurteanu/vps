@@ -1,0 +1,10 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    # Role variables (e.g., admin_user, admin_auth, admin_ssh_public_key)
+    # are inherited from the Ansible inventory (e.g., group_vars/all.yml).
+    # Domain variables are provided by molecule.yml extra-vars.
+  roles:
+    - role: security

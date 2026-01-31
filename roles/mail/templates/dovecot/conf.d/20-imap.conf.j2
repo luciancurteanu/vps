@@ -1,0 +1,18 @@
+# {{ ansible_managed }}
+# Dovecot IMAP configuration
+
+protocol imap {
+  mail_plugins = $mail_plugins imap_quota
+  mail_max_userip_connections = 20
+  imap_idle_notify_interval = 4 mins
+}
+
+service imap-login {
+  inet_listener imap {
+    port = 143
+  }
+  inet_listener imaps {
+    port = 993
+    ssl = yes
+  }
+}

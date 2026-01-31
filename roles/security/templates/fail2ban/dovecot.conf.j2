@@ -1,0 +1,17 @@
+# {{ ansible_managed }}
+# Dovecot fail2ban filter
+
+[INCLUDES]
+
+before = common.conf
+
+[Definition]
+failregex = ^%(__prefix_line)s(auth|auth-worker\(\d+\)): pam\(\S+,<HOST>\): pam_authenticate\(\) failed: Authentication failure$
+            ^%(__prefix_line)s(auth|auth-worker\(\d+\)): pam\(\S+,<HOST>\): pam_authenticate\(\) failed: User not known to the underlying authentication module$
+            ^%(__prefix_line)s(auth|auth-worker\(\d+\)): unknown user.*rip=<HOST>
+            ^%(__prefix_line)s(auth|auth-worker\(\d+\)).*\(auth failed, \d+ attempts\).*rip=<HOST>
+            ^%(__prefix_line)s(auth|auth-worker\(\d+\)).*\(auth failed, \d+ attempts.*\).*rip=<HOST>
+            ^%(__prefix_line)s(auth|auth-worker\(\d+\)): ldap\(\S+,<HOST>\): invalid credentials
+            ^%(__prefix_line)simap-login: (Aborted login|Disconnected).*auth failed.*\(rip=<HOST>,.*
+
+ignoreregex =

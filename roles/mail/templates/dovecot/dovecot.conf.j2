@@ -1,0 +1,26 @@
+# {{ ansible_managed }}
+# Dovecot configuration file
+
+# Base protocols and listeners
+protocols = imap pop3 lmtp
+listen = *, ::
+
+# Mail location
+mail_location = maildir:/home/{{ domain }}/mail/virtual/%d/%n
+mail_uid = vmail
+mail_gid = vmail
+first_valid_uid = {{ mail_uid | default(5000) }}
+last_valid_uid = {{ mail_uid | default(5000) }}
+
+# Authentication
+auth_mechanisms = plain login
+disable_plaintext_auth = yes
+
+# Mail plugins
+mail_plugins = $mail_plugins quota
+
+# Include all configuration from conf.d directory
+!include conf.d/*.conf
+
+# Include auth configuration
+!include_try /usr/share/dovecot/protocols.d/*.protocol

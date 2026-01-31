@@ -1,0 +1,69 @@
+# Nginx Virtual Host Configuration for {{ domain }}
+server {
+    listen 80;
+    server_name {{ domain }} www.{{ domain }};
+    root /home/{{ domain }}/public_html;
+    index index.php index.html index.htm;
+
+    # Access and error logs
+    access_log /home/{{ domain }}/logs/access.log;
+    error_log /home/{{ domain }}/logs/error.log;
+
+    # Favicon handling
+    location = /favicon.ico {
+        log_not_found off;
+        access_log off;
+    }
+
+    # Robots.txt handling
+    location = /robots.txt {
+        allow all;
+        log_not_found off;
+        access_log off;
+    }
+
+    # Deny access to hidden files
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+
+    # Default location block
+    location / {
+        try_files $uri $uri/ /index.php?$args;
+    }
+
+    # Static files handling with cache
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires {{ nginx_static_expires | default('30d') }};
+        add_header Cache-Control "public, no-transform";
+    }
+
+    # PHP handler
+    location ~ \.php$ {
+        try_files $uri =404;
+        fastcgi_split_path_info ^(.+\.php)(/.+)$;
+        fastcgi_pass unix:/var/run/php-fpm/{{ domain }}.sock;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+        fastcgi_intercept_errors on;
+        fastcgi_buffer_size 16k;
+        fastcgi_buffers 4 16k;
+        fastcgi_connect_timeout 300;
+        fastcgi_send_timeout 300;
+        fastcgi_read_timeout 300;
+    }
+
+    # Security headers
+    add_header X-Content-Type-Options nosniff;
+    add_header X-XSS-Protection "1; mode=block";
+    add_header X-Frame-Options SAMEORIGIN;
+    add_header Referrer-Policy strict-origin-when-cross-origin;
+
+    # Limits
+    client_max_body_size {{ nginx_client_max_body_size | default('64M') }};
+    
+    # SSL configuration will be added by Certbot when SSL is enabled
+}

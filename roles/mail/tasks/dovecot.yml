@@ -1,0 +1,203 @@
+---
+# Dovecot configuration tasks
+
+- name: Install Dovecot packages
+  ansible.builtin.package:
+    name:
+      - dovecot
+      - dovecot-mysql
+      - dovecot-pigeonhole
+    state: present
+
+- name: Create Dovecot directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: dovecot
+    group: dovecot
+    mode: '0755'
+  with_items:
+    - /etc/dovecot/conf.d
+
+- name: Backup Dovecot main configuration
+  ansible.builtin.copy:
+    src: /etc/dovecot/dovecot.conf
+    dest: /etc/dovecot/dovecot.conf.bak
+    remote_src: yes
+    force: no
+  ignore_errors: yes
+
+- name: Configure Dovecot main configuration
+  ansible.builtin.template:
+    src: dovecot/dovecot.conf.j2
+    dest: /etc/dovecot/dovecot.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart dovecot
+
+- name: Backup Dovecot authentication config
+  ansible.builtin.copy:
+    src: /etc/dovecot/conf.d/10-auth.conf
+    dest: /etc/dovecot/conf.d/10-auth.conf.bak
+    remote_src: yes
+    force: no
+  ignore_errors: yes
+
+- name: Configure Dovecot authentication
+  ansible.builtin.template:
+    src: dovecot/conf.d/10-auth.conf.j2
+    dest: /etc/dovecot/conf.d/10-auth.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart dovecot
+
+- name: Backup Dovecot mail locations config
+  ansible.builtin.copy:
+    src: /etc/dovecot/conf.d/10-mail.conf
+    dest: /etc/dovecot/conf.d/10-mail.conf.bak
+    remote_src: yes
+    force: no
+  ignore_errors: yes
+
+- name: Configure Dovecot mail locations
+  ansible.builtin.template:
+    src: dovecot/conf.d/10-mail.conf.j2
+    dest: /etc/dovecot/conf.d/10-mail.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart dovecot
+
+- name: Backup Dovecot SSL config
+  ansible.builtin.copy:
+    src: /etc/dovecot/conf.d/10-ssl.conf
+    dest: /etc/dovecot/conf.d/10-ssl.conf.bak
+    remote_src: yes
+    force: no
+  ignore_errors: yes
+
+- name: Configure Dovecot SSL settings
+  ansible.builtin.template:
+    src: dovecot/conf.d/10-ssl.conf.j2
+    dest: /etc/dovecot/conf.d/10-ssl.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart dovecot
+
+- name: Backup Dovecot IMAP config
+  ansible.builtin.copy:
+    src: /etc/dovecot/conf.d/20-imap.conf
+    dest: /etc/dovecot/conf.d/20-imap.conf.bak
+    remote_src: yes
+    force: no
+  ignore_errors: yes
+
+- name: Configure Dovecot IMAP settings
+  ansible.builtin.template:
+    src: dovecot/conf.d/20-imap.conf.j2
+    dest: /etc/dovecot/conf.d/20-imap.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart dovecot
+
+- name: Backup Dovecot POP3 config
+  ansible.builtin.copy:
+    src: /etc/dovecot/conf.d/20-pop3.conf
+    dest: /etc/dovecot/conf.d/20-pop3.conf.bak
+    remote_src: yes
+    force: no
+  ignore_errors: yes
+
+- name: Configure Dovecot POP3 settings
+  ansible.builtin.template:
+    src: dovecot/conf.d/20-pop3.conf.j2
+    dest: /etc/dovecot/conf.d/20-pop3.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart dovecot
+
+- name: Backup Dovecot LDA config
+  ansible.builtin.copy:
+    src: /etc/dovecot/conf.d/15-lda.conf
+    dest: /etc/dovecot/conf.d/15-lda.conf.bak
+    remote_src: yes
+    force: no
+  ignore_errors: yes
+
+- name: Configure Dovecot LDA settings
+  ansible.builtin.template:
+    src: dovecot/conf.d/15-lda.conf.j2
+    dest: /etc/dovecot/conf.d/15-lda.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart dovecot
+
+- name: Check if Dovecot MySQL config exists
+  ansible.builtin.stat:
+    path: /etc/dovecot/dovecot-mysql.conf.ext
+  register: dovecot_mysql_conf
+
+- name: Check if Dovecot MySQL backup exists
+  ansible.builtin.stat:
+    path: /etc/dovecot/dovecot-mysql.conf.ext.bak
+  register: dovecot_mysql_backup
+
+- name: Backup Dovecot MySQL config
+  ansible.builtin.copy:
+    src: /etc/dovecot/dovecot-mysql.conf.ext
+    dest: /etc/dovecot/dovecot-mysql.conf.ext.bak
+    remote_src: yes
+  when: dovecot_mysql_conf.stat.exists and not dovecot_mysql_backup.stat.exists
+
+- name: Configure Dovecot MySQL settings
+  ansible.builtin.template:
+    src: dovecot/dovecot-mysql.conf.ext.j2
+    dest: /etc/dovecot/dovecot-mysql.conf.ext
+    owner: root
+    group: root
+    mode: '0600'
+  notify: restart dovecot
+
+- name: Create symlink for dovecot-sql.conf.ext
+  ansible.builtin.file:
+    src: /etc/dovecot/dovecot-mysql.conf.ext
+    dest: /etc/dovecot/dovecot-sql.conf.ext
+    state: link
+  notify: restart dovecot
+
+- name: Set permissions on mail directories
+  ansible.builtin.file:
+    path: /home/{{ domain }}/mail
+    owner: vmail
+    group: vmail
+    mode: '0770'
+    recurse: yes
+  when: domain is defined
+
+- name: Ensure Dovecot service is running and enabled
+  ansible.builtin.systemd:
+    name: dovecot
+    state: started
+    enabled: true
+  register: dovecot_service
+  failed_when: false
+
+- name: Show Dovecot service status when start fails
+  ansible.builtin.command: systemctl status dovecot --no-pager
+  register: dovecot_status
+  changed_when: false
+  failed_when: false
+  when: dovecot_service is failed or dovecot_service.rc | default(0) != 0
+
+- name: Show Dovecot journal tail when start fails
+  ansible.builtin.command: journalctl -u dovecot --no-pager -n 50
+  register: dovecot_journal
+  changed_when: false
+  failed_when: false
+  when: dovecot_service is failed or dovecot_service.rc | default(0) != 0

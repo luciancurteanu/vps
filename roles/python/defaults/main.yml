@@ -1,0 +1,16 @@
+---
+# Python Utils role: Default variables
+
+# Python packages to install
+python_packages:
+  - requests
+  - cloudscraper
+  - BeautifulSoup4
+  - urllib3
+  - selenium
+  - selenium-stealth
+  - webdriver-manager
+  - undetected-chromedriver
+
+# Chromium is installed from EPEL with automatic dependency resolution
+# No manual dependency management needed for headless mode

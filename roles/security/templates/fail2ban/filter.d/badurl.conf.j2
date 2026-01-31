@@ -1,0 +1,6 @@
+# {{ ansible_managed }}
+# BadURL fail2ban filter
+
+[Definition]
+failregex = ^<HOST> -.*"(GET|POST|HEAD).*HTTP.*".*(?:(.php.php|//proc/|/GponForm/|/config/getuser|/setup.cgi|/cgi-bin/|/etc/passwd|/cgi/common|/muieblackcat|.git/HEAD|wp-login|/ctrlt/|/wls-wsat/|/wp-content/))"
+ignoreregex =

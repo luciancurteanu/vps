@@ -1,0 +1,96 @@
+---
+# Configure PHP-FPM and apply necessary permissions
+
+- name: Backup original www.conf (RedHat)
+  ansible.builtin.copy:
+    src: /etc/php-fpm.d/www.conf
+    dest: /etc/php-fpm.d/www.conf.bak
+    remote_src: true
+    force: false
+  when: ansible_os_family == "RedHat"
+
+- name: Configure PHP-FPM pool settings
+  ansible.builtin.lineinfile:
+    path: /etc/php-fpm.d/www.conf
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - { regexp: '^listen =',       line: 'listen = {{ php_fpm_listen }}' }
+    - { regexp: '^user =',         line: 'user = {{ nginx_user }}' }
+    - { regexp: '^group =',        line: 'group = {{ nginx_group }}' }
+    - { regexp: '^listen.owner',   line: 'listen.owner = {{ nginx_user }}' }
+    - { regexp: '^listen.group',   line: 'listen.group = {{ nginx_group }}' }
+    - { regexp: '^listen.mode',    line: 'listen.mode = 0660' }
+    - { regexp: '^;listen.acl_users', line: ';listen.acl_users = apache,nginx' }
+  notify: Restart php-fpm
+  when: ansible_os_family == "RedHat"
+
+- name: Insert OPCache settings into php.ini
+  ansible.builtin.blockinfile:
+    path: /etc/php.ini
+    marker: "; ANSIBLE MANAGED OPCACHE BLOCK"
+    block: |
+      [opcache]
+      opcache.enable=1
+      opcache.memory_consumption=128
+      opcache.interned_strings_buffer=8
+      opcache.max_accelerated_files=4000
+      opcache.revalidate_freq=2
+      opcache.fast_shutdown=1
+      opcache.enable_cli=1
+  when: ansible_os_family == "RedHat"
+
+- name: Ensure PHP-FPM run directory exists
+  ansible.builtin.file:
+    path: "{{ php_fpm_listen | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  when: ansible_os_family == "RedHat"
+
+- name: Ensure PHP-FPM log directory ownership
+  ansible.builtin.file:
+    path: /var/log/php-fpm
+    state: directory
+    owner: nginx
+    group: root
+    mode: '0755'
+  when: ansible_os_family == "RedHat"
+
+- name: Ensure /var/lib/php ownership and group (RedHat)
+  ansible.builtin.file:
+    path: /var/lib/php
+    recurse: yes
+    state: directory
+    owner: root
+    group: nginx
+    mode: '0755'
+  when: ansible_os_family == "RedHat"
+
+- name: Ensure PHP session directory permissions
+  ansible.builtin.file:
+    path: /var/lib/php/session
+    state: directory
+    owner: nginx
+    group: nginx
+    mode: '0700'
+  when: ansible_os_family == "RedHat"
+
+- name: Enable and start php-fpm service
+  ansible.builtin.systemd:
+    name: php-fpm.service
+    enabled: true
+    state: started
+  when: ansible_os_family == "RedHat"
+
+- name: Deploy per-domain PHP-FPM pool templates
+  ansible.builtin.template:
+    src: pool.conf.j2
+    dest: "/etc/php-fpm.d/{{ item }}.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  loop: "{{ php_fpm_pools }}"
+  when: php_fpm_pools | length > 0 and ansible_os_family == 'RedHat'
+  notify: Restart php-fpm

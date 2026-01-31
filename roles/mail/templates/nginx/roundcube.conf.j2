@@ -1,0 +1,22 @@
+# Roundcube webmail configuration for {{ mail_subdomain }}
+# This will be included in the mail server configuration
+
+location /roundcube {
+    alias {{ webmail_path }};
+    index index.php;
+    
+    # Pass PHP scripts to PHP-FPM
+    location ~ ^/roundcube/(.+\.php)$ {
+        alias {{ webmail_path }}/$1;
+        fastcgi_pass unix:/var/run/php-fpm/{{ domain }}.sock;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $request_filename;
+        include fastcgi_params;
+    }
+    
+    # Static files
+    location ~* ^/roundcube/(.+\.(jpg|jpeg|gif|css|png|js|ico|html|xml|txt))$ {
+        alias {{ webmail_path }}/$1;
+        expires max;
+    }
+}

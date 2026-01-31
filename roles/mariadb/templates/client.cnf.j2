@@ -1,0 +1,7 @@
+# {{ ansible_managed }}
+# MariaDB client configuration
+
+[client]
+port = {{ db_port }}
+socket = /var/lib/mysql/mysql.sock
+default-character-set = {{ db_character_set }}

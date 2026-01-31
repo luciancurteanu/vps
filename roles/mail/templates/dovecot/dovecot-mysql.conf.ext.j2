@@ -1,0 +1,15 @@
+# {{ ansible_managed }}
+# SQL authentication configuration for Dovecot
+
+driver = mysql
+connect = host=127.0.0.1 dbname={{ mail_db_name }} user={{ mail_db_user }} password={{ mail_db_password }}
+default_pass_scheme = SHA512-CRYPT
+
+# User query
+user_query = SELECT CONCAT('/home/{{ domain }}/mail/virtual/', SUBSTRING_INDEX(email,'@',-1), '/', SUBSTRING_INDEX(email,'@',1)) as home, 5000 as uid, 5000 as gid FROM users WHERE email='%u'
+
+# Password query
+password_query = SELECT email as user, password FROM users WHERE email='%u'
+
+# Iterate query for listing users
+iterate_query = SELECT email as user FROM users

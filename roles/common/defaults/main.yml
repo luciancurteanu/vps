@@ -1,0 +1,32 @@
+---
+# Common role: Default variables
+# Most configuration is inherited from inventory/group_vars/all.yml
+# Only role-specific prefixed variants are defined here to avoid variable collisions
+
+# System configuration (from all.yml)
+common_timezone: "{{ timezone }}"
+common_use_local_rtc: "{{ use_local_rtc }}"
+common_locale: "{{ locale }}"
+common_hostname: "{{ domain | default('server') }}"
+
+# User configuration (from all.yml)
+common_create_admin_user: "{{ create_admin_user }}"
+common_admin_user: "{{ admin_user }}"
+common_admin_group: "{{ admin_group }}"
+common_admin_shell: "{{ admin_shell }}"
+common_admin_password: "{{ admin_password }}"
+common_admin_ssh_key: "{{ admin_ssh_public_key }}"
+
+# SSH configuration (from all.yml)
+common_ssh_port: "{{ ssh_port }}"
+common_ssh_service_name: "{{ ssh_service_name | default('sshd') }}"
+common_ssh_permit_root_login: "{{ ssh_permit_root_login }}"
+common_ssh_password_authentication: "{{ ssh_password_authentication }}"
+common_ssh_pubkey_authentication: "{{ ssh_pubkey_authentication }}"
+common_ssh_allow_agent_forwarding: "{{ ssh_allow_agent_forwarding }}"
+common_ssh_allow_tcp_forwarding: "{{ ssh_allow_tcp_forwarding }}"
+common_ssh_x11_forwarding: "{{ ssh_x11_forwarding }}"
+common_ssh_max_auth_tries: "{{ ssh_max_auth_tries }}"
+common_ssh_max_sessions: "{{ ssh_max_sessions }}"
+common_ssh_client_alive_interval: "{{ ssh_client_alive_interval }}"
+common_ssh_client_alive_count_max: "{{ ssh_client_alive_count_max }}"

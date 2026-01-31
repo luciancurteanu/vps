@@ -1,0 +1,107 @@
+---
+# Python Utils role: Main tasks
+
+- name: Ensure Python PIP is installed
+  ansible.builtin.package:
+    name: python3-pip
+    state: present
+
+- name: Install Python packages
+  ansible.builtin.pip:
+    name: "{{ python_packages }}"
+    state: present
+  register: pip_install
+
+- name: Upgrade PIP
+  ansible.builtin.pip:
+    name: pip
+    state: latest
+  when: pip_install is succeeded
+
+- name: Ensure EPEL repository is enabled
+  ansible.builtin.dnf:
+    name: epel-release
+    state: present
+
+- name: Install Chromium headless for scraping
+  ansible.builtin.dnf:
+    name:
+      - chromium
+      - chromium-headless
+    state: present
+  register: chromium_install
+
+- name: Get Chromium version
+  ansible.builtin.shell: chromium-browser --version 2>/dev/null || chromium --version
+  register: chrome_version_raw
+  changed_when: false
+  failed_when: false
+  when: chromium_install is succeeded
+
+- name: Extract version number from Chromium output
+  ansible.builtin.set_fact:
+    chrome_version: "{{ chrome_version_raw.stdout | regex_search('(\\d+\\.\\d+\\.\\d+\\.\\d+)', '\\1') | first }}"
+  when:
+    - chromium_install is succeeded
+    - chrome_version_raw is defined
+    - chrome_version_raw.stdout is defined
+    - chrome_version_raw.stdout | length > 0
+
+- name: Check if ChromeDriver is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/chromedriver
+  register: chromedriver_stat
+
+- name: Download matching ChromeDriver
+  ansible.builtin.get_url:
+    url: "https://storage.googleapis.com/chrome-for-testing-public/{{ chrome_version }}/linux64/chromedriver-linux64.zip"
+    dest: /tmp/chromedriver-linux64.zip
+    mode: '0644'
+  register: driver_download
+  ignore_errors: true
+  when:
+    - chromium_install is succeeded
+    - chrome_version is defined
+    - chrome_version | length > 0
+    - not chromedriver_stat.stat.exists
+
+- name: Ensure unzip is installed for ChromeDriver extraction
+  ansible.builtin.package:
+    name: unzip
+    state: present
+  when:
+    - driver_download is defined
+    - driver_download is not skipped
+    - driver_download is succeeded
+
+- name: Extract ChromeDriver
+  ansible.builtin.unarchive:
+    src: /tmp/chromedriver-linux64.zip
+    dest: /tmp
+    remote_src: yes
+  when:
+    - driver_download is defined
+    - driver_download is not skipped
+    - driver_download is succeeded
+
+- name: Install ChromeDriver
+  ansible.builtin.copy:
+    src: /tmp/chromedriver-linux64/chromedriver
+    dest: /usr/local/bin/chromedriver
+    mode: '0755'
+    remote_src: yes
+  when:
+    - driver_download is defined
+    - driver_download is not skipped
+    - driver_download is succeeded
+
+- name: Clean up temporary files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /tmp/chromedriver-linux64.zip
+    - /tmp/chromedriver-linux64
+  when:
+    - driver_download is defined
+    - driver_download is succeeded

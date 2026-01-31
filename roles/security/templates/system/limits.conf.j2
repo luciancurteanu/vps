@@ -1,0 +1,7 @@
+# {{ ansible_managed }}
+# Custom system limits (managed by security role)
+
+*                soft    nofile          {{ security_open_files_limit }}
+*                hard    nofile          {{ security_open_files_limit }}
+*                soft    nproc           {{ security_nproc_limit }}
+*                hard    nproc           {{ security_nproc_limit }}
