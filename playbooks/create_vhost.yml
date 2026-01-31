@@ -79,7 +79,7 @@
         group: "{{ user }}"
         mode: '0700'
         recurse: true
-        
+
     - name: Configure PHP-FPM pool
       ansible.builtin.template:
         src: "{{ playbook_dir }}/../templates/php/pool.conf.j2"
@@ -188,7 +188,7 @@
         groups: "{{ sftp_group }}"
         append: true
       when: domain == master_domain
-      
+
     - name: Configure hosts file for master domain
       ansible.builtin.lineinfile:
         path: /etc/hosts
@@ -209,7 +209,6 @@
       when: domain != master_domain
 
     - name: Configure mail subdomain if this is the master domain
-      when: domain == master_domain
       block:
         - name: Create mail subdomain configuration
           ansible.builtin.template:
@@ -237,6 +236,7 @@
       when: domain == master_domain
 
     - name: Configure Postfix for regular domain
+      when: domain != master_domain
       block:
         - name: Add domain to mail database
           community.mysql.mysql_query:
@@ -254,7 +254,7 @@
             login_password: "{{ db_root_password }}"
             login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
             query: |
-              INSERT IGNORE INTO users (email, password, domain) 
+              INSERT IGNORE INTO users (email, password, domain)
               VALUES ('{{ item }}@{{ domain }}', '{{ vault_mail_default_password | password_hash('sha512') }}', '{{ domain }}')
           with_items:
             - "contact"
@@ -278,9 +278,9 @@
             - "no-reply"
             - "copyright"
             - "privacy"
-      when: domain != master_domain
 
     - name: Configure OpenDKIM for regular domain
+      when: domain != master_domain
       block:
         - name: Create OpenDKIM directory for domain
           ansible.builtin.file:
@@ -325,7 +325,6 @@
             - postfix
             - dovecot
             - opendkim
-      when: domain != master_domain
 
   handlers:
     - name: Restart Nginx
