@@ -82,7 +82,7 @@
     - name: Create main domain vhost configuration
       tags: ['setup', 'nginx']
       ansible.builtin.template:
-        src: ../templates/nginx/vhost.conf.j2
+        src: "{{ playbook_dir }}/../templates/nginx/vhost.conf.j2"
         dest: "/etc/nginx/sites-available/{{ domain }}.conf"
         owner: root
         group: root
@@ -116,7 +116,7 @@
     - name: Create default index.html for main domain
       tags: ['setup', 'nginx']
       ansible.builtin.template:
-        src: ../templates/website/index.html.j2
+        src: "{{ playbook_dir }}/../templates/website/index.html.j2"
         dest: "/home/{{ domain }}/public_html/index.html"
         owner: root
         group: root

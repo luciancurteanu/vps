@@ -3,16 +3,16 @@
   hosts: all
   become: true
   gather_facts: false
-  
+
   vars_files:
     - ../vars/secrets.yml
-    
+
   vars:
     required_vars:
       - domain
       - user
     document_root: "/home/{{ domain }}"
-    
+
   pre_tasks:
     - name: Verify required variables are defined
       ansible.builtin.assert:
@@ -29,7 +29,7 @@
       ansible.builtin.fail:
         msg: "Virtual host for {{ domain }} does not exist."
       when: not nginx_conf.stat.exists
-      
+
   tasks:
     - name: Backup website files
       ansible.builtin.archive:
