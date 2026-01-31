@@ -73,49 +73,41 @@
       SFTP_SERVER_PATH="/usr/libexec/openssh/sftp-server"
 
       if [ ! -f "$SFTP_SERVER_PATH" ]; then
-      echo "sftp-server not found at $SFTP_SERVER_PATH"
-      exit 1
-    fi
-
-    # Ensure target directories exist
-    mkdir -p "$CHROOT_BASE/$(dirname $SFTP_SERVER_PATH)"
-    mkdir -p "$CHROOT_BASE/lib64"
-    mkdir -p "$CHROOT_BASE/lib"
-
-    # Copy sftp-server itself if not done by the copy task above (e.g. if path differs)
-    # cp -f "$SFTP_SERVER_PATH" "$CHROOT_BASE/$(dirname $SFTP_SERVER_PATH)/"
-
-    # Get list of libraries
-    LDD_OUTPUT=$(ldd "$SFTP_SERVER_PATH" 2>/dev/null)
-    if [ -z "$LDD_OUTPUT" ]; then
-      echo "Could not determine dependencies for $SFTP_SERVER_PATH. It might be statically linked."
-      exit 0 # Not an error if statically linked
-    fi
-
-    echo "$LDD_OUTPUT" | while IFS= read -r line ; do
-      if [[ "$line" =~ =>[[:space:]]+([^[:space:]]+)[[:space:]]+\(0x[0-9a-fA-F]+\) ]]; then
-        LIB_PATH="${BASH_REMATCH[1]}"
-      elif [[ "$line" =~ ([^[:space:]]+)[[:space:]]+\(0x[0-9a-fA-F]+\) ]]; then # For ld-linux-x86-64.so.2 itself
-        LIB_PATH="${BASH_REMATCH[1]}"
-      else
-        continue # Skip lines that don't match expected ldd output
+        echo "sftp-server not found at $SFTP_SERVER_PATH"
+        exit 1
       fi
 
-      if [ -f "$LIB_PATH" ]; then
-        DEST_DIR="$CHROOT_BASE$(dirname "$LIB_PATH")"
-        mkdir -p "$DEST_DIR"
-        if [ ! -f "$CHROOT_BASE$LIB_PATH" ]; then # Copy only if not already there
-          cp -L "$LIB_PATH" "$DEST_DIR/"
-          echo "Copied $LIB_PATH to $DEST_DIR/"
+      mkdir -p "$CHROOT_BASE/$(dirname $SFTP_SERVER_PATH)"
+      mkdir -p "$CHROOT_BASE/lib64"
+      mkdir -p "$CHROOT_BASE/lib"
+
+      LDD_OUTPUT=$(ldd "$SFTP_SERVER_PATH" 2>/dev/null)
+      if [ -z "$LDD_OUTPUT" ]; then
+        echo "Could not determine dependencies for $SFTP_SERVER_PATH. It might be statically linked."
+        exit 0
+      fi
+
+      echo "$LDD_OUTPUT" | while IFS= read -r line ; do
+        if [[ "$line" =~ =>[[:space:]]+([^[:space:]]+)[[:space:]]+\(0x[0-9a-fA-F]+\) ]]; then
+          LIB_PATH="${BASH_REMATCH[1]}"
+        elif [[ "$line" =~ ([^[:space:]]+)[[:space:]]+\(0x[0-9a-fA-F]+\) ]]; then
+          LIB_PATH="${BASH_REMATCH[1]}"
+        else
+          continue
         fi
-      else
-        echo "Warning: Library $LIB_PATH not found on host."
-      fi
-    done
-  args:
+
+        if [ -f "$LIB_PATH" ]; then
+          DEST_DIR="$CHROOT_BASE$(dirname "$LIB_PATH")"
+          mkdir -p "$DEST_DIR"
+          if [ ! -f "$CHROOT_BASE$LIB_PATH" ]; then
+            cp -L "$LIB_PATH" "$DEST_DIR/"
+            echo "Copied $LIB_PATH to $DEST_DIR/"
+          fi
+        else
+          echo "Warning: Library $LIB_PATH not found on host."
+        fi
+      done
     executable: /bin/bash
-    # Check if sftp-server is present in chroot to avoid re-running if already set up.
-    # This is a basic check; a more robust check would verify all libs.
     creates: "{{ vhost_user_item.home }}/bin/sftp-server"
   register: copy_libs_result
   changed_when: "'Copied' in copy_libs_result.stdout"
