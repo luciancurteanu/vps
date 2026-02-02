@@ -2,5 +2,9 @@
 - name: Converge
   hosts: all
   become: true
+  vars:
+    db_root_password: "root"
+    db_webclient_password: "{{ db_root_password }}"
+    db_remote_password: "{{ db_root_password }}"
   roles:
     - role: mariadb
