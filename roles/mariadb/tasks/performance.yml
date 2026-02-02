@@ -21,7 +21,6 @@
     src: performance.cnf.j2
     dest: /etc/my.cnf.d/performance.cnf
     owner: root
-    ansible.builtin.group: root
     group: root
   notify: restart mariadb
 
@@ -30,6 +29,5 @@
     src: innodb.cnf.j2
     dest: /etc/my.cnf.d/innodb.cnf
     owner: root
-    ansible.builtin.group: root
     group: root
   notify: restart mariadb
