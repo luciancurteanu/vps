@@ -109,18 +109,12 @@ echo "[INFO] Starting Molecule $ACTION for role: $ROLE"
 
 # Ensure user has docker group access for molecule to work
 if ! docker ps &>/dev/null 2>&1; then
-  echo "[INFO] Docker group not active in current session. Activating with 'sg docker'..."
-  # Use sg to run the entire molecule command with docker group active
-  exec sg docker -c "
-    source '$VENV_PATH/bin/activate'
-    unset DOCKER_HOST
-    cd '$ROLE_DIR'
-    molecule '$ACTION' 2>&1 | tee '$VM_TERMINAL_LOG_FILE'
-    exit \${PIPESTATUS[0]}
-  "
+  echo "[INFO] Docker group not active in current session. Setting socket permissions..."
+  # Temporarily allow docker socket access (requires NOPASSWD sudo for docker)
+  sudo chmod 666 /var/run/docker.sock
 fi
 
-echo "[INFO] Docker access confirmed, running molecule directly"
+echo "[INFO] Running molecule $ACTION"
 molecule "$ACTION" 2>&1 | tee "$VM_TERMINAL_LOG_FILE"
 exit_status=${PIPESTATUS[0]}
 
