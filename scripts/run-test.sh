@@ -109,25 +109,31 @@ echo "[INFO] Starting Molecule $ACTION for role: $ROLE"
 
 # Ensure user has docker group access for molecule to work
 # Check if we need to activate docker group privileges
-if ! docker ps &>/dev/null; then
-  echo "[WARNING] Cannot access Docker socket directly."
-  
-  # Check if user is in docker group
-  if groups | grep -q docker; then
-    echo "[INFO] User is in docker group, but session needs refresh. Using 'sg docker' to activate group..."
-    # Use sg (newgrp substitute) which works better for non-interactive switching
-    sg docker -c "cd '$ROLE_DIR' && molecule '$ACTION' 2>&1 | tee '$VM_TERMINAL_LOG_FILE'"
-    exit_status=${PIPESTATUS[0]}
-  else
-    echo "[ERROR] User is not in docker group. Trying with sudo..."
-    sudo docker ps &>/dev/null || {
-      echo "[ERROR] Cannot access Docker even with sudo. Please check Docker installation."
-      exit 1
-    }
-    echo "[INFO] Using sudo for docker access. Consider logging out and back in to activate docker group membership."
-    # Run molecule with sudo for docker commands
+if ! docker ps &>/dev/null 2>&1; then
+  # Docker socket not accessible directly, check if sudo works
+  if sudo docker ps &>/dev/null 2>&1; then
+    echo "[INFO] Docker requires elevated privileges. Using sudo for docker commands."
+    echo "[INFO] (To avoid this, reconnect your SSH session to activate docker group)"
+    # Export DOCKER_HOST to use sudo for docker commands via Molecule
+    export DOCKER_HOST="unix:///var/run/docker.sock"
+    # Set up sudo wrapper for docker by creating a temporary script
+    DOCKER_WRAPPER="/tmp/docker_sudo_wrapper_$$.sh"
+    cat > "$DOCKER_WRAPPER" <<'EOF'
+#!/bin/bash
+sudo /usr/bin/docker "$@"
+EOF
+    chmod +x "$DOCKER_WRAPPER"
+    export PATH="/tmp:$PATH"
+    mv "$DOCKER_WRAPPER" /tmp/docker
+    
     molecule "$ACTION" 2>&1 | tee "$VM_TERMINAL_LOG_FILE"
     exit_status=${PIPESTATUS[0]}
+    
+    # Cleanup
+    rm -f /tmp/docker
+  else
+    echo "[ERROR] Cannot access Docker. Please check Docker installation."
+    exit 1
   fi
 else
   echo "[INFO] Docker access confirmed, running molecule directly"
