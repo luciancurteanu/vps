@@ -25,6 +25,7 @@
 - name: Set up authorized keys for admin user
   ansible.builtin.authorized_key:
     user: "{{ common_admin_user }}"
+    key: "{{ common_admin_ssh_key }}"
     state: present
   when:
     - common_admin_ssh_key is defined
