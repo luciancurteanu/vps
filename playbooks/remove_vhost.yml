@@ -81,13 +81,13 @@
       ansible.builtin.debug:
         msg: "Website backup created at: {{ backup_result.dest | default('Backup failed') }}"
       when: backup_result is defined
-      
+
   handlers:
     - name: Restart Nginx
       ansible.builtin.service:
         name: nginx
         state: restarted
-        
+
     - name: Restart PHP-FPM
       ansible.builtin.service:
         name: php-fpm

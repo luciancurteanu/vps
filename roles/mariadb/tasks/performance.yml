@@ -4,7 +4,7 @@
 - name: Identify server memory size
   ansible.builtin.setup:
     filter: ansible_memtotal_mb
-  
+
 - name: Set performance variables based on memory
   ansible.builtin.set_fact:
     innodb_buffer_pool_size: "{{ (ansible_memtotal_mb * 0.5) | int }}M"

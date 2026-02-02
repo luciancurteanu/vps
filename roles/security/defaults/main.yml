@@ -24,7 +24,7 @@ firewall_allowed_services:
   - { proto: tcp, port: 443 }   # HTTPS
 
 security_firewall_allowed_services: "{{ firewall_allowed_services }}"
-  
+
 # Mail service ports (used when domain is master_domain)
 mail_service_ports:
   - { proto: tcp, port: 25 }    # SMTP
@@ -60,6 +60,6 @@ security_allowed_ips: "{{ allowed_ips }}"
 security_install_webmin: "{{ install_webmin | default(true) }}"
 security_webmin_port: "{{ webmin_port | default(10000) }}"
 
-# Cockpit exposure controls  
+# Cockpit exposure controls
 security_install_cockpit: "{{ install_cockpit | default(false) }}"  # Disabled by default (webmin is primary)
 security_cockpit_port: "{{ cockpit_port | default(9090) }}"

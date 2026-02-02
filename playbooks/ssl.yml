@@ -3,17 +3,17 @@
   hosts: all
   become: true
   gather_facts: true
-  
+
   vars_files:
     - ../vars/secrets.yml
-    
+
   vars:
     required_vars:
       - domain
     certbot_package: "python3-certbot-nginx"
     force_renewal: false
     email: "webmaster@{{ domain }}"
-    
+
   pre_tasks:
     - name: Verify required variables are defined
       ansible.builtin.assert:
@@ -30,7 +30,7 @@
       ansible.builtin.fail:
         msg: "Domain {{ domain }} is not configured in Nginx. Please create the virtual host first."
       when: not nginx_conf.stat.exists
-      
+
   tasks:
     - name: Install Certbot (RedHat/CentOS)
       ansible.builtin.dnf:
@@ -118,7 +118,7 @@
           # HSTS (uncomment to enable)
           # add_header Strict-Transport-Security "max-age=63072000" always;
       notify: Restart Nginx
-      
+
   handlers:
     - name: Restart Nginx
       ansible.builtin.service:

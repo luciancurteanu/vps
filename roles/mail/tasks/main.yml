@@ -109,7 +109,7 @@
   ansible.builtin.include_tasks: postfix.yml
   tags: ['postfix', 'mail']
 
-# Dovecot configuration  
+# Dovecot configuration
 - name: Configure Dovecot
   ansible.builtin.include_tasks: dovecot.yml
   tags: ['dovecot', 'mail']

@@ -1,4 +1,4 @@
-﻿---
+---
 - name: Verify Common Role State
   hosts: all
   become: true

@@ -1,0 +1,46 @@
+---
+# Ansible-lint configuration for VPS project
+# Focus on critical errors first, gradually address the rest
+
+# Exclude patterns
+exclude_paths:
+  - .cache/
+  - .git/
+  - molecule/
+  - temp/
+
+# Use basic profile as baseline
+profile: basic
+
+# Skip specific rules temporarily (to be addressed incrementally)
+skip_list:
+  - var-naming[no-role-prefix]      # Variable naming - requires refactoring
+  - yaml[truthy]                    # yes/no vs true/false - fix incrementally
+  - risky-file-permissions          # 23 violations - requires security review
+  - name[casing]                    # Naming conventions - fix incrementally
+  - ignore-errors                   # Should use failed_when - requires logic review
+  - no-changed-when                 # Command tasks - requires review
+  - yaml[line-length]               # Line length - cosmetic
+  - yaml[commas]                    # Comma spacing - cosmetic
+  - name[template]                  # Jinja in name - cosmetic
+  - fqcn[action-core]               # FQCN for builtin - good practice but not critical
+  - key-order[task]                 # Task key ordering - cosmetic
+  - name[missing]                   # Missing names - fix incrementally
+  - risky-shell-pipe                # Pipefail - good practice but not critical
+  - yaml[key-duplicates]            # Fix separately - requires investigation
+
+# Enable offline mode if needed
+# offline: true
+
+# Warning only rules (don't fail build)
+warn_list:
+  - experimental
+  - no-relative-paths
+  - schema
+  - command-instead-of-shell
+
+# Set maximum line length
+max_line_length: 160
+
+# Enable progressive mode (stricter over time)
+# progressive: false

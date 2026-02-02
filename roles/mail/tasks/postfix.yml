@@ -3,7 +3,7 @@
 
 - name: Install Postfix packages
   ansible.builtin.package:
-    name: 
+    name:
       - postfix
       - postfix-mysql
       - cyrus-sasl-plain

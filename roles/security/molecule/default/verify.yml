@@ -93,7 +93,7 @@
           - ansible_facts.services['fail2ban.service'].status == 'enabled'
         fail_msg: "fail2ban service is not running or not enabled."
         success_msg: "fail2ban service is running and enabled."
-      when: 
+      when:
         - not (ansible_virtualization_type | default('') == 'docker')
         - ansible_facts.services is defined
         - "'fail2ban.service' in ansible_facts.services"
@@ -125,4 +125,4 @@
     # -----------------------------------------------------------------------------
     - name: Security role verification completed
       ansible.builtin.debug:
-        msg: "✅ Security role verification passed! Firewall and fail2ban are properly configured."
+        msg: "âœ… Security role verification passed! Firewall and fail2ban are properly configured."

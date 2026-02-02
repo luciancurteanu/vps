@@ -20,7 +20,7 @@
     state: link
     owner: root
     group: root
-  when: 
+  when:
     - nginx_site_name is defined
     - nginx_site_enabled | default(true)
   notify: restart_nginx_service
@@ -29,7 +29,7 @@
   ansible.builtin.file:
     path: "/etc/nginx/sites-enabled/{{ nginx_site_name }}.conf"
     state: absent
-  when: 
+  when:
     - nginx_site_name is defined
     - not (nginx_site_enabled | default(true))
   notify: restart_nginx_service
@@ -38,7 +38,7 @@
   ansible.builtin.file:
     path: "/etc/nginx/sites-available/{{ nginx_site_name }}.conf"
     state: absent
-  when: 
+  when:
     - nginx_site_name is defined
     - nginx_site_remove | default(false)
   notify: restart_nginx_service

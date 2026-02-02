@@ -22,7 +22,7 @@
 # Fail2ban configuration
 - name: Install fail2ban
   ansible.builtin.package:
-    name: 
+    name:
       - fail2ban
       - whois
     state: present
@@ -172,15 +172,15 @@
     fail2ban-client set badurl banip 1.1.1.1 || true
     fail2ban-client reload --unban badurl || true
     {% endif %}
-    
+
     # Save iptables state (skip in containers)
     {% if not (ansible_virtualization_type | default('') == 'docker') %}
     systemctl is-active iptables && iptables-save > /etc/sysconfig/iptables || true
     {% endif %}
   args:
     executable: /bin/bash
-  when: 
-    - security_fail2ban_enabled | default(true) 
+  when:
+    - security_fail2ban_enabled | default(true)
     - security_firewall_initialize | default(true)
     - ansible_virtualization_type | default('') != 'docker'
   changed_when: false  # This task is for initialization only

@@ -124,7 +124,7 @@
     state: present
   when: ansible_selinux.status == "enabled"
 
-- name: Set SELinux context for Nginx PID file  
+- name: Set SELinux context for Nginx PID file
   community.general.sefcontext:
     target: '/var/run/nginx\.pid'
     setype: httpd_var_run_t
@@ -154,7 +154,7 @@
 - name: Reload systemd daemon
   ansible.builtin.systemd:
     daemon_reload: yes
-    
+
 - name: Test Nginx configuration
   ansible.builtin.command: nginx -t
   register: nginx_config_test
@@ -168,7 +168,7 @@
   when: ansible_selinux.status == "enabled"
   failed_when: false
   changed_when: false
-    
+
 - name: Enable Nginx service
   ansible.builtin.systemd:
     name: nginx
