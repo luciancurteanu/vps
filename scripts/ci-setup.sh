@@ -57,7 +57,8 @@ python3 -m venv ~/molecule-env
 source ~/molecule-env/bin/activate
 pip install --upgrade pip
 # ansible-core 2.15.x supports Python 3.9+; community.docker 4.x and community.general 9.x support ansible-core 2.15+ (5.x and 10.x require 2.17+)
-pip install 'requests<2.32' 'docker<=6.1.3' 'ansible-core>=2.15,<2.16' ansible molecule molecule-docker ansible-lint yamllint passlib
+# Use Molecule 5.x for compatibility with our molecule.yml configuration
+pip install 'requests<2.32' 'docker<=6.1.3' 'ansible-core>=2.15,<2.16' ansible 'molecule<6.0' 'molecule-docker<3.0' ansible-lint yamllint passlib
 
 echoinfo "Installing community.docker 4.x and community.general 9.x (compatible with ansible-core 2.15)..."
 ansible-galaxy collection install 'community.docker:>=4.0,<5.0' 'community.general:>=9.0,<10.0' --force
