@@ -23,7 +23,7 @@
 
 - name: Install EPEL repository first
   ansible.builtin.package:
-    name: Epel-release
+    name: epel-release
     state: present
   when: ansible_os_family == 'RedHat'
 
