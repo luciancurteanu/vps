@@ -133,7 +133,20 @@
   loop:
     - { name: "{{ db_remote_user | default('remote_user') }}", password: "{{ db_remote_password | default(db_root_password) }}", host: '%', priv: '*.*:ALL' }
     - { name: 'webclient', password: "{{ db_webclient_password | default(db_root_password) }}", host: 'localhost', priv: '*.*:ALL' }
-  # Temporarily show output for debugging; revert after fix
+  when: db_root_password is defined and (db_root_password | length) > 0
+
+- name: Create standard database users (socket auth fallback)
+  community.mysql.mysql_user:
+    login_unix_socket: /var/lib/mysql/mysql.sock
+    name: "{{ item.name }}"
+    password: "{{ item.password }}"
+    host: "{{ item.host }}"
+    priv: "{{ item.priv }}"
+    state: present
+  loop:
+    - { name: "{{ db_remote_user | default('remote_user') }}", password: "{{ db_remote_password | default(db_root_password) }}", host: '%', priv: '*.*:ALL' }
+    - { name: 'webclient', password: "{{ db_webclient_password | default(db_root_password) }}", host: 'localhost', priv: '*.*:ALL' }
+  when: db_root_password is not defined or (db_root_password | length) == 0
     
 
 - name: Create database backup directory
