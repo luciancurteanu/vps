@@ -108,13 +108,31 @@ fi
 echo "[INFO] Starting Molecule $ACTION for role: $ROLE"
 
 # Ensure user has docker group access for molecule to work
-# Use sg to run molecule with docker group privileges without requiring a new login
-if groups | grep -q '\bdocker\b'; then
-  echo "[INFO] User is in docker group, using sg to activate group privileges"
-  sg docker -c "molecule $ACTION 2>&1 | tee $VM_TERMINAL_LOG_FILE"
-  exit_status=${PIPESTATUS[0]}
+# Check if we need to activate docker group privileges
+if ! docker ps &>/dev/null; then
+  echo "[WARNING] Cannot access Docker socket. Attempting with newgrp docker..."
+  # Create a wrapper script that activates docker group and runs molecule
+  WRAPPER_SCRIPT="/tmp/molecule_wrapper_$$.sh"
+  cat > "$WRAPPER_SCRIPT" <<'WRAPPER_EOF'
+#!/bin/bash
+set -e
+source ~/molecule-env/bin/activate
+unset DOCKER_HOST
+cd "$1"
+shift
+molecule "$@" 2>&1 | tee "$2"
+exit ${PIPESTATUS[0]}
+WRAPPER_EOF
+  chmod +x "$WRAPPER_SCRIPT"
+  
+  # Run with newgrp to activate docker group
+  newgrp docker <<NEWGRP_EOF
+bash "$WRAPPER_SCRIPT" "$ROLE_DIR" "$ACTION" "$VM_TERMINAL_LOG_FILE"
+NEWGRP_EOF
+  exit_status=$?
+  rm -f "$WRAPPER_SCRIPT"
 else
-  echo "[WARNING] User is not in docker group, attempting to run molecule anyway"
+  echo "[INFO] Docker access confirmed, running molecule directly"
   molecule "$ACTION" 2>&1 | tee "$VM_TERMINAL_LOG_FILE"
   exit_status=${PIPESTATUS[0]}
 fi
