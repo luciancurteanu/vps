@@ -69,7 +69,7 @@
     get_checksum: false
   register: mysql_setup_stat
  
- - name: Ensure MySQL root password is set (module)
+- name: Ensure MySQL root password is set (module)
    community.mysql.mysql_user:
      name: root
      host: localhost
@@ -78,16 +78,16 @@
      state: present
      check_implicit_admin: yes
    when: not mysql_setup_stat.stat.exists and db_root_password is defined and (db_root_password | length) > 0
-
- - name: Create root credentials file (when password set)
+ 
+- name: Create root credentials file (when password set)
    ansible.builtin.template:
      src: root.my.cnf.j2
      dest: /root/.my.cnf
      owner: root
      group: root
    when: not mysql_setup_stat.stat.exists and db_root_password is defined and (db_root_password | length) > 0
-
- - name: Secure MariaDB installation (module-based)
+ 
+- name: Secure MariaDB installation (module-based)
    block:
      - name: Remove anonymous users (socket auth)
        community.mysql.mysql_query:
