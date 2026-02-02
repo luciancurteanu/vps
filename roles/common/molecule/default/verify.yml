@@ -104,7 +104,7 @@
         that:
           - "'Port 22' in (sshd_content.content | b64decode)"
           - "'PermitRootLogin no' in (sshd_content.content | b64decode)"
-          - "'PasswordAuthentication yes' in (sshd_content.content | b64decode)"
+          - "('PasswordAuthentication ' ~ (ssh_password_authentication | ternary('yes','no'))) in (sshd_content.content | b64decode)"
         fail_msg: "SSH configuration incorrect"
         quiet: true
 

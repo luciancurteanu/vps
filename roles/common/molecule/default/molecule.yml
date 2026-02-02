@@ -6,6 +6,7 @@ platforms:
     image: dokken/almalinux-9
     privileged: true
     command: /usr/sbin/init
+    dockerfile: ../../../../scripts/Dockerfile.j2
     volumes:
       - "/sys/fs/cgroup:/sys/fs/cgroup:rw"
     tmpfs:

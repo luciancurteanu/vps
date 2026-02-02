@@ -3,6 +3,11 @@
 
 Port {{ common_ssh_port }}
 Protocol 2
+# {{ ansible_managed }}
+# SSH server configuration
+
+Port {{ common_ssh_port }}
+Protocol 2
 AddressFamily inet
 ListenAddress 0.0.0.0
 
