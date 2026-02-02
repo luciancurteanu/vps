@@ -1,6 +1,6 @@
 ---
 driver:
-  name: Docker
+  name: docker
 platforms:
   - name: Almalinux9
     image: dokken/almalinux-9
