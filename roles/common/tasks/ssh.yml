@@ -30,7 +30,7 @@
     group: root
     mode: '0644'
     validate: "{{ 'sshd -t -f %s' if ansible_virtualization_type != 'docker' else omit }}"
-  notify: restart ssh
+  notify: Restart ssh
 
 - name: Ensure SSH service is enabled and running
   ansible.builtin.service:
