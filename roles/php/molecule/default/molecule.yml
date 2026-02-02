@@ -24,7 +24,6 @@ provisioner:
   config_options:
     defaults:
       result_format: yaml
-  ansible_args: []
   playbooks:
     converge: converge.yml
 verifier:

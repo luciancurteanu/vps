@@ -24,7 +24,6 @@ provisioner:
   config_options:
     defaults:
       result_format: yaml
-  ansible_args: []
   inventory:
     links:
       group_vars: ../../../../inventory/group_vars/  # Path to your group_vars directory

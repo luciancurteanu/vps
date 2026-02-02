@@ -1,6 +1,6 @@
 ---
 driver:
-  name: docker
+  name: Docker
 platforms:
   - name: Almalinux9
     image: dokken/almalinux-9
@@ -24,7 +24,6 @@ provisioner:
   config_options:
     defaults:
       result_format: yaml
-  ansible_args: []
   inventory:
     links:
       group_vars: ../../../../inventory/group_vars/  # Path to your group_vars directory
