@@ -454,7 +454,7 @@ function PerformFullSetup([VMConfig]$config, [SSHManager]$sshManager) {
     Write-Host "Docker group applied (will use 'sudo docker' for commands)" -ForegroundColor Green
 
     # Step 4: Verify Docker is accessible
-    Write-Host "`n[4/5] Verifying Docker installation..." -ForegroundColor Cyan
+    Write-Host "`n[4/4] Verifying Docker installation..." -ForegroundColor Cyan
     $verifyCmd = "sudo docker --version && sudo docker ps"
     $sshArgsWithVerify = $sshArgs + @($verifyCmd)
     & $sshCmd $sshArgsWithVerify 2>$null | Out-Null
@@ -465,24 +465,13 @@ function PerformFullSetup([VMConfig]$config, [SSHManager]$sshManager) {
         Write-Host "You may need to reconnect SSH and run tests manually" -ForegroundColor Yellow
     }
 
-    # Step 5: Run first molecule test
-    Write-Host "`n[5/5] Running first molecule test (common role)..." -ForegroundColor Cyan
-    Write-Host "This may take several minutes..." -ForegroundColor Yellow
-    $testCmd = "cd ~/vps && sudo bash scripts/run-test.sh common"
-    $sshArgsWithTest = $sshArgs + @($testCmd)
-    & $sshCmd $sshArgsWithTest
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "`nFull automated setup completed successfully!" -ForegroundColor Green
-    } else {
-        Write-Host "`nSetup completed with warnings. You may need to run tests manually." -ForegroundColor Yellow
-    }
-
     Write-Host "`n========================================" -ForegroundColor Cyan
     Write-Host "Full Setup Summary" -ForegroundColor Cyan
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host "[OK] Docker and Molecule installed" -ForegroundColor Green
     Write-Host "[OK] VPS project cloned to ~/vps" -ForegroundColor Green
     Write-Host "[OK] SSH config updated" -ForegroundColor Green
+    Write-Host "[OK] Environment ready for testing" -ForegroundColor Green
     Write-Host "`nNext steps:" -ForegroundColor Cyan
     Write-Host "  ssh localhost" -ForegroundColor White
     Write-Host "  cd ~/vps" -ForegroundColor White

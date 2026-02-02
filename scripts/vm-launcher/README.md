@@ -211,14 +211,13 @@ When `-FullSetup` is enabled, the launcher performs complete environment setup a
 
 3. **Verify Installation**: Tests Docker accessibility and version
 
-4. **Run First Test**: Executes `bash scripts/run-test.sh common` to validate setup
-
-5. **Ready to Use**: VM is fully configured and ready for molecule testing
+4. **Ready to Use**: VM is fully configured and ready for molecule testing
 
 **Important Notes:**
 - `-FullSetup` does NOT cleanup existing VMs. Use `-Recreate -FullSetup` for automatic cleanup + full setup.
 - For first-time setup (no existing VM), `-FullSetup` alone is sufficient.
 - For re-running setup on existing VM, combine with `-Recreate` flag.
+- Tests are not run automatically - you can run them manually with `bash scripts/run-test.sh <role-name>`
 
 This eliminates all manual setup steps from the SSH Setup guide.
 
