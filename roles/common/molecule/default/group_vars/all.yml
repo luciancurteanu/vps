@@ -1,0 +1,26 @@
+---
+# Test variables for Molecule scenarios
+# System configuration
+timezone: "UTC"
+use_local_rtc: false
+locale: "en_US.UTF-8"
+domain: "test.local"
+
+# User configuration
+create_admin_user: true
+admin_user: "testadmin"
+admin_group: "testadmin"
+admin_shell: "/bin/bash"
+admin_password: "$6$rounds=656000$testPasswordHash"
+admin_ssh_public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC test@molecule"
+
+# SSH configuration
+ssh_port: 22
+ssh_permit_root_login: false
+ssh_password_authentication: false
+ssh_pubkey_authentication: true
+
+# Firewall configuration
+configure_firewall: true
+firewall_allowed_tcp_ports: [22, 80, 443]
+firewall_allowed_udp_ports: []
