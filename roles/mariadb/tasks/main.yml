@@ -73,19 +73,19 @@
   block:
     - name: Remove anonymous users (via mysql socket)
       ansible.builtin.shell: |
-        mysql --protocol=socket --socket=/var/lib/mysql/mysql.sock -u root -e "DELETE FROM mysql.user WHERE User=''; FLUSH PRIVILEGES;"
+        mysql --no-defaults --protocol=socket --socket=/var/lib/mysql/mysql.sock -u root -e "DELETE FROM mysql.user WHERE User=''; FLUSH PRIVILEGES;"
       register: remove_anonymous
       failed_when: remove_anonymous.rc != 0 and 'Operation not permitted' not in remove_anonymous.stderr
 
     - name: Remove test database (via mysql socket)
       ansible.builtin.shell: |
-        mysql --protocol=socket --socket=/var/lib/mysql/mysql.sock -u root -e "DROP DATABASE IF EXISTS Test;"
+        mysql --no-defaults --protocol=socket --socket=/var/lib/mysql/mysql.sock -u root -e "DROP DATABASE IF EXISTS Test;"
       register: remove_test_db
       failed_when: remove_test_db.rc != 0 and 'Operation not permitted' not in remove_test_db.stderr
 
     - name: Disallow root login remotely (via mysql socket)
       ansible.builtin.shell: |
-        mysql --protocol=socket --socket=/var/lib/mysql/mysql.sock -u root -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost','127.0.0.1'); FLUSH PRIVILEGES;"
+        mysql --no-defaults --protocol=socket --socket=/var/lib/mysql/mysql.sock -u root -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost','127.0.0.1'); FLUSH PRIVILEGES;"
       register: disallow_remote_root
       failed_when: disallow_remote_root.rc != 0
 
@@ -99,7 +99,7 @@
 
 - name: Set MySQL root password for the first time
   ansible.builtin.shell: |
-    mysql --protocol=socket --socket=/var/lib/mysql/mysql.sock -u root <<'SQL'
+    mysql --no-defaults --protocol=socket --socket=/var/lib/mysql/mysql.sock -u root <<'SQL'
     ALTER USER 'root'@'localhost' IDENTIFIED BY '{{ db_root_password }}';
     FLUSH PRIVILEGES;
     SQL
