@@ -118,9 +118,11 @@ if ! docker ps &>/dev/null; then
 set -e
 source ~/molecule-env/bin/activate
 unset DOCKER_HOST
-cd "$1"
-shift
-molecule "$@" 2>&1 | tee "$2"
+ROLE_DIR="$1"
+ACTION="$2"
+LOGFILE="$3"
+cd "$ROLE_DIR"
+molecule "$ACTION" 2>&1 | tee "$LOGFILE"
 exit ${PIPESTATUS[0]}
 WRAPPER_EOF
   chmod +x "$WRAPPER_SCRIPT"
