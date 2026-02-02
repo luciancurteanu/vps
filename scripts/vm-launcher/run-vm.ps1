@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory = $false)]
-    [string]$VMName = "AlmaLinux9-Dev",
+    [string]$VMName = "AlmaLinux-9",
     
     [Parameter(Mandatory = $false)]
     [string]$VMDataRoot = "C:\VMData",

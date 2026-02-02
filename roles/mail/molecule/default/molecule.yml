@@ -24,10 +24,5 @@ provisioner:
   config_options:
     defaults:
       result_format: yaml
-  inventory:
-    links:
-      group_vars: ../../../../inventory/group_vars/  # Path to your group_vars directory
-  playbooks:
-    converge: converge.yml
 verifier:
   name: Ansible
