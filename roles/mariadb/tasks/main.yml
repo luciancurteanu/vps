@@ -178,7 +178,7 @@
   register: create_users_result
   failed_when: false
 
- - name: Create standard database users (socket auth fallback)
+- name: Create standard database users (socket auth fallback)
   community.mysql.mysql_user:
     login_unix_socket: /var/lib/mysql/mysql.sock
     name: "{{ item.name }}"
