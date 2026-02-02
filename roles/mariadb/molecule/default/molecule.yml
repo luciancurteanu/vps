@@ -16,7 +16,7 @@ platforms:
     cgroupns_mode: "host"
     stop_signal: "SIGRTMIN+3"
 provisioner:
-  name: Ansible
+  name: ansible
   env:
     ANSIBLE_LOG_PATH: ansible_molecule_output.log
     PY_COLORS: '1'
@@ -25,4 +25,4 @@ provisioner:
     defaults:
       result_format: yaml
 verifier:
-  name: Ansible
+  name: ansible
