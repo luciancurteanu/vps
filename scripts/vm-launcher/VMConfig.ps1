@@ -204,37 +204,42 @@ class VMConfig {
             return $null
         }
 
-        $inPrimaryGroup = $false
+        # Parse YAML inventory format
+        $inPrimaryHosts = $false
+        $currentIndent = -1
+        
         foreach ($rawLine in $lines) {
             if ([string]::IsNullOrWhiteSpace($rawLine)) { continue }
 
             $trimmed = $rawLine.Trim()
             if ($trimmed.StartsWith('#')) { continue }
 
-            if ($trimmed -match '^\[(.+)\]$') {
-                $inPrimaryGroup = ($matches[1] -eq 'primary')
+            # Calculate indentation level
+            $indent = $rawLine.Length - $rawLine.TrimStart().Length
+
+            # Look for primary: section under children:
+            if ($trimmed -eq 'primary:') {
+                $currentIndent = $indent
                 continue
             }
 
-            if (-not $inPrimaryGroup) { continue }
-
-            $lineNoComment = $trimmed
-            $commentIndex = $lineNoComment.IndexOf('#')
-            if ($commentIndex -ge 0) {
-                $lineNoComment = $lineNoComment.Substring(0, $commentIndex).Trim()
+            # Look for hosts: section under primary:
+            if ($currentIndent -ge 0 -and $indent -gt $currentIndent -and $trimmed -eq 'hosts:') {
+                $inPrimaryHosts = $true
+                continue
             }
 
-            if ([string]::IsNullOrWhiteSpace($lineNoComment)) { continue }
+            # If we're in primary hosts section, look for ansible_host value
+            if ($inPrimaryHosts) {
+                # Exit if we've moved back to a lower indent level
+                if ($indent -le $currentIndent) {
+                    $inPrimaryHosts = $false
+                    continue
+                }
 
-            $ansibleMatch = [regex]::Match($lineNoComment, 'ansible_host\s*=\s*([^\s]+)')
-            if ($ansibleMatch.Success) {
-                return $ansibleMatch.Groups[1].Value
-            }
-
-            $tokens = $lineNoComment -split '\s+'
-            foreach ($token in $tokens) {
-                if ($token -match '^(\d{1,3}\.){3}\d{1,3}$') {
-                    return $token
+                # Look for ansible_host: <ip>
+                if ($trimmed -match '^ansible_host:\s*(.+)$') {
+                    return $matches[1].Trim()
                 }
             }
         }
@@ -254,35 +259,46 @@ class VMConfig {
             return $null
         }
 
-        $inPrimaryGroup = $false
+        # Parse YAML inventory format
+        $inPrimaryHosts = $false
+        $currentIndent = -1
+        
         foreach ($rawLine in $lines) {
             if ([string]::IsNullOrWhiteSpace($rawLine)) { continue }
 
             $trimmed = $rawLine.Trim()
             if ($trimmed.StartsWith('#')) { continue }
 
-            if ($trimmed -match '^\[(.+)\]$') {
-                $inPrimaryGroup = ($matches[1] -eq 'primary')
+            # Calculate indentation level
+            $indent = $rawLine.Length - $rawLine.TrimStart().Length
+
+            # Look for primary: section under children:
+            if ($trimmed -eq 'primary:') {
+                $currentIndent = $indent
                 continue
             }
 
-            if (-not $inPrimaryGroup) { continue }
-
-            $lineNoComment = $trimmed
-            $commentIndex = $lineNoComment.IndexOf('#')
-            if ($commentIndex -ge 0) {
-                $lineNoComment = $lineNoComment.Substring(0, $commentIndex).Trim()
+            # Look for hosts: section under primary:
+            if ($currentIndent -ge 0 -and $indent -gt $currentIndent -and $trimmed -eq 'hosts:') {
+                $inPrimaryHosts = $true
+                continue
             }
 
-            if ([string]::IsNullOrWhiteSpace($lineNoComment)) { continue }
+            # If we're in primary hosts section, extract hostname
+            if ($inPrimaryHosts) {
+                # Exit if we've moved back to a lower indent level
+                if ($indent -le $currentIndent) {
+                    $inPrimaryHosts = $false
+                    continue
+                }
 
-            # Extract hostname (first token before ansible_host)
-            $tokens = $lineNoComment -split '\s+'
-            if ($tokens.Length -gt 0) {
-                $hostname = $tokens[0]
-                # Ensure it looks like a domain (not an IP)
-                if ($hostname -notmatch '^(\d{1,3}\.){3}\d{1,3}$' -and $hostname -match '^[a-zA-Z0-9][a-zA-Z0-9.-]+[a-zA-Z0-9]$') {
-                    return $hostname
+                # Look for hostname: (e.g., vps.test:)
+                if ($trimmed -match '^([a-zA-Z0-9][a-zA-Z0-9.-]+[a-zA-Z0-9]):$') {
+                    $hostname = $matches[1]
+                    # Ensure it looks like a domain (not an IP)
+                    if ($hostname -notmatch '^(\d{1,3}\.){3}\d{1,3}$') {
+                        return $hostname
+                    }
                 }
             }
         }
