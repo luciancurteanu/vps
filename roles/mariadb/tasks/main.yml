@@ -68,11 +68,48 @@
     path: /var/lib/mysql/.mysql_setup_complete
     get_checksum: false
   register: mysql_setup_stat
+- name: Set MySQL root password for the first time
+- name: Create root credentials file
+  ansible.builtin.template:
+    src: root.my.cnf.j2
+    dest: /root/.my.cnf
+    owner: root
+    group: root
+  when: not mysql_setup_stat.stat.exists
+- name: Secure MariaDB installation
+
+ - name: Secure MariaDB installation
+  block:
+    - name: Remove anonymous users (via mysql socket)
+      ansible.builtin.shell: |
+        mysql --protocol=socket --socket=/var/lib/mysql/mysql.sock -u root -e "DELETE FROM mysql.user WHERE User=''; FLUSH PRIVILEGES;"
+      register: remove_anonymous
+      failed_when: remove_anonymous.rc != 0 and 'Operation not permitted' not in remove_anonymous.stderr
+
+    - name: Remove test database (via mysql socket)
+      ansible.builtin.shell: |
+        mysql --protocol=socket --socket=/var/lib/mysql/mysql.sock -u root -e "DROP DATABASE IF EXISTS Test;"
+      register: remove_test_db
+      failed_when: remove_test_db.rc != 0 and 'Operation not permitted' not in remove_test_db.stderr
+
+    - name: Disallow root login remotely (via mysql socket)
+      ansible.builtin.shell: |
+        mysql --protocol=socket --socket=/var/lib/mysql/mysql.sock -u root -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost','127.0.0.1'); FLUSH PRIVILEGES;"
+      register: disallow_remote_root
+      failed_when: disallow_remote_root.rc != 0
+
+    - name: Create setup complete flag file
+      ansible.builtin.file:
+        path: /var/lib/mysql/.mysql_setup_complete
+        state: touch
+        owner: mysql
+        group: mysql
+  when: not mysql_setup_stat.stat.exists
 
 - name: Set MySQL root password for the first time
   ansible.builtin.shell: |
-    mysql -u root <<'SQL'
-    ALTER USER 'root'@'localhost' IDENTIFIED VIA mysql_native_password USING PASSWORD('{{ db_root_password }}');
+    mysql --protocol=socket --socket=/var/lib/mysql/mysql.sock -u root <<'SQL'
+    ALTER USER 'root'@'localhost' IDENTIFIED BY '{{ db_root_password }}';
     FLUSH PRIVILEGES;
     SQL
   register: set_root_password
@@ -87,34 +124,6 @@
     dest: /root/.my.cnf
     owner: root
     group: root
-  when: not mysql_setup_stat.stat.exists
-
-- name: Secure MariaDB installation
-  block:
-    - name: Remove anonymous users (via mysql client)
-      ansible.builtin.shell: |
-        mysql --defaults-file=/root/.my.cnf -e "DELETE FROM mysql.user WHERE User=''; FLUSH PRIVILEGES;"
-      register: remove_anonymous
-      failed_when: remove_anonymous.rc != 0 and 'Operation not permitted' not in remove_anonymous.stderr
-
-    - name: Remove test database (via mysql client)
-      ansible.builtin.shell: |
-        mysql --defaults-file=/root/.my.cnf -e "DROP DATABASE IF EXISTS Test;"
-      register: remove_test_db
-      failed_when: remove_test_db.rc != 0 and 'Operation not permitted' not in remove_test_db.stderr
-
-    - name: Disallow root login remotely (via mysql client)
-      ansible.builtin.shell: |
-        mysql --defaults-file=/root/.my.cnf -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost','127.0.0.1'); FLUSH PRIVILEGES;"
-      register: disallow_remote_root
-      failed_when: disallow_remote_root.rc != 0
-
-    - name: Create setup complete flag file
-      ansible.builtin.file:
-        path: /var/lib/mysql/.mysql_setup_complete
-        state: touch
-        owner: mysql
-        group: mysql
   when: not mysql_setup_stat.stat.exists
 
 # Create specific database users matching the bash script implementation
