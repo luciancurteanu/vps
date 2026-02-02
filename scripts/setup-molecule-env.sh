@@ -22,11 +22,11 @@ echo "[INFO] Installing 'requests<2.32' to ensure compatibility..."
 pip install 'requests<2.32'
 
 echo "[INFO] Installing other dependencies..."
-# ansible-core 2.15.x supports Python 3.9+ and works with community.docker collection
+# ansible-core 2.15.x supports Python 3.9+; community.docker 4.x supports ansible-core 2.15+ (5.x requires 2.17+)
 pip install 'docker<=6.1.3' 'ansible-core>=2.15,<2.16' ansible molecule molecule-docker ansible-lint yamllint passlib
 
-echo "[INFO] Upgrading community.docker collection to latest version..."
-ansible-galaxy collection install community.docker --force
+echo "[INFO] Installing community.docker 4.x (compatible with ansible-core 2.15)..."
+ansible-galaxy collection install 'community.docker:>=4.0,<5.0' --force
 
 # Clean up potential duplicate Ansible collection path in lib64
 # This addresses warnings if collections are found in both lib/ and lib64/ site-packages.
