@@ -70,15 +70,11 @@
   register: mysql_setup_stat
  
 - name: Ensure MySQL root password is set (module)
-  community.mysql.mysql_user:
-    login_unix_socket: /var/lib/mysql/mysql.sock
-    name: root
-    host: localhost
-    password: "{{ db_root_password }}"
-    priv: '*.*:ALL'
-    state: present
-    check_implicit_admin: yes
+  ansible.builtin.shell: |
+    mysql --protocol=socket --socket=/var/lib/mysql/mysql.sock -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '{{ db_root_password }}'; FLUSH PRIVILEGES;"
   when: not mysql_setup_stat.stat.exists and db_root_password is defined and (db_root_password | length) > 0
+  register: set_root_password
+  failed_when: set_root_password.rc != 0 and 'Access denied' not in set_root_password.stderr
 
 - name: Create root credentials file (when password set)
   ansible.builtin.template:
