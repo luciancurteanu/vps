@@ -56,7 +56,8 @@ echoinfo "Creating Python virtual environment and installing Molecule dependenci
 python3 -m venv ~/molecule-env
 source ~/molecule-env/bin/activate
 pip install --upgrade pip
-pip install 'requests<2.32' 'docker<=6.1.3' 'ansible-core>=2.16,<2.18' ansible molecule molecule-docker ansible-lint yamllint passlib
+# ansible-core 2.15.x supports Python 3.9+ and works with community.docker collection
+pip install 'requests<2.32' 'docker<=6.1.3' 'ansible-core>=2.15,<2.16' ansible molecule molecule-docker ansible-lint yamllint passlib
 
 echoinfo "Upgrading community.docker collection to latest version..."
 ansible-galaxy collection install community.docker --force
