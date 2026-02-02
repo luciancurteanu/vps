@@ -1,10 +1,9 @@
----
+﻿---
 - name: Verify
   hosts: all
   become: true
-  gather_facts: true # Ensure facts are gathered for verification
+  gather_facts: true
   tasks:
     - name: Include mariadb role to verify its state
       ansible.builtin.include_role:
-        name: Mariadb
-# ... any other verification tasks you might add later
+        name: mariadb
