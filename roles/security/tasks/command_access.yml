@@ -22,8 +22,8 @@
     path: "{{ vhost_user_item.home }}/{{ item }}"
     state: directory
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0755'
   with_items:
     - "bin"
     - "lib64"
@@ -40,8 +40,8 @@
     dest: "{{ vhost_user_item.home }}{{ item.dest }}"
     mode: "{{ item.mode | default('0755') }}"
     owner: root
+    ansible.builtin.group: root
     group: root
-    remote_src: true
   with_items:
     # internal-sftp doesn't strictly need bash, but some minimal commands might be useful for debugging if ever needed.
     # For a pure SFTP setup, these might be omitted.

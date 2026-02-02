@@ -24,8 +24,8 @@
 
 - name: Configure firewalld - Add HTTP/HTTPS services
   ansible.posix.firewalld:
+    ansible.builtin.service: "{{ item }}"
     service: "{{ item }}"
-    permanent: true
     state: enabled
     immediate: true
   loop:
@@ -35,8 +35,8 @@
 
 - name: Configure firewalld - Add SSH service
   ansible.posix.firewalld:
+    ansible.builtin.service: ssh
     service: ssh
-    permanent: true
     state: enabled
     immediate: true
   when: ansible_os_family == 'RedHat' and security_firewall_service == "firewalld"
@@ -96,8 +96,8 @@
     src: firewall/iptables.rules.j2
     dest: /etc/sysconfig/iptables
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0600'
   when: ansible_os_family == 'RedHat'
   notify: restart iptables
 
@@ -106,8 +106,8 @@
     src: firewall/ip6tables.rules.j2
     dest: /etc/sysconfig/ip6tables
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0600'
   when: ansible_os_family == 'RedHat' and security_firewall_use_ipv6 | default(true)
   notify: restart ip6tables
 

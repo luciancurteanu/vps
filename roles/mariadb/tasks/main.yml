@@ -15,16 +15,16 @@
     path: /var/log/mariadb
     state: directory
     owner: mysql
+    ansible.builtin.group: mysql
     group: mysql
-    mode: '0755'
 
 - name: Create MariaDB configuration directory
   ansible.builtin.file:
     path: /etc/mysql/conf.d
     state: directory
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0755'
 
 - name: Backup MariaDB server.cnf
   ansible.builtin.copy:
@@ -39,8 +39,8 @@
     src: server.cnf.j2
     dest: /etc/my.cnf.d/server.cnf
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0644'
   notify: restart mariadb
 
 - name: Backup MariaDB client.cnf
@@ -56,8 +56,8 @@
     src: client.cnf.j2
     dest: /etc/my.cnf.d/client.cnf
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0644'
 
 - name: Enable and start MariaDB
   ansible.builtin.systemd:
@@ -85,8 +85,8 @@
     src: root.my.cnf.j2
     dest: /root/.my.cnf
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0600'
   when: not mysql_setup_stat.stat.exists
 
 - name: Secure MariaDB installation
@@ -94,8 +94,8 @@
     - name: Remove anonymous users
       community.mysql.mysql_user:
         login_unix_socket: /var/lib/mysql/mysql.sock
+        ansible.builtin.user: ""
         user: ""
-        host_all: true
         state: absent
 
     - name: Remove test database
@@ -107,8 +107,8 @@
     - name: Disallow root login remotely
       community.mysql.mysql_user:
         login_unix_socket: /var/lib/mysql/mysql.sock
+        ansible.builtin.user: root
         user: root
-        host: "{{ item }}"
         state: absent
       loop:
         - "%"
@@ -121,8 +121,8 @@
         path: /var/lib/mysql/.mysql_setup_complete
         state: touch
         owner: mysql
+        ansible.builtin.group: mysql
         group: mysql
-        mode: '0600'
   when: not mysql_setup_stat.stat.exists
 
 # Create specific database users matching the bash script implementation
@@ -144,8 +144,8 @@
     path: "{{ db_backup_dir }}"
     state: directory
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0750'
 
 - name: Setup automatic database backups
   ansible.builtin.cron:
@@ -153,8 +153,8 @@
     hour: "3"
     minute: "0"
     job: "mysqldump --user=root --password={{ db_root_password }} --all-databases | gzip > {{ db_backup_dir }}/mysql-all-`date +\\%Y\\%m\\%d`.sql.gz"
+    ansible.builtin.user: root
     user: root
-  no_log: true
   when: setup_db_backups | default(true)
 
 - name: Configure tune-db settings

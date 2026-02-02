@@ -34,8 +34,8 @@
         comment: "Virtual host user for {{ domain }}"
         create_home: true
         home: "/home/{{ user }}"
+        ansible.builtin.shell: /bin/bash
         shell: /bin/bash
-        password: "{{ vault_domain_user_password | password_hash('sha512') }}"
         update_password: on_create
 
     - name: Create document root directories
@@ -43,8 +43,8 @@
         path: "{{ item }}"
         state: directory
         owner: "{{ user }}"
+        ansible.builtin.group: "{{ user }}"
         group: "{{ user }}"
-        mode: '0755'
       with_items:
         - "/home/{{ domain }}"
         - "{{ document_root }}"
@@ -58,8 +58,8 @@
         path: "/home/{{ domain }}/logs/{{ item }}"
         state: touch
         owner: "{{ user }}"
+        ansible.builtin.group: "{{ user }}"
         group: "{{ user }}"
-        mode: '0644'
       with_items:
         - "access.log"
         - "error.log"
@@ -68,16 +68,16 @@
       ansible.builtin.file:
         path: "/home/{{ domain }}/logs"
         owner: "{{ user }}"
+        ansible.builtin.group: "{{ user }}"
         group: "{{ user }}"
-        mode: '0755'
         recurse: true
 
     - name: Set proper permissions for tmp directory
       ansible.builtin.file:
         path: "/home/{{ domain }}/tmp"
         owner: "{{ user }}"
+        ansible.builtin.group: "{{ user }}"
         group: "{{ user }}"
-        mode: '0700'
         recurse: true
 
     - name: Configure PHP-FPM pool
@@ -85,8 +85,8 @@
         src: "{{ playbook_dir | dirname }}/templates/php/pool.conf.j2"
         dest: "/etc/php-fpm.d/{{ domain }}.conf"
         owner: root
+        ansible.builtin.group: root
         group: root
-        mode: '0644'
       notify: Restart php-fpm
 
     - name: Ensure nginx sites-available directory exists
@@ -94,24 +94,24 @@
         path: /etc/nginx/sites-available
         state: directory
         owner: root
+        ansible.builtin.group: root
         group: root
-        mode: '0755'
 
     - name: Ensure nginx sites-enabled directory exists
       ansible.builtin.file:
         path: /etc/nginx/sites-enabled
         state: directory
         owner: root
+        ansible.builtin.group: root
         group: root
-        mode: '0755'
 
     - name: Configure Nginx virtual host
       ansible.builtin.template:
         src: "{{ playbook_dir | dirname }}/templates/nginx/vhost.conf.j2"
         dest: "/etc/nginx/sites-available/{{ domain }}.conf"
         owner: root
+        ansible.builtin.group: root
         group: root
-        mode: '0644'
       vars:
         nginx_ssl_enabled: false
       notify: Restart Nginx
@@ -128,8 +128,8 @@
         src: "{{ playbook_dir }}/../templates/website/"
         dest: "{{ document_root }}/"
         owner: "{{ user }}"
+        ansible.builtin.group: "{{ user }}"
         group: "{{ user }}"
-        mode: '0644'
         directory_mode: '0755'
 
     - name: Create index.html from template
@@ -137,8 +137,8 @@
         src: "{{ playbook_dir | dirname }}/templates/website/index.html.j2"
         dest: "{{ document_root }}/index.html"
         owner: "{{ user }}"
+        ansible.builtin.group: "{{ user }}"
         group: "{{ user }}"
-        mode: '0644'
         force: true
 
     - name: Set SELinux context for document root
@@ -216,8 +216,8 @@
             src: "{{ playbook_dir | dirname }}/templates/nginx/mail.conf.j2"
             dest: "/etc/nginx/sites-available/{{ mail_subdomain }}.conf"
             owner: root
+            ansible.builtin.group: root
             group: root
-            mode: '0644'
           notify: Restart Nginx
 
         - name: Enable mail subdomain site
@@ -232,8 +232,8 @@
             path: "/home/{{ domain }}/mail"
             state: directory
             owner: "{{ user }}"
+            ansible.builtin.group: "{{ user }}"
             group: "{{ user }}"
-            mode: '0755'
       when: domain == master_domain
 
     - name: Configure Postfix for regular domain
@@ -270,8 +270,8 @@
             path: "/home/{{ master_domain }}/mail/virtual/{{ domain }}/{{ item }}"
             state: directory
             owner: "{{ mail_user }}"
+            ansible.builtin.group: "{{ mail_group }}"
             group: "{{ mail_group }}"
-            mode: '0770'
             recurse: true
           with_items:
             - "contact"

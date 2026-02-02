@@ -20,7 +20,6 @@ skip_list:
   - no-changed-when                 # Command tasks - requires review
   - yaml[line-length]               # Line length - cosmetic
   - name[template]                  # Jinja in name - cosmetic
-  - fqcn[action-core]               # FQCN for builtin - good practice but not critical
   - key-order[task]                 # Task key ordering - cosmetic
   - name[missing]                   # Missing names - fix incrementally
   - risky-shell-pipe                # Pipefail - good practice but not critical

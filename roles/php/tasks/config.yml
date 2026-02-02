@@ -45,8 +45,8 @@
     path: "{{ php_fpm_listen | dirname }}"
     state: directory
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0755'
   when: ansible_os_family == "RedHat"
 
 - name: Ensure PHP-FPM log directory ownership
@@ -54,8 +54,8 @@
     path: /var/log/php-fpm
     state: directory
     owner: nginx
+    ansible.builtin.group: root
     group: root
-    mode: '0755'
   when: ansible_os_family == "RedHat"
 
 - name: Ensure /var/lib/php ownership and group (RedHat)
@@ -64,8 +64,8 @@
     recurse: true
     state: directory
     owner: root
+    ansible.builtin.group: nginx
     group: nginx
-    mode: '0755'
   when: ansible_os_family == "RedHat"
 
 - name: Ensure PHP session directory permissions
@@ -73,8 +73,8 @@
     path: /var/lib/php/session
     state: directory
     owner: nginx
+    ansible.builtin.group: nginx
     group: nginx
-    mode: '0700'
   when: ansible_os_family == "RedHat"
 
 - name: Enable and start php-fpm service
@@ -89,8 +89,8 @@
     src: pool.conf.j2
     dest: "/etc/php-fpm.d/{{ item }}.conf"
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0644'
   loop: "{{ php_fpm_pools }}"
   when: php_fpm_pools | length > 0 and ansible_os_family == 'RedHat'
   notify: Restart php-fpm

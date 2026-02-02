@@ -5,8 +5,8 @@ platforms:
   - name: Almalinux9
     image: dokken/almalinux-9
     privileged: true
+    ansible.builtin.command: /usr/sbin/init
     command: /usr/sbin/init
-    pre_build_image: false
     volumes:
       - "/sys/fs/cgroup:/sys/fs/cgroup:rw"
     tmpfs:

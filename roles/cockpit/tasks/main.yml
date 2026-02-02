@@ -30,8 +30,8 @@
     src: cockpit.conf.j2
     dest: /etc/cockpit/cockpit.conf
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0644'
   notify: Restart cockpit
 
 - name: Add admin user to wheel group for sudo access
@@ -55,7 +55,7 @@
     src: nginx/cockpit.conf.j2
     dest: /etc/nginx/conf.d/{{ cockpit_subdomain }}.conf
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0644'
   notify: Reload nginx
   when: cockpit_nginx_proxy | default(true)

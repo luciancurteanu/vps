@@ -21,8 +21,8 @@
     src: performance.cnf.j2
     dest: /etc/my.cnf.d/performance.cnf
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0644'
   notify: restart mariadb
 
 - name: Configure InnoDB settings
@@ -30,6 +30,6 @@
     src: innodb.cnf.j2
     dest: /etc/my.cnf.d/innodb.cnf
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0644'
   notify: restart mariadb

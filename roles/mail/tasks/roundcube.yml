@@ -2,8 +2,8 @@
 # Roundcube webmail configuration tasks
 
 - name: Install Roundcube dependencies
+  ansible.builtin.package:
   package:
-    name:
       - tar
       - wget
       - php-pdo
@@ -17,49 +17,49 @@
     state: present
 
 - name: Create Roundcube directories
+  ansible.builtin.file:
   file:
-    path: "{{ item }}"
     state: directory
     owner: nginx
+    ansible.builtin.group: nginx
     group: nginx
-    mode: '0755'
   with_items:
     - "{{ webmail_path }}"
     - "{{ webmail_path }}/temp"
     - "{{ webmail_path }}/logs"
 
 - name: Check if Roundcube is already installed
+  ansible.builtin.stat:
   stat:
-    path: "{{ webmail_path }}/index.php"
   register: roundcube_installed
 
 - name: Download Roundcube
+  ansible.builtin.get_url:
   get_url:
-    url: "https://github.com/roundcube/roundcubemail/releases/download/{{ webmail_version }}/roundcubemail-{{ webmail_version }}-complete.tar.gz"
     dest: /tmp/roundcube.tar.gz
     mode: '0644'
   when: not roundcube_installed.stat.exists
 
 - name: Extract Roundcube archive
+  ansible.builtin.unarchive:
   unarchive:
-    src: /tmp/roundcube.tar.gz
     dest: /tmp
     remote_src: true
   when: not roundcube_installed.stat.exists
 
 - name: Move Roundcube files to webmail directory
+  ansible.builtin.shell: cp -r /tmp/roundcubemail-{{ webmail_version }}/* {{ webmail_path }}/
   shell: cp -r /tmp/roundcubemail-{{ webmail_version }}/* {{ webmail_path }}/
-  args:
     creates: "{{ webmail_path }}/index.php"
   when: not roundcube_installed.stat.exists
 
 - name: Configure Roundcube
+  ansible.builtin.template:
   template:
-    src: roundcube/config.inc.php.j2
     dest: "{{ webmail_path }}/config/config.inc.php"
     owner: nginx
+    ansible.builtin.group: nginx
     group: nginx
-    mode: '0640'
 
 - name: Create Roundcube database
   mysql_db:
@@ -87,20 +87,20 @@
   when: not roundcube_installed.stat.exists
 
 - name: Set proper permissions for Roundcube
+  ansible.builtin.file:
   file:
-    path: "{{ webmail_path }}"
     owner: nginx
+    ansible.builtin.group: nginx
     group: nginx
-    mode: '0755'
     recurse: true
 
 - name: Ensure temp and logs directories are writable
+  ansible.builtin.file:
   file:
-    path: "{{ item }}"
     state: directory
     owner: nginx
+    ansible.builtin.group: nginx
     group: nginx
-    mode: '0770'
   with_items:
     - "{{ webmail_path }}/temp"
     - "{{ webmail_path }}/logs"
@@ -123,12 +123,12 @@
   when: ansible_selinux.status == "enabled"
 
 - name: Apply SELinux context to Roundcube
+  ansible.builtin.command: restorecon -Rv {{ webmail_path }}
   command: restorecon -Rv {{ webmail_path }}
-  when: ansible_selinux.status == "enabled"
   changed_when: false
 
 - name: Disable Roundcube installer directory
+  ansible.builtin.command: mv {{ webmail_path }}/installer {{ webmail_path }}/installer.disabled
   command: mv {{ webmail_path }}/installer {{ webmail_path }}/installer.disabled
-  args:
     creates: "{{ webmail_path }}/installer.disabled"
   when: roundcube_installed.stat.exists or not roundcube_installed.stat.exists

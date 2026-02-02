@@ -13,8 +13,8 @@
     path: "{{ item }}"
     state: directory
     owner: opendkim
+    ansible.builtin.group: opendkim
     group: opendkim
-    mode: '0755'
   with_items:
     - /etc/opendkim
     - /etc/opendkim/keys
@@ -25,8 +25,8 @@
     src: opendkim/opendkim.conf.j2
     dest: /etc/opendkim.conf
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0644'
   notify: restart opendkim
 
 - name: Configure OpenDKIM key table
@@ -34,8 +34,8 @@
     src: opendkim/KeyTable.j2
     dest: /etc/opendkim/KeyTable
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0644'
   notify: restart opendkim
 
 - name: Configure OpenDKIM signing table
@@ -43,8 +43,8 @@
     src: opendkim/SigningTable.j2
     dest: /etc/opendkim/SigningTable
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0644'
   notify: restart opendkim
 
 - name: Configure OpenDKIM trusted hosts
@@ -52,8 +52,8 @@
     src: opendkim/TrustedHosts.j2
     dest: /etc/opendkim/TrustedHosts
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0644'
   notify: restart opendkim
 
 - name: Check if DKIM keys already exist
@@ -72,8 +72,8 @@
   ansible.builtin.file:
     path: "{{ item }}"
     owner: opendkim
+    ansible.builtin.group: opendkim
     group: opendkim
-    mode: '0640'
   with_items:
     - /etc/opendkim/keys/{{ domain }}/mail.private
     - /etc/opendkim/keys/{{ domain }}/mail.txt

@@ -25,8 +25,8 @@
         path: "{{ item }}"
         state: directory
         owner: root
+        ansible.builtin.group: root
         group: root
-        mode: '0755'
       loop:
         - "/home/{{ domain }}"
         - "/home/{{ domain }}/logs"
@@ -85,8 +85,8 @@
         src: "{{ playbook_dir }}/../templates/nginx/vhost.conf.j2"
         dest: "/etc/nginx/sites-available/{{ domain }}.conf"
         owner: root
+        ansible.builtin.group: root
         group: root
-        mode: '0644'
       vars:
         vhost_domain: "{{ domain }}"
         vhost_root: "/home/{{ domain }}/public_html"
@@ -109,8 +109,8 @@
         path: "/home/{{ domain }}/public_html"
         state: directory
         owner: root
+        ansible.builtin.group: root
         group: root
-        mode: '0755'
       when: domain is defined
 
     - name: Create default index.html for main domain
@@ -119,8 +119,8 @@
         src: "{{ playbook_dir }}/../templates/website/index.html.j2"
         dest: "/home/{{ domain }}/public_html/index.html"
         owner: root
+        ansible.builtin.group: root
         group: root
-        mode: '0644'
         force: true
       when: domain is defined
 
@@ -169,8 +169,8 @@
       ansible.builtin.file:
         path: "/home/{{ domain }}/logs"
         owner: nginx
+        ansible.builtin.group: nginx
         group: nginx
-        mode: '0755'
         recurse: true
       when: domain is defined
 

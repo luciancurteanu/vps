@@ -16,11 +16,11 @@
   ansible.builtin.user:
     name: "{{ mail_user }}"
     uid: "{{ mail_uid | default(omit) }}"
+    ansible.builtin.group: "{{ mail_group }}"
     group: "{{ mail_group }}"
-    create_home: false
     system: true
+    ansible.builtin.shell: /sbin/nologin
     shell: /sbin/nologin
-
 - block:
     - name: Install mail server packages
       ansible.builtin.package:
@@ -132,8 +132,8 @@
     path: "{{ item }}"
     state: directory
     owner: "{{ mail_user }}"
+    ansible.builtin.group: "{{ mail_group }}"
     group: "{{ mail_group }}"
-    mode: '0770'
   with_items:
     - "/home/{{ domain }}/mail"
     - "/home/{{ domain }}/mail/virtual"
@@ -144,16 +144,16 @@
     path: "/home/{{ domain }}/logs"
     state: directory
     owner: nginx
+    ansible.builtin.group: nginx
     group: nginx
-    mode: '0755'
 
 - name: Create mail log files with nginx ownership
   ansible.builtin.file:
     path: "/home/{{ domain }}/logs/{{ item }}"
     state: touch
     owner: nginx
+    ansible.builtin.group: nginx
     group: nginx
-    mode: '0644'
     modification_time: preserve
     access_time: preserve
   with_items:
@@ -177,8 +177,8 @@
     src: nginx/mail.conf.j2
     dest: "/etc/nginx/sites-available/{{ mail_subdomain }}.conf"
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0644'
   notify: restart nginx
   when: mail_enable_nginx | default(true)
 
@@ -195,8 +195,8 @@
     src: nginx/roundcube.conf.j2
     dest: "/etc/nginx/sites-available/roundcube.{{ domain }}.conf"
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0644'
   notify: restart nginx
   when:
     - mail_enable_nginx | default(true)

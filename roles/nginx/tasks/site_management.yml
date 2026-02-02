@@ -7,8 +7,8 @@
     src: "{{ nginx_vhost_template | default('vhost.conf.j2') }}"
     dest: "/etc/nginx/sites-available/{{ nginx_site_name }}.conf"
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0644'
     backup: true
   when: nginx_site_name is defined
   notify: restart_nginx_service
@@ -19,8 +19,8 @@
     dest: "/etc/nginx/sites-enabled/{{ nginx_site_name }}.conf"
     state: link
     owner: root
+    ansible.builtin.group: root
     group: root
-  when:
     - nginx_site_name is defined
     - nginx_site_enabled | default(true)
   notify: restart_nginx_service

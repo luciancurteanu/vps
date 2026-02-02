@@ -95,8 +95,8 @@
         src: "{{ playbook_dir }}/../templates/nginx/vhost.conf.j2"
         dest: "/etc/nginx/sites-available/{{ domain }}.conf"
         owner: root
+        ansible.builtin.group: root
         group: root
-        mode: '0644'
       vars:
         nginx_ssl_enabled: true
       notify: Restart Nginx

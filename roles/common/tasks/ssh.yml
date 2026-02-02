@@ -25,8 +25,8 @@
     src: ssh/sshd_config.j2
     dest: /etc/ssh/sshd_config
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0600'
     validate: "{{ 'sshd -t -f %s' if ansible_virtualization_type != 'docker' else omit }}"
   notify: restart ssh
 

@@ -14,8 +14,8 @@
     path: "{{ item }}"
     state: directory
     owner: dovecot
+    ansible.builtin.group: dovecot
     group: dovecot
-    mode: '0755'
   with_items:
     - /etc/dovecot/conf.d
 
@@ -32,8 +32,8 @@
     src: dovecot/dovecot.conf.j2
     dest: /etc/dovecot/dovecot.conf
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0644'
   notify: restart dovecot
 
 - name: Backup Dovecot authentication config
@@ -49,8 +49,8 @@
     src: dovecot/conf.d/10-auth.conf.j2
     dest: /etc/dovecot/conf.d/10-auth.conf
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0644'
   notify: restart dovecot
 
 - name: Backup Dovecot mail locations config
@@ -66,8 +66,8 @@
     src: dovecot/conf.d/10-mail.conf.j2
     dest: /etc/dovecot/conf.d/10-mail.conf
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0644'
   notify: restart dovecot
 
 - name: Backup Dovecot SSL config
@@ -83,8 +83,8 @@
     src: dovecot/conf.d/10-ssl.conf.j2
     dest: /etc/dovecot/conf.d/10-ssl.conf
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0644'
   notify: restart dovecot
 
 - name: Backup Dovecot IMAP config
@@ -100,8 +100,8 @@
     src: dovecot/conf.d/20-imap.conf.j2
     dest: /etc/dovecot/conf.d/20-imap.conf
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0644'
   notify: restart dovecot
 
 - name: Backup Dovecot POP3 config
@@ -117,8 +117,8 @@
     src: dovecot/conf.d/20-pop3.conf.j2
     dest: /etc/dovecot/conf.d/20-pop3.conf
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0644'
   notify: restart dovecot
 
 - name: Backup Dovecot LDA config
@@ -134,8 +134,8 @@
     src: dovecot/conf.d/15-lda.conf.j2
     dest: /etc/dovecot/conf.d/15-lda.conf
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0644'
   notify: restart dovecot
 
 - name: Check if Dovecot MySQL config exists
@@ -160,8 +160,8 @@
     src: dovecot/dovecot-mysql.conf.ext.j2
     dest: /etc/dovecot/dovecot-mysql.conf.ext
     owner: root
+    ansible.builtin.group: root
     group: root
-    mode: '0600'
   notify: restart dovecot
 
 - name: Create symlink for dovecot-sql.conf.ext
@@ -175,8 +175,8 @@
   ansible.builtin.file:
     path: /home/{{ domain }}/mail
     owner: vmail
+    ansible.builtin.group: vmail
     group: vmail
-    mode: '0770'
     recurse: true
   when: domain is defined
 
