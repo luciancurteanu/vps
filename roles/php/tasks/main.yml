@@ -16,16 +16,14 @@
 
 - name: Ensure nginx group exists for PHP-FPM ownership
   ansible.builtin.group:
-    name: Nginx
+    name: nginx
     system: true
     state: present
 
 - name: Ensure nginx user exists for PHP-FPM ownership
   ansible.builtin.user:
-    name: Nginx
-    ansible.builtin.group: nginx
+    name: nginx
     group: nginx
-    ansible.builtin.shell: /sbin/nologin
     shell: /sbin/nologin
     create_home: false
 
@@ -70,9 +68,9 @@
 - name: Configure PHP-FPM user and group
   ansible.builtin.replace:
     path: /etc/php-fpm.d/www.conf
-    regexp: '{{ item.regexp }}'
-    ansible.builtin.replace: '{{ item.replace }}'
-    replace: '{{ item.replace }}'
+    regexp: "{{ item.regexp }}"
+    replace: "{{ item.replace }}"
+  loop:
     - { regexp: '^user = apache', replace: 'user = nginx' }
     - { regexp: '^group = apache', replace: 'group = nginx' }
     - { regexp: '^;listen\.owner = nobody', replace: 'listen.owner = nginx' }
@@ -106,7 +104,6 @@
     path: /var/log/php-fpm
     owner: nginx
     mode: '0644'
-    ansible.builtin.group: root
     group: root
 
 - name: Set proper ownership for PHP directory
@@ -114,7 +111,6 @@
     path: /var/lib/php
     owner: root
     mode: '0644'
-    ansible.builtin.group: nginx
     group: nginx
 
 - name: Set secure permissions for PHP session directory
@@ -125,10 +121,9 @@
 
 - name: Apply PHP-FPM configuration changes
   ansible.builtin.meta: flush_handlers
-  meta: flush_handlers
 - name: Enable and start PHP-FPM service
   ansible.builtin.systemd:
-    name: Php-fpm
+    name: php-fpm
     enabled: true
     state: started
     daemon_reload: true
