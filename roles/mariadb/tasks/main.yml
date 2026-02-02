@@ -98,7 +98,7 @@
         login_user: root
         login_password: "{{ db_root_password }}"
         query: "DELETE FROM mysql.user WHERE User=''; FLUSH PRIVILEGES;"
-      when: remove_anonymous_socket.rc != 0 and db_root_password is defined and (db_root_password | length) > 0
+      when: (remove_anonymous_socket is defined and (remove_anonymous_socket.failed | default(false))) and db_root_password is defined and (db_root_password | length) > 0
 
     - name: Try remove test database via socket
       community.mysql.mysql_query:
@@ -112,7 +112,7 @@
         login_user: root
         login_password: "{{ db_root_password }}"
         query: "DROP DATABASE IF EXISTS Test;"
-      when: remove_test_socket.rc != 0 and db_root_password is defined and (db_root_password | length) > 0
+      when: (remove_test_socket is defined and (remove_test_socket.failed | default(false))) and db_root_password is defined and (db_root_password | length) > 0
 
     - name: Try disallow root login remotely via socket
       community.mysql.mysql_query:
@@ -126,7 +126,7 @@
         login_user: root
         login_password: "{{ db_root_password }}"
         query: "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost','127.0.0.1'); FLUSH PRIVILEGES;"
-      when: disallow_remote_socket.rc != 0 and db_root_password is defined and (db_root_password | length) > 0
+      when: (disallow_remote_socket is defined and (disallow_remote_socket.failed | default(false))) and db_root_password is defined and (db_root_password | length) > 0
 
     - name: Try flush privileges via socket
       community.mysql.mysql_query:
@@ -140,7 +140,7 @@
         login_user: root
         login_password: "{{ db_root_password }}"
         query: "FLUSH PRIVILEGES;"
-      when: flush_socket.rc != 0 and db_root_password is defined and (db_root_password | length) > 0
+      when: (flush_socket is defined and (flush_socket.failed | default(false))) and db_root_password is defined and (db_root_password | length) > 0
 
     - name: Create setup complete flag file
       ansible.builtin.file:
