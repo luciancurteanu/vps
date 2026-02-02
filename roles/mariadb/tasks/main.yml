@@ -71,7 +71,10 @@
 
 - name: Set MySQL root password for the first time
   ansible.builtin.shell: |
-    mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '{{ db_root_password }}'; FLUSH PRIVILEGES;"
+    mysql -u root <<'SQL'
+    ALTER USER 'root'@'localhost' IDENTIFIED VIA mysql_native_password USING PASSWORD('{{ db_root_password }}');
+    FLUSH PRIVILEGES;
+    SQL
   register: set_root_password
   failed_when: set_root_password.rc != 0 and "Access denied" not in set_root_password.stderr
   changed_when: set_root_password.rc == 0
