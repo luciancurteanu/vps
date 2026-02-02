@@ -14,7 +14,7 @@ catch {
 }
 
 if ($script:RepoRootPath) {
-    $script:InventoryHostsPath = Join-Path $script:RepoRootPath 'inventory\hosts'
+    $script:InventoryHostsPath = Join-Path $script:RepoRootPath 'inventory\hosts.yml'
 }
 else {
     $script:InventoryHostsPath = $null

@@ -257,7 +257,7 @@ The test suite verifies:
 
 1. **Prepare inventory**:
    ```bash
-   cp inventory/hosts.example inventory/hosts
+   cp inventory/hosts.yml.example inventory/hosts.yml
    # Edit inventory/hosts with your server IP
    ```
 

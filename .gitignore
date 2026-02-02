@@ -28,8 +28,8 @@ build/
 *.retry
 .vagrant/
 .molecule/
-inventory/hosts
-!/inventory/hosts.example
+inventory/hosts.yml
+!/inventory/hosts.yml.example
 
 # Keys and credentials
 *.pem

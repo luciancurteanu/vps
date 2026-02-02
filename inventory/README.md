@@ -115,7 +115,7 @@ Sensitive variables like passwords should not be stored in the group_vars files.
 When running VPS setup commands, you can target specific server groups:
 
 ```bash
-ansible-playbook -i inventory/hosts playbooks/setup.yml --limit webservers
+ansible-playbook -i inventory/hosts.yml playbooks/setup.yml --limit webservers
 ```
 
 This will only apply the configuration to servers in the 'webservers' group.

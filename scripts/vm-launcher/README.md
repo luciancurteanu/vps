@@ -49,7 +49,7 @@ scripts/
 - **Smart Tool Detection**: Automatic installation via Chocolatey
 - **Efficient Resource Management**: Proper cleanup and UUID alignment
 - **Dynamic Configuration**: Flexible parameter handling
-- **Inventory‑Driven Networking**: LAN IP, gateway, DNS, and interface are derived from `inventory/hosts`; bridged adapter is auto‑selected
+- **Inventory‑Driven Networking**: LAN IP, gateway, DNS, and interface are derived from `inventory/hosts.yml`; bridged adapter is auto‑selected
 
 ### ✅ Well Documented
 - **Comprehensive Help**: Full PowerShell help system
@@ -68,9 +68,13 @@ scripts/
 Inventory‑driven networking (no hardcoding):
 
 ```ini
-# inventory/hosts
-[primary]
-vps.test ansible_host=192.168.88.8
+# inventory/hosts.yml
+all:
+  children:
+    primary:
+      hosts:
+        vps.test:
+          ansible_host: 192.168.88.8
 ```
 
 Then run:
@@ -136,7 +140,7 @@ Then run:
 | Parameter           | Default        | Description                                                                 |
 |:-------------------:|:--------------:|:----------------------------------------------------------------------------|
 | `BridgeAdapterName` | Auto‑detect    | Chooses a bridged adapter by LAN subnet; falls back to first Up adapter, then first available. Override via param or `$env:VPSSETUP_BRIDGE_ADAPTER`. |
-| `LanIPAddress`      | From inventory | Uses `ansible_host` from `[primary]` in `inventory/hosts`.                   |
+| `LanIPAddress`      | From inventory | Uses `ansible_host` from `primary` group in `inventory/hosts.yml`.           |
 | `LanPrefixLength`   | 24             | CIDR prefix length for LAN IP.                                               |
 | `LanGateway`        | Derived        | Inferred as `x.x.x.1` from `LanIPAddress` unless overridden.                 |
 | `LanDnsServers`     | 8.8.8.8, 1.1.1.1 | DNS servers; can be customized.                                             |
@@ -184,7 +188,7 @@ WSL is installed automatically if missing (requires Administrator privileges and
 8. **Boot & Wait**: Start VM and wait for SSH availability
 
 ### 3.1 Networking Automation
-- The LAN IP is read from `inventory/hosts` (`[primary]` → `ansible_host`).
+- The LAN IP is read from `inventory/hosts.yml` (`primary` group → `ansible_host`).
 - The bridged adapter is auto‑detected to match the LAN subnet, with robust fallbacks.
 - A NetworkManager static profile is written via cloud‑init (write_files) and brought up via runcmd, enforcing the static IP, gateway, and DNS on first boot.
 - Interface name is chosen automatically by image type (`eth0` for RHEL‑like images). You can override with `-LanInterfaceName` if needed.

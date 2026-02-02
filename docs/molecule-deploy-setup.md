@@ -275,11 +275,11 @@ You can use the `tee` command in your Ansible control environment (e.g., your Al
 **Command:**
 
 ```bash
-ansible-playbook -i inventory/hosts playbooks/setup.yml --ask-vault-pass --ask-pass --check --diff 2>&1 | tee ansible_playbook_debug.log
+ansible-playbook -i inventory/hosts.yml playbooks/setup.yml --ask-vault-pass --ask-pass --check --diff 2>&1 | tee ansible_playbook_debug.log
 ```
 
 **Explanation:**
--   `ansible-playbook -i inventory/hosts playbooks/setup.yml`: The standard command to run your playbook.
+-   `ansible-playbook -i inventory/hosts.yml playbooks/setup.yml`: The standard command to run your playbook.
 -   `--ask-vault-pass`: Prompts for your Ansible Vault password.
 -   `--ask-pass`: Prompts for the SSH password for connecting to the managed hosts (if you're not using SSH keys or an agent).
 -   `--check`: Runs the playbook in check mode (dry run), so no actual changes will be made to the target host.

@@ -63,7 +63,7 @@ vps/
 
 The repository includes example configuration files to guide setup without exposing sensitive information:
 
-- `inventory/hosts.example`: Example server inventory configuration
+- `inventory/hosts.yml.example`: Example server inventory configuration
 - `vars/secrets.yml.example`: Template for Ansible vault variables showing expected structure
 These files should be copied (removing the `.example` extension) and customized with actual configuration values.
 

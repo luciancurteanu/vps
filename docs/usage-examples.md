@@ -3,7 +3,7 @@
 This file shows concrete commands and the expected behavior for a master server (full install) and a non-master virtual host (config-only).
 
 **Assumptions**
-- Inventory entry for the master host uses the domain name as the `inventory_hostname` (e.g., `vps.test` in `inventory/hosts`).
+- Inventory entry for the master host uses the domain name as the `inventory_hostname` (e.g., `vps.test` in `inventory/hosts.yml`).
 - `master_domain` in `inventory/group_vars/all.yml` is configured as:
 
   ```yaml
@@ -29,8 +29,8 @@ What this does:
 
 Quick checks (dry-run / syntax-check):
 ```bash
-ansible-inventory --list -i inventory/hosts -e domain=vps.test
-ansible-playbook --syntax-check playbooks/setup.yml -i inventory/hosts -e domain=vps.test --tags setup
+ansible-inventory --list -i inventory/hosts.yml -e domain=vps.test
+ansible-playbook --syntax-check playbooks/setup.yml -i inventory/hosts.yml -e domain=vps.test --tags setup
 ```
 
 ---
@@ -53,7 +53,7 @@ What this does:
 
 Quick checks (syntax-check):
 ```bash
-ansible-playbook --syntax-check playbooks/create_vhost.yml -i inventory/hosts -e domain=lucian.com,user=lucian
+ansible-playbook --syntax-check playbooks/create_vhost.yml -i inventory/hosts.yml -e domain=lucian.com,user=lucian
 ```
 
 ---

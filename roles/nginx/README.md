@@ -231,7 +231,7 @@ Virtual hosts are managed through dedicated playbooks, not directly by this role
 
 ```bash
 # Create HTTP-only virtual host
-ansible-playbook -i inventory/hosts playbooks/create_vhost.yml \
+ansible-playbook -i inventory/hosts.yml playbooks/create_vhost.yml \
   --extra-vars "domain=vps.test"
 ```
 
@@ -245,7 +245,7 @@ This creates:
 
 ```bash
 # Obtain Let's Encrypt certificate and enable HTTPS
-ansible-playbook -i inventory/hosts playbooks/ssl.yml \
+ansible-playbook -i inventory/hosts.yml playbooks/ssl.yml \
   --extra-vars "domain=vps.test email=admin@vps.test"
 ```
 
@@ -260,7 +260,7 @@ This adds:
 
 ```bash
 # Remove virtual host and clean up
-ansible-playbook -i inventory/hosts playbooks/remove_vhost.yml \
+ansible-playbook -i inventory/hosts.yml playbooks/remove_vhost.yml \
   --extra-vars "domain=vps.test"
 ```
 

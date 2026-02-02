@@ -16,7 +16,7 @@
  ssh_port: 22  # SSH port (default is 22)
  # SSH security settings
 security_ssh_permit_root_login: 'no'
-# NOTE: After first successful deployment, update inventory/hosts to change ansible_user=root to ansible_user=admin for key-based auth
+# NOTE: After first successful deployment, update inventory/hosts.yml to change ansible_user=root to ansible_user=admin for key-based auth
 
 
  # Firewall settings
