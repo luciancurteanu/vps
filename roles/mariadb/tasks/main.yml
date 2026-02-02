@@ -71,6 +71,7 @@
  
 - name: Ensure MySQL root password is set (module)
   community.mysql.mysql_user:
+    login_unix_socket: /var/lib/mysql/mysql.sock
     name: root
     host: localhost
     password: "{{ db_root_password }}"
