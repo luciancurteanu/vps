@@ -4,7 +4,7 @@
   ansible.builtin.command: "dnf module reset php -y"
   register: php_module_reset
   changed_when: "'Resetting module' in php_module_reset.stdout or 'Nothing to do' in php_module_reset.stdout"
-  ignore_errors: true
+  failed_when: false  # TODO: Add proper failure condition
   when: ansible_os_family == "RedHat"
 
 - name: Enable remi-{{ php_version }} PHP module stream

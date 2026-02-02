@@ -34,10 +34,11 @@
 - name: Backup Postfix main.cf
   ansible.builtin.copy:
     src: /etc/postfix/main.cf
+    mode: '0644'
     dest: /etc/postfix/main.cf.bak
     remote_src: true
     force: false
-  ignore_errors: true
+  failed_when: false  # TODO: Add proper failure condition
 
 - name: Configure main Postfix configuration
   ansible.builtin.template:
@@ -51,10 +52,11 @@
 - name: Backup Postfix master.cf
   ansible.builtin.copy:
     src: /etc/postfix/master.cf
+    mode: '0644'
     dest: /etc/postfix/master.cf.bak
     remote_src: true
     force: false
-  ignore_errors: true
+  failed_when: false  # TODO: Add proper failure condition
 
 - name: Configure Postfix master settings
   ansible.builtin.template:

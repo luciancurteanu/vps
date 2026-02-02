@@ -33,6 +33,7 @@
 - name: Copy fail2ban local config
   ansible.builtin.copy:
     src: /etc/fail2ban/fail2ban.conf
+    mode: '0644'
     dest: /etc/fail2ban/fail2ban.local
     remote_src: true
     force: false

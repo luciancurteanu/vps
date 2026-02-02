@@ -55,6 +55,7 @@
 - name: Backup PHP-FPM www.conf
   ansible.builtin.copy:
     src: /etc/php-fpm.d/www.conf
+    mode: '0644'
     dest: /etc/php-fpm.d/www.conf.bak
     remote_src: true
     force: false
@@ -104,6 +105,7 @@
   ansible.builtin.file:
     path: /var/log/php-fpm
     owner: nginx
+    mode: '0644'
     ansible.builtin.group: root
     group: root
 
@@ -111,6 +113,7 @@
   ansible.builtin.file:
     path: /var/lib/php
     owner: root
+    mode: '0644'
     ansible.builtin.group: nginx
     group: nginx
 

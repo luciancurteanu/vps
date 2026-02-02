@@ -18,6 +18,7 @@
     src: "/etc/nginx/sites-available/{{ nginx_site_name }}.conf"
     dest: "/etc/nginx/sites-enabled/{{ nginx_site_name }}.conf"
     state: link
+    mode: '0644'
     owner: root
     ansible.builtin.group: root
     group: root

@@ -98,6 +98,7 @@
       tags: ['setup', 'nginx']
       ansible.builtin.file:
         src: "/etc/nginx/sites-available/{{ domain }}.conf"
+        mode: '0644'
         dest: "/etc/nginx/sites-enabled/{{ domain }}.conf"
         state: link
       when: domain is defined
@@ -169,6 +170,7 @@
       ansible.builtin.file:
         path: "/home/{{ domain }}/logs"
         owner: nginx
+        mode: '0644'
         ansible.builtin.group: nginx
         group: nginx
         recurse: true

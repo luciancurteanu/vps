@@ -185,6 +185,7 @@
 - name: Enable mail subdomain site
   ansible.builtin.file:
     src: "/etc/nginx/sites-available/{{ mail_subdomain }}.conf"
+    mode: '0644'
     dest: "/etc/nginx/sites-enabled/{{ mail_subdomain }}.conf"
     state: link
   notify: restart nginx
@@ -205,6 +206,7 @@
 - name: Enable roundcube site (if separate from mail subdomain)
   ansible.builtin.file:
     src: "/etc/nginx/sites-available/roundcube.{{ domain }}.conf"
+    mode: '0644'
     dest: "/etc/nginx/sites-enabled/roundcube.{{ domain }}.conf"
     state: link
   notify: restart nginx

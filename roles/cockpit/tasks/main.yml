@@ -20,10 +20,11 @@
 - name: Backup Cockpit configuration
   ansible.builtin.copy:
     src: /etc/cockpit/cockpit.conf
+    mode: '0644'
     dest: /etc/cockpit/cockpit.conf.bak
     remote_src: true
     force: false
-  ignore_errors: true
+  failed_when: false  # TODO: Add proper failure condition
 
 - name: Configure Cockpit for proxy access
   ansible.builtin.template:

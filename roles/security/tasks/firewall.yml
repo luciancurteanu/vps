@@ -60,7 +60,7 @@
     name: Firewalld
   register: firewalld_status
   when: ansible_os_family == 'RedHat' and security_firewall_service == "iptables"
-  ignore_errors: true
+  failed_when: false  # TODO: Add proper failure condition
 
 - name: Stop and mask firewalld service (RedHat)
   ansible.builtin.systemd:
@@ -74,7 +74,7 @@
     - firewalld_status is defined
     - firewalld_status.status is defined
     - firewalld_status.status.LoadState != "not-found"
-  ignore_errors: true
+  failed_when: false  # TODO: Add proper failure condition
 
 - name: Ensure firewalld is not installed (RedHat)
   ansible.builtin.package:

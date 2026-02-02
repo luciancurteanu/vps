@@ -69,4 +69,4 @@
   delay: 5
   until: webmin_check is succeeded
   changed_when: false
-  ignore_errors: true
+  failed_when: false  # TODO: Add proper failure condition

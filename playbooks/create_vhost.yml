@@ -68,6 +68,7 @@
       ansible.builtin.file:
         path: "/home/{{ domain }}/logs"
         owner: "{{ user }}"
+        mode: '0644'
         ansible.builtin.group: "{{ user }}"
         group: "{{ user }}"
         recurse: true
@@ -76,6 +77,7 @@
       ansible.builtin.file:
         path: "/home/{{ domain }}/tmp"
         owner: "{{ user }}"
+        mode: '0644'
         ansible.builtin.group: "{{ user }}"
         group: "{{ user }}"
         recurse: true
@@ -119,6 +121,7 @@
     - name: Enable site by creating symlink
       ansible.builtin.file:
         src: "/etc/nginx/sites-available/{{ domain }}.conf"
+        mode: '0644'
         dest: "/etc/nginx/sites-enabled/{{ domain }}.conf"
         state: link
       notify: Restart Nginx
@@ -223,6 +226,7 @@
         - name: Enable mail subdomain site
           ansible.builtin.file:
             src: "/etc/nginx/sites-available/{{ mail_subdomain }}.conf"
+            mode: '0644'
             dest: "/etc/nginx/sites-enabled/{{ mail_subdomain }}.conf"
             state: link
           notify: Restart Nginx

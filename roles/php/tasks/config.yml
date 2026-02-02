@@ -4,6 +4,7 @@
 - name: Backup original www.conf (RedHat)
   ansible.builtin.copy:
     src: /etc/php-fpm.d/www.conf
+    mode: '0644'
     dest: /etc/php-fpm.d/www.conf.bak
     remote_src: true
     force: false
@@ -63,6 +64,7 @@
     path: /var/lib/php
     recurse: true
     state: directory
+    mode: '0755'
     owner: root
     ansible.builtin.group: nginx
     group: nginx

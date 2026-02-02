@@ -22,10 +22,11 @@
 - name: Backup Dovecot main configuration
   ansible.builtin.copy:
     src: /etc/dovecot/dovecot.conf
+    mode: '0644'
     dest: /etc/dovecot/dovecot.conf.bak
     remote_src: true
     force: false
-  ignore_errors: true
+  failed_when: false  # TODO: Add proper failure condition
 
 - name: Configure Dovecot main configuration
   ansible.builtin.template:
@@ -39,10 +40,11 @@
 - name: Backup Dovecot authentication config
   ansible.builtin.copy:
     src: /etc/dovecot/conf.d/10-auth.conf
+    mode: '0644'
     dest: /etc/dovecot/conf.d/10-auth.conf.bak
     remote_src: true
     force: false
-  ignore_errors: true
+  failed_when: false  # TODO: Add proper failure condition
 
 - name: Configure Dovecot authentication
   ansible.builtin.template:
@@ -56,10 +58,11 @@
 - name: Backup Dovecot mail locations config
   ansible.builtin.copy:
     src: /etc/dovecot/conf.d/10-mail.conf
+    mode: '0644'
     dest: /etc/dovecot/conf.d/10-mail.conf.bak
     remote_src: true
     force: false
-  ignore_errors: true
+  failed_when: false  # TODO: Add proper failure condition
 
 - name: Configure Dovecot mail locations
   ansible.builtin.template:
@@ -73,10 +76,11 @@
 - name: Backup Dovecot SSL config
   ansible.builtin.copy:
     src: /etc/dovecot/conf.d/10-ssl.conf
+    mode: '0644'
     dest: /etc/dovecot/conf.d/10-ssl.conf.bak
     remote_src: true
     force: false
-  ignore_errors: true
+  failed_when: false  # TODO: Add proper failure condition
 
 - name: Configure Dovecot SSL settings
   ansible.builtin.template:
@@ -90,10 +94,11 @@
 - name: Backup Dovecot IMAP config
   ansible.builtin.copy:
     src: /etc/dovecot/conf.d/20-imap.conf
+    mode: '0644'
     dest: /etc/dovecot/conf.d/20-imap.conf.bak
     remote_src: true
     force: false
-  ignore_errors: true
+  failed_when: false  # TODO: Add proper failure condition
 
 - name: Configure Dovecot IMAP settings
   ansible.builtin.template:
@@ -107,10 +112,11 @@
 - name: Backup Dovecot POP3 config
   ansible.builtin.copy:
     src: /etc/dovecot/conf.d/20-pop3.conf
+    mode: '0644'
     dest: /etc/dovecot/conf.d/20-pop3.conf.bak
     remote_src: true
     force: false
-  ignore_errors: true
+  failed_when: false  # TODO: Add proper failure condition
 
 - name: Configure Dovecot POP3 settings
   ansible.builtin.template:
@@ -124,10 +130,11 @@
 - name: Backup Dovecot LDA config
   ansible.builtin.copy:
     src: /etc/dovecot/conf.d/15-lda.conf
+    mode: '0644'
     dest: /etc/dovecot/conf.d/15-lda.conf.bak
     remote_src: true
     force: false
-  ignore_errors: true
+  failed_when: false  # TODO: Add proper failure condition
 
 - name: Configure Dovecot LDA settings
   ansible.builtin.template:
@@ -151,6 +158,7 @@
 - name: Backup Dovecot MySQL config
   ansible.builtin.copy:
     src: /etc/dovecot/dovecot-mysql.conf.ext
+    mode: '0644'
     dest: /etc/dovecot/dovecot-mysql.conf.ext.bak
     remote_src: true
   when: dovecot_mysql_conf.stat.exists and not dovecot_mysql_backup.stat.exists
@@ -167,6 +175,7 @@
 - name: Create symlink for dovecot-sql.conf.ext
   ansible.builtin.file:
     src: /etc/dovecot/dovecot-mysql.conf.ext
+    mode: '0644'
     dest: /etc/dovecot/dovecot-sql.conf.ext
     state: link
   notify: restart dovecot
@@ -175,6 +184,7 @@
   ansible.builtin.file:
     path: /home/{{ domain }}/mail
     owner: vmail
+    mode: '0644'
     ansible.builtin.group: vmail
     group: vmail
     recurse: true

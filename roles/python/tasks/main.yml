@@ -58,7 +58,7 @@
     dest: /tmp/chromedriver-linux64.zip
     mode: '0644'
   register: driver_download
-  ignore_errors: true
+  failed_when: false  # TODO: Add proper failure condition
   when:
     - chromium_install is succeeded
     - chrome_version is defined

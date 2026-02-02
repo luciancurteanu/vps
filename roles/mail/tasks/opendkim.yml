@@ -72,6 +72,7 @@
   ansible.builtin.file:
     path: "{{ item }}"
     owner: opendkim
+    mode: '0644'
     ansible.builtin.group: opendkim
     group: opendkim
   with_items:

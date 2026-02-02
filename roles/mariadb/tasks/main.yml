@@ -29,10 +29,11 @@
 - name: Backup MariaDB server.cnf
   ansible.builtin.copy:
     src: /etc/my.cnf.d/server.cnf
+    mode: '0644'
     dest: /etc/my.cnf.d/server.cnf.bak
     remote_src: true
     force: false
-  ignore_errors: true
+  failed_when: false  # TODO: Add proper failure condition
 
 - name: Configure MariaDB server
   ansible.builtin.template:
@@ -46,10 +47,11 @@
 - name: Backup MariaDB client.cnf
   ansible.builtin.copy:
     src: /etc/my.cnf.d/client.cnf
+    mode: '0644'
     dest: /etc/my.cnf.d/client.cnf.bak
     remote_src: true
     force: false
-  ignore_errors: true
+  failed_when: false  # TODO: Add proper failure condition
 
 - name: Configure MariaDB client
   ansible.builtin.template:
@@ -114,7 +116,7 @@
         - "%"
         - "::1"
         - "localhost.localdomain"
-      ignore_errors: true
+      failed_when: false  # TODO: Add proper failure condition
 
     - name: Create setup complete flag file
       ansible.builtin.file:

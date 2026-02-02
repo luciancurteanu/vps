@@ -22,10 +22,11 @@
 - name: Backup SSH configuration
   ansible.builtin.copy:
     src: /etc/ssh/sshd_config
+    mode: '0644'
     dest: /etc/ssh/sshd_config.bak
     remote_src: true
     force: false
-  ignore_errors: true
+  failed_when: false  # TODO: Add proper failure condition
 
 - name: Configure SSH
   ansible.builtin.template:

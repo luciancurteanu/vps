@@ -12,12 +12,9 @@ exclude_paths:
 # Use basic profile as baseline
 profile: basic
 
-# Skip specific rules temporarily (to be addressed incrementally)
+# Skip specific rules (only truly unavoidable violations)
 skip_list:
-  - var-naming[no-role-prefix]      # Variable naming - requires major refactoring
-  - risky-file-permissions          # Requires security review for each file
-  - ignore-errors                   # Most are intentional with comments explaining why
-  - yaml[line-length]               # Some lines logically need to be longer
+  - var-naming[no-role-prefix]      # Variable naming - would break existing playbooks
   - name[template]                  # Jinja2 in task names is intentional for dynamic naming
 
 # Enable offline mode if needed

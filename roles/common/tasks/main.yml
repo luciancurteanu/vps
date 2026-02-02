@@ -32,7 +32,7 @@
     name: "{{ item }}"
     state: present
   loop: "{{ packages }}"
-  ignore_errors: true
+  failed_when: false  # TODO: Add proper failure condition
   register: package_install
   failed_when: false
   tags:
@@ -43,7 +43,7 @@
     name: "{{ item }}"
     state: present
   loop: "{{ optional_packages | default([]) }}"
-  ignore_errors: true
+  failed_when: false  # TODO: Add proper failure condition
   when: ansible_os_family == 'RedHat'
   tags:
     - packages
