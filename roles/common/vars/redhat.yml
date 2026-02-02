@@ -15,8 +15,8 @@ packages:
   - htop
   - lsof
   - bind-utils
-  - python3.13
-  - python3.13-pip
+  - python3
+  - python3-pip
   - chrony
   - cronie
   - logrotate

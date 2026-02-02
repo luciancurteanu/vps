@@ -4,7 +4,7 @@
 - name: Install passlib for password hashing
   ansible.builtin.pip:
     name: passlib
-    executable: pip3.13
+    executable: pip3
     state: present
 
 - name: Create admin group
@@ -15,7 +15,6 @@
 - name: Create admin user
   ansible.builtin.user:
     name: "{{ common_admin_user }}"
-    ansible.builtin.group: "{{ common_admin_group }}"
     group: "{{ common_admin_group }}"
     system: no  # Regular user, not system user (needed for SSH login)
     home: "/home/{{ common_admin_user }}"
@@ -25,7 +24,6 @@
 
 - name: Set up authorized keys for admin user
   ansible.builtin.authorized_key:
-    ansible.builtin.user: "{{ common_admin_user }}"
     user: "{{ common_admin_user }}"
     state: present
   when:
@@ -37,6 +35,5 @@
     src: sudoers/admin.j2
     dest: "/etc/sudoers.d/{{ common_admin_user }}"
     owner: root
-    ansible.builtin.group: root
     group: root
     validate: '/usr/sbin/visudo -cf %s'
