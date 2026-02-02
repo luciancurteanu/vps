@@ -110,16 +110,14 @@
   when: not mysql_setup_stat.stat.exists
 
 - name: Set MySQL root password for the first time
-  ansible.builtin.shell: |
-    mysql --no-defaults --protocol=socket --socket=/var/lib/mysql/mysql.sock <<'SQL'
-    ALTER USER 'root'@'localhost' IDENTIFIED BY '{{ db_root_password }}';
-    FLUSH PRIVILEGES;
-    SQL
-  register: set_root_password
-  failed_when: set_root_password.rc != 0 and "Access denied" not in set_root_password.stderr
-  changed_when: set_root_password.rc == 0
-  when: not mysql_setup_stat.stat.exists
-  no_log: true
+  community.mysql.mysql_user:
+    name: root
+    host: localhost
+    password: "{{ db_root_password }}"
+    priv: '*.*:ALL'
+    state: present
+    check_implicit_admin: yes
+  when: not mysql_setup_stat.stat.exists and db_root_password is defined and (db_root_password | length) > 0
 
 - name: Create root credentials file
   ansible.builtin.template:
