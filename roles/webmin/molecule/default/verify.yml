@@ -32,7 +32,7 @@
     # Webmin Service Verification
     - name: Check Webmin service status
       ansible.builtin.systemd:
-        name: Webmin
+        name: webmin
       register: webmin_service
 
     - name: Verify Webmin service is enabled and running
