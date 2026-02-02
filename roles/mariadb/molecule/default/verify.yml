@@ -3,6 +3,10 @@
   hosts: all
   become: true
   gather_facts: true
+  vars:
+    db_root_password: root
+    db_webclient_password: root
+    db_remote_password: root
   tasks:
     - name: Include mariadb role to verify its state
       ansible.builtin.include_role:
