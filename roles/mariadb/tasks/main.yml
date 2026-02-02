@@ -15,7 +15,6 @@
     path: /var/log/mariadb
     state: directory
     owner: mysql
-    ansible.builtin.group: mysql
     group: mysql
 
 - name: Create MariaDB configuration directory
@@ -23,7 +22,6 @@
     path: /etc/mysql/conf.d
     state: directory
     owner: root
-    ansible.builtin.group: root
     group: root
 
 - name: Backup MariaDB server.cnf
@@ -40,7 +38,6 @@
     src: server.cnf.j2
     dest: /etc/my.cnf.d/server.cnf
     owner: root
-    ansible.builtin.group: root
     group: root
   notify: restart mariadb
 
@@ -58,12 +55,11 @@
     src: client.cnf.j2
     dest: /etc/my.cnf.d/client.cnf
     owner: root
-    ansible.builtin.group: root
     group: root
 
 - name: Enable and start MariaDB
   ansible.builtin.systemd:
-    name: Mariadb
+    name: mariadb
     state: started
     enabled: true
 
@@ -87,7 +83,6 @@
     src: root.my.cnf.j2
     dest: /root/.my.cnf
     owner: root
-    ansible.builtin.group: root
     group: root
   when: not mysql_setup_stat.stat.exists
 
@@ -123,7 +118,6 @@
         path: /var/lib/mysql/.mysql_setup_complete
         state: touch
         owner: mysql
-        ansible.builtin.group: mysql
         group: mysql
   when: not mysql_setup_stat.stat.exists
 
@@ -146,7 +140,6 @@
     path: "{{ db_backup_dir }}"
     state: directory
     owner: root
-    ansible.builtin.group: root
     group: root
 
 - name: Setup automatic database backups
@@ -155,7 +148,6 @@
     hour: "3"
     minute: "0"
     job: "mysqldump --user=root --password={{ db_root_password }} --all-databases | gzip > {{ db_backup_dir }}/mysql-all-`date +\\%Y\\%m\\%d`.sql.gz"
-    ansible.builtin.user: root
     user: root
   when: setup_db_backups | default(true)
 
