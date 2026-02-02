@@ -71,21 +71,33 @@
  
 - name: Secure MariaDB installation
   block:
-    - name: Remove anonymous users (via mysql socket)
+    - name: Remove anonymous users (via mysql)
       ansible.builtin.shell: |
-        mysql --no-defaults --protocol=socket --socket=/var/lib/mysql/mysql.sock -e "DELETE FROM mysql.user WHERE User=''; FLUSH PRIVILEGES;"
+        if [ -n "{{ db_root_password | default('') }}" ]; then
+          mysql --no-defaults -uroot -p'{{ db_root_password }}' -e "DELETE FROM mysql.user WHERE User=''; FLUSH PRIVILEGES;"
+        else
+          mysql --no-defaults --protocol=socket --socket=/var/lib/mysql/mysql.sock -e "DELETE FROM mysql.user WHERE User=''; FLUSH PRIVILEGES;"
+        fi
       register: remove_anonymous
       failed_when: remove_anonymous.rc != 0 and 'Operation not permitted' not in remove_anonymous.stderr
 
-    - name: Remove test database (via mysql socket)
+    - name: Remove test database (via mysql)
       ansible.builtin.shell: |
-        mysql --no-defaults --protocol=socket --socket=/var/lib/mysql/mysql.sock -e "DROP DATABASE IF EXISTS Test;"
+        if [ -n "{{ db_root_password | default('') }}" ]; then
+          mysql --no-defaults -uroot -p'{{ db_root_password }}' -e "DROP DATABASE IF EXISTS Test;"
+        else
+          mysql --no-defaults --protocol=socket --socket=/var/lib/mysql/mysql.sock -e "DROP DATABASE IF EXISTS Test;"
+        fi
       register: remove_test_db
       failed_when: remove_test_db.rc != 0 and 'Operation not permitted' not in remove_test_db.stderr
 
-    - name: Disallow root login remotely (via mysql socket)
+    - name: Disallow root login remotely (via mysql)
       ansible.builtin.shell: |
-        mysql --no-defaults --protocol=socket --socket=/var/lib/mysql/mysql.sock -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost','127.0.0.1'); FLUSH PRIVILEGES;"
+        if [ -n "{{ db_root_password | default('') }}" ]; then
+          mysql --no-defaults -uroot -p'{{ db_root_password }}' -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost','127.0.0.1'); FLUSH PRIVILEGES;"
+        else
+          mysql --no-defaults --protocol=socket --socket=/var/lib/mysql/mysql.sock -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost','127.0.0.1'); FLUSH PRIVILEGES;"
+        fi
       register: disallow_remote_root
       failed_when: disallow_remote_root.rc != 0
 
