@@ -6,7 +6,6 @@ platforms:
     image: trfore/docker-centos9-systemd:latest
     privileged: true
     pre_build_image: true # Usually good to ensure the image is pulled/updated
-    ansible.builtin.command: /usr/sbin/init # Add this line to start systemd
     command: /usr/sbin/init # Add this line to start systemd
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw # Mount cgroups
