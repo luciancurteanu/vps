@@ -69,63 +69,85 @@
     get_checksum: false
   register: mysql_setup_stat
  
-- name: Secure MariaDB installation
-  block:
-    - name: Remove anonymous users (via mysql)
-      ansible.builtin.shell: |
-        if [ -n "{{ db_root_password | default('') }}" ]; then
-          mysql --no-defaults -uroot -p'{{ db_root_password }}' -e "DELETE FROM mysql.user WHERE User=''; FLUSH PRIVILEGES;"
-        else
-          mysql --no-defaults --protocol=socket --socket=/var/lib/mysql/mysql.sock -e "DELETE FROM mysql.user WHERE User=''; FLUSH PRIVILEGES;"
-        fi
-      register: remove_anonymous
-      failed_when: remove_anonymous.rc != 0 and 'Operation not permitted' not in remove_anonymous.stderr
+ - name: Ensure MySQL root password is set (module)
+   community.mysql.mysql_user:
+     name: root
+     host: localhost
+     password: "{{ db_root_password }}"
+     priv: '*.*:ALL'
+     state: present
+     check_implicit_admin: yes
+   when: not mysql_setup_stat.stat.exists and db_root_password is defined and (db_root_password | length) > 0
 
-    - name: Remove test database (via mysql)
-      ansible.builtin.shell: |
-        if [ -n "{{ db_root_password | default('') }}" ]; then
-          mysql --no-defaults -uroot -p'{{ db_root_password }}' -e "DROP DATABASE IF EXISTS Test;"
-        else
-          mysql --no-defaults --protocol=socket --socket=/var/lib/mysql/mysql.sock -e "DROP DATABASE IF EXISTS Test;"
-        fi
-      register: remove_test_db
-      failed_when: remove_test_db.rc != 0 and 'Operation not permitted' not in remove_test_db.stderr
+ - name: Create root credentials file (when password set)
+   ansible.builtin.template:
+     src: root.my.cnf.j2
+     dest: /root/.my.cnf
+     owner: root
+     group: root
+   when: not mysql_setup_stat.stat.exists and db_root_password is defined and (db_root_password | length) > 0
 
-    - name: Disallow root login remotely (via mysql)
-      ansible.builtin.shell: |
-        if [ -n "{{ db_root_password | default('') }}" ]; then
-          mysql --no-defaults -uroot -p'{{ db_root_password }}' -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost','127.0.0.1'); FLUSH PRIVILEGES;"
-        else
-          mysql --no-defaults --protocol=socket --socket=/var/lib/mysql/mysql.sock -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost','127.0.0.1'); FLUSH PRIVILEGES;"
-        fi
-      register: disallow_remote_root
-      failed_when: disallow_remote_root.rc != 0
+ - name: Secure MariaDB installation (module-based)
+   block:
+     - name: Remove anonymous users (socket auth)
+       community.mysql.mysql_query:
+         login_unix_socket: /var/lib/mysql/mysql.sock
+         query: "DELETE FROM mysql.user WHERE User=''; FLUSH PRIVILEGES;"
+       when: db_root_password is not defined or (db_root_password | length) == 0
 
-    - name: Create setup complete flag file
-      ansible.builtin.file:
-        path: /var/lib/mysql/.mysql_setup_complete
-        state: touch
-        owner: mysql
-        group: mysql
-  when: not mysql_setup_stat.stat.exists
+     - name: Remove anonymous users (password auth)
+       community.mysql.mysql_query:
+         login_user: root
+         login_password: "{{ db_root_password }}"
+         query: "DELETE FROM mysql.user WHERE User=''; FLUSH PRIVILEGES;"
+       when: db_root_password is defined and (db_root_password | length) > 0
 
-- name: Set MySQL root password for the first time
-  community.mysql.mysql_user:
-    name: root
-    host: localhost
-    password: "{{ db_root_password }}"
-    priv: '*.*:ALL'
-    state: present
-    check_implicit_admin: yes
-  when: not mysql_setup_stat.stat.exists and db_root_password is defined and (db_root_password | length) > 0
+     - name: Remove test database (socket auth)
+       community.mysql.mysql_query:
+         login_unix_socket: /var/lib/mysql/mysql.sock
+         query: "DROP DATABASE IF EXISTS Test;"
+       when: db_root_password is not defined or (db_root_password | length) == 0
 
-- name: Create root credentials file
-  ansible.builtin.template:
-    src: root.my.cnf.j2
-    dest: /root/.my.cnf
-    owner: root
-    group: root
-  when: not mysql_setup_stat.stat.exists
+     - name: Remove test database (password auth)
+       community.mysql.mysql_query:
+         login_user: root
+         login_password: "{{ db_root_password }}"
+         query: "DROP DATABASE IF EXISTS Test;"
+       when: db_root_password is defined and (db_root_password | length) > 0
+
+     - name: Disallow root login remotely (socket auth)
+       community.mysql.mysql_query:
+         login_unix_socket: /var/lib/mysql/mysql.sock
+         query: "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost','127.0.0.1'); FLUSH PRIVILEGES;"
+       when: db_root_password is not defined or (db_root_password | length) == 0
+
+     - name: Disallow root login remotely (password auth)
+       community.mysql.mysql_query:
+         login_user: root
+         login_password: "{{ db_root_password }}"
+         query: "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost','127.0.0.1'); FLUSH PRIVILEGES;"
+       when: db_root_password is defined and (db_root_password | length) > 0
+
+     - name: Flush privileges (socket auth)
+       community.mysql.mysql_query:
+         login_unix_socket: /var/lib/mysql/mysql.sock
+         query: "FLUSH PRIVILEGES;"
+       when: db_root_password is not defined or (db_root_password | length) == 0
+
+     - name: Flush privileges (password auth)
+       community.mysql.mysql_query:
+         login_user: root
+         login_password: "{{ db_root_password }}"
+         query: "FLUSH PRIVILEGES;"
+       when: db_root_password is defined and (db_root_password | length) > 0
+
+     - name: Create setup complete flag file
+       ansible.builtin.file:
+         path: /var/lib/mysql/.mysql_setup_complete
+         state: touch
+         owner: mysql
+         group: mysql
+   when: not mysql_setup_stat.stat.exists
 
 # Create specific database users matching the bash script implementation
 - name: Create standard database users
