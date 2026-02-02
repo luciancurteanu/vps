@@ -32,9 +32,8 @@
     name: "{{ item }}"
     state: present
   loop: "{{ packages }}"
-  failed_when: false  # TODO: Add proper failure condition
   register: package_install
-  failed_when: false
+  failed_when: false  # TODO: Add proper failure condition
   tags:
     - packages
 
