@@ -107,11 +107,17 @@ fi
 
 echo "[INFO] Starting Molecule $ACTION for role: $ROLE"
 
-# Execute molecule action, passing all script arguments after role and action to molecule
-molecule "$ACTION" 2>&1 | tee "$VM_TERMINAL_LOG_FILE"
-
-# Capture the exit code of the molecule command (the first command in the pipe)
-exit_status=${PIPESTATUS[0]}
+# Ensure user has docker group access for molecule to work
+# Use sg to run molecule with docker group privileges without requiring a new login
+if groups | grep -q '\bdocker\b'; then
+  echo "[INFO] User is in docker group, using sg to activate group privileges"
+  sg docker -c "molecule $ACTION 2>&1 | tee $VM_TERMINAL_LOG_FILE"
+  exit_status=${PIPESTATUS[0]}
+else
+  echo "[WARNING] User is not in docker group, attempting to run molecule anyway"
+  molecule "$ACTION" 2>&1 | tee "$VM_TERMINAL_LOG_FILE"
+  exit_status=${PIPESTATUS[0]}
+fi
 
 if [[ $exit_status -eq 0 ]]; then
   echo "[OK] Molecule $ACTION completed successfully for role: $ROLE"
