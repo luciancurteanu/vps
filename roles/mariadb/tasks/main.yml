@@ -68,17 +68,8 @@
     path: /var/lib/mysql/.mysql_setup_complete
     get_checksum: false
   register: mysql_setup_stat
-- name: Set MySQL root password for the first time
-- name: Create root credentials file
-  ansible.builtin.template:
-    src: root.my.cnf.j2
-    dest: /root/.my.cnf
-    owner: root
-    group: root
-  when: not mysql_setup_stat.stat.exists
+ 
 - name: Secure MariaDB installation
-
- - name: Secure MariaDB installation
   block:
     - name: Remove anonymous users (via mysql socket)
       ansible.builtin.shell: |
