@@ -86,57 +86,61 @@
 
 - name: Secure MariaDB installation (module-based)
   block:
-    - name: Remove anonymous users (socket auth)
+    - name: Try remove anonymous users via socket
       community.mysql.mysql_query:
         login_unix_socket: /var/lib/mysql/mysql.sock
         query: "DELETE FROM mysql.user WHERE User=''; FLUSH PRIVILEGES;"
-      when: db_root_password is not defined or (db_root_password | length) == 0
+      register: remove_anonymous_socket
+      failed_when: false
 
-    - name: Remove anonymous users (password auth)
+    - name: Remove anonymous users (password auth fallback)
       community.mysql.mysql_query:
         login_user: root
         login_password: "{{ db_root_password }}"
         query: "DELETE FROM mysql.user WHERE User=''; FLUSH PRIVILEGES;"
-      when: db_root_password is defined and (db_root_password | length) > 0
+      when: remove_anonymous_socket.rc != 0 and db_root_password is defined and (db_root_password | length) > 0
 
-    - name: Remove test database (socket auth)
+    - name: Try remove test database via socket
       community.mysql.mysql_query:
         login_unix_socket: /var/lib/mysql/mysql.sock
         query: "DROP DATABASE IF EXISTS Test;"
-      when: db_root_password is not defined or (db_root_password | length) == 0
+      register: remove_test_socket
+      failed_when: false
 
-    - name: Remove test database (password auth)
+    - name: Remove test database (password auth fallback)
       community.mysql.mysql_query:
         login_user: root
         login_password: "{{ db_root_password }}"
         query: "DROP DATABASE IF EXISTS Test;"
-      when: db_root_password is defined and (db_root_password | length) > 0
+      when: remove_test_socket.rc != 0 and db_root_password is defined and (db_root_password | length) > 0
 
-    - name: Disallow root login remotely (socket auth)
+    - name: Try disallow root login remotely via socket
       community.mysql.mysql_query:
         login_unix_socket: /var/lib/mysql/mysql.sock
         query: "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost','127.0.0.1'); FLUSH PRIVILEGES;"
-      when: db_root_password is not defined or (db_root_password | length) == 0
+      register: disallow_remote_socket
+      failed_when: false
 
-    - name: Disallow root login remotely (password auth)
+    - name: Disallow root login remotely (password auth fallback)
       community.mysql.mysql_query:
         login_user: root
         login_password: "{{ db_root_password }}"
         query: "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost','127.0.0.1'); FLUSH PRIVILEGES;"
-      when: db_root_password is defined and (db_root_password | length) > 0
+      when: disallow_remote_socket.rc != 0 and db_root_password is defined and (db_root_password | length) > 0
 
-    - name: Flush privileges (socket auth)
+    - name: Try flush privileges via socket
       community.mysql.mysql_query:
         login_unix_socket: /var/lib/mysql/mysql.sock
         query: "FLUSH PRIVILEGES;"
-      when: db_root_password is not defined or (db_root_password | length) == 0
+      register: flush_socket
+      failed_when: false
 
-    - name: Flush privileges (password auth)
+    - name: Flush privileges (password auth fallback)
       community.mysql.mysql_query:
         login_user: root
         login_password: "{{ db_root_password }}"
         query: "FLUSH PRIVILEGES;"
-      when: db_root_password is defined and (db_root_password | length) > 0
+      when: flush_socket.rc != 0 and db_root_password is defined and (db_root_password | length) > 0
 
     - name: Create setup complete flag file
       ansible.builtin.file:
