@@ -18,7 +18,7 @@ on:
 
 jobs:
   molecule-individual-roles:
-    name: Molecule Test - ${{ matrix.role }} (${{ matrix.domain_mode }})
+    name: Molecule Test - ${{ matrix.role }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -34,9 +34,6 @@ jobs:
           - development
           - goproxy
           - python
-        domain_mode:
-          - master
-          - regular
 
     steps:
       - name: Check out code
