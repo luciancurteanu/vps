@@ -28,6 +28,11 @@
     - name: Gather fresh facts from the instance
       ansible.builtin.setup:
 
+    - name: Gather package facts
+      ansible.builtin.package_facts:
+        manager: auto
+
+
     # Timezone Verification
     - name: Check current timezone
       ansible.builtin.command: timedatectl status
@@ -42,23 +47,13 @@
         quiet: true
 
     # Package Installation Verification
-    - name: Check if expected packages are installed
-      ansible.builtin.package:
-        name: "{{ item }}"
-        state: present
-      check_mode: true
-      register: package_check
-      loop: "{{ expected_packages }}"
-      when: ansible_facts.os_family == 'RedHat'
-      ignore_errors: true
-
-    - name: Assert packages are installed
+    - name: Assert packages are installed (allow curl or curl-minimal)
       ansible.builtin.assert:
         that:
-          - not item.changed
-        fail_msg: "Package {{ item.item }} not installed"
+          - "(item == 'curl' and ('curl' in ansible_facts.packages or 'curl-minimal' in ansible_facts.packages)) or (item != 'curl' and item in ansible_facts.packages)"
+        fail_msg: "Package {{ item }} not installed (or alternative missing)"
         quiet: true
-      loop: "{{ package_check.results | default([]) }}"
+      loop: "{{ expected_packages }}"
       when: ansible_facts.os_family == 'RedHat'
 
     # Admin User Verification

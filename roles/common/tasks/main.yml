@@ -28,12 +28,28 @@
   when: ansible_os_family == 'RedHat'
 
 - name: Install common packages
-  ansible.builtin.package:
-    name: "{{ item }}"
-    state: present
-  loop: "{{ packages }}"
-  register: package_install
-  failed_when: false  # TODO: Add proper failure condition
+  block:
+    - name: Install common packages (RedHat)
+      ansible.builtin.dnf:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+        nobest: yes
+        skip_broken: yes
+        allow_downgrade: yes
+      when: ansible_os_family == 'RedHat'
+
+    - name: Install common packages (other OS)
+      ansible.builtin.package:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ packages }}"
+      when: ansible_os_family != 'RedHat'
+      register: package_install
+  rescue:
+    - name: Warn package install failed
+      ansible.builtin.debug:
+        msg: "One or more package installations failed, but continuing"
   tags:
     - packages
 
