@@ -6,23 +6,42 @@ This folder contains helper scripts for automation, testing, and environment set
 
 ## Scripts
 
-- `run-vm.ps1` — Minimal, dependable AlmaLinux 9 VirtualBox provisioner (recommended). Reuses qcow2, builds NoCloud ISO, creates/updates VM, ensures NAT 2222→22, waits for SSH.
+### VM Launcher (`vm-launcher/` subdirectory)
+- `vm-launcher/run-vm.ps1` — Main VM launcher script. Minimal, dependable AlmaLinux 9 VirtualBox provisioner (recommended). Reuses qcow2, builds NoCloud ISO, creates/updates VM, ensures NAT port forwarding, waits for SSH.
     - Default login: `admin / Changeme123!`
-    - If a local public key exists at `~/.ssh/id_ed25519.pub` or `~/.ssh/id_rsa.pub`, it will be injected and password SSH will be disabled; connect with your key instead.
-- `run-test.sh` — Shell script to run Molecule tests for a specified role and action (e.g., test, converge). Requires Molecule and Docker/Podman installed. Run from the project root (e.g., `bash scripts/run-test.sh nginx test`).
-- `setup-molecule-env.sh` — Shell script to set up a Python virtual environment for Molecule testing. Run before running Molecule tests.
-- `reset-molecule-environment.sh` — Shell script to partially reset the Molecule testing environment by removing `~/molecule-env`, `~/.ansible`, `~/.cache`, and `~/.ansible_async`. Does NOT remove the project directory itself.
-- `create-iso.bat` — Batch script to create ISO images using mkisofs on Windows. Automatically downloads mkisofs if not present.
+    - If a local public key exists, it will be injected and password SSH will be disabled
+- `vm-launcher/VMConfig.ps1` — Configuration class for VM settings (paths, credentials, network)
+- `vm-launcher/VMBootstrap.ps1` — VM bootstrap operations (cloud-init, SSH setup)
+- `vm-launcher/VMCleanup.ps1` — VM cleanup operations (deletion, orphan removal)
+- `vm-launcher/VBoxUtils.ps1` — VirtualBox utility functions
+
+### Testing Scripts
+- `run-test.sh` — Run Molecule tests for a role. **Defaults to `test` action** (full test with container recreation). Use `converge` action for faster iterations without re-downloading packages.
+    - Usage: `bash scripts/run-test.sh <role> [action]`
+    - Actions: `test` (default, full), `converge` (fast), `verify`, `destroy`, `create`
+    - **No password prompts** — automatically handles docker permissions
+- `run-test.ps1` — PowerShell version of test runner
+- `run-molecule-test.sh` — Molecule test wrapper
+- `setup-molecule-env.sh` — Set up Python virtual environment for Molecule testing
+- `reset-molecule-environment.sh` — Reset Molecule environment (removes `~/molecule-env`, `~/.ansible`, caches)
+
+### CI/CD and Automation
+- `ci-setup.sh` — CI environment setup script (installs Docker, Python, Molecule dependencies)
+- `resume-deployment.sh` — Resume interrupted deployments
+
+### Utilities
+- `create-iso.bat` — Create ISO images using mkisofs on Windows (auto-downloads mkisofs)
+- `fix-theme-metal.sh` — Fix Metal theme issues
 
 ## Usage Examples
 
 ### Quick start (Recommended)
 ```powershell
 # Minimal, dependable provisioning (Windows PowerShell 5.1+)
-powershell -ExecutionPolicy Bypass -File .\scripts\launch-vm.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\vm-launcher\run-vm.ps1
 
 # Then connect:
-ssh -p 2222 admin@localhost   # password: Changeme123!
+ssh admin@localhost   # password: Changeme123! (or use your SSH key)
 ```
 
 Requirements (lite):
@@ -33,69 +52,38 @@ Requirements (lite):
 ### Launch an AlmaLinux 9 VM (PowerShell)
 ```powershell
 # Full reset: clean everything and rebuild VM (default behavior)
-powershell -ExecutionPolicy Bypass -File .\scripts\run-vm.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\vm-launcher\run-vm.ps1
 
-# Reuse mode: skip cleanup, faster incremental runs
-powershell -ExecutionPolicy Bypass -File .\scripts\run-vm.ps1 -Delete:$false
+# With parameters:
+.\scripts\vm-launcher\run-vm.ps1 -VMName 'AlmaLinux-9' -UseLocalSSHKey -Recreate -FullSetup
 ```
 
-### Reset behavior and the -Delete flag
+### VM Launcher Parameters
 
-The script preserves only the base qcow2 cloud image inside `C:\VMData\<VMName>` to avoid re-downloading. Use the `-Delete` flag to control cleanup:
+- `-VMName` — Name of the VM (default: AlmaLinux-9)
+- `-UseLocalSSHKey` — Inject your existing SSH key
+- `-Recreate` — Delete and recreate the VM
+- `-FullSetup` — Run full automated setup (Docker, Molecule, clone project, run first test)
 
-**Default behavior (-Delete:$true):**
+### Reset behavior
+
+The script preserves only the base qcow2 cloud image inside `C:\VMData\<VMName>` to avoid re-downloading:
+
+**Default behavior (clean state):**
 - Unregisters VM from VirtualBox and powers it off
 - Cleans VirtualBox media registry for the VM path
 - Deletes all files in VMData folder EXCEPT the qcow2 image
 - Recreates VM, VDI, cloud-init ISO from scratch
 - Provides guaranteed clean state for testing
 
-**Reuse mode (-Delete:$false):**
+**Reuse mode (faster iterations):**
 - Keeps existing VDI/ISO/VM when possible
-- Faster for development iterations
 - May reuse previous VM state if it exists
 
-### Clean, quiet operation
-
-The script is designed for production use:
-- **Quiet output:** No unnecessary warnings or verbose messages
-- **Transcript logging:** Creates a log next to this script (in `scripts/`) and prints its path at start
-- **Auto-cleanup:** Log is deleted automatically on successful completion
-- **SSH verification:** Waits up to 180 seconds for SSH connectivity
-- **Ready command:** Prints exact SSH command to connect when ready
-
-### Why no timestamp in VDI path?
-
-The VDI filename is deliberately stable (`AlmaLinux9-Testing.vdi`) rather than timestamped because:
-- **Avoids unnecessary work:** No need to re-convert qcow→vdi on every run
-- **Simpler cleanup:** Predictable filenames make reset logic reliable  
-- **Performance:** Reusing converted VDI saves ~30-60 seconds per run
-- **VirtualBox registry:** Stable paths prevent orphaned media references
-
-The timestamp remains only in the log filename to prevent collisions across concurrent runs.
-
-Requirements (lite):
+Requirements:
 - VirtualBox installed (VBoxManage in default path)
-- qemu-img available
-- mkisofs available (place mkisofs.exe anywhere under scripts\Binary or in PATH)
-
-### Launch an AlmaLinux 9 VM (PowerShell)
-```powershell
-# Recommended entrypoint
-powershell -ExecutionPolicy Bypass -File .\scripts\run-vm.ps1
-```
-
-### Full reset vs reuse
-
-The script preserves only the base qcow2 cloud image inside `C:\VMData\<VMName>` to avoid re-downloading. Use the `-Delete` flag to control cleanup:
-
-```powershell
-# Full reset: delete VM + all files in VMData except the qcow2; recreate VM from scratch (default behavior)
-powershell -ExecutionPolicy Bypass -File .\scripts\launch-vm.ps1 -Delete:$true
-
-# Reuse mode: keep existing VDI/ISO/VM when possible (faster incremental runs)
-powershell -ExecutionPolicy Bypass -File .\scripts\launch-vm.ps1 -Delete:$false
-```
+- qemu-img available (auto-installed via Chocolatey if missing)
+- mkisofs available (auto-downloaded if missing)
 
 Notes:
 - Output is intentionally quiet and production-friendly. A transcript log is written next to this script (in `scripts/`) at start; its path is printed as `Log: ...`. On success, the log is deleted automatically.
@@ -163,44 +151,72 @@ To set up the environment and run Molecule tests:
     bash scripts/setup-molecule-env.sh
     ```
 
-3.  **Run tests for a specific role (e.g., `common`):**
-    The `run-test.sh` script will automatically activate the virtual environment created in the previous step (or set it up if `setup-molecule-env.sh` wasn't run manually first). You do not need to run `source ~/molecule-env/bin/activate` yourself before this command. And to quit the virtual environment type `deactivate`.
+3.  **Run tests for a specific role:**
+    The `run-test.sh` script will automatically activate the virtual environment and handle docker permissions (no password prompts).
+
+    **⚠️ Important: Default action is `test` which destroys and recreates containers (downloads packages every time)**
+    
     ```sh
-    bash scripts/run-test.sh common
+    # Full test (slow - downloads packages, destroys container)
+    bash scripts/run-test.sh webmin          # defaults to 'test' action
+    bash scripts/run-test.sh webmin test     # explicit
+    
+    # Fast iteration (recommended for development - reuses container)
+    bash scripts/run-test.sh webmin converge # much faster, no re-downloads
+    
+    # Other actions
+    bash scripts/run-test.sh webmin verify   # just run verification tests
+    bash scripts/run-test.sh webmin destroy  # destroy container
     ```
 
-    To run a different action (e.g., `converge`) for the `common` role:
-    ```sh
-    bash scripts/run-test.sh common converge
-    ```
+    **Development workflow:**
+    1. First run: `bash scripts/run-test.sh webmin test` (full test)
+    2. Iterations: `bash scripts/run-test.sh webmin converge` (fast, reuses container)
+    3. Before commit: `bash scripts/run-test.sh webmin test` (ensure clean state)
 
 ### Running Manual Molecule Commands
 
-If you need to run Molecule commands manually (e.g., `molecule login`, `molecule converge <scenario_name>`, `molecule verify <scenario_name>`) outside of the `run-test.sh` script, ensure you first navigate to the specific role's directory. For example, to work with the `cockpit` role:
+If you need to run Molecule commands manually outside of `run-test.sh`:
 
-1.  **Activate the virtual environment (if not already active):**
+1.  **Activate the virtual environment:**
     ```sh
-    cd ~/vps # Ensure you are in the project root
-    source ~/molecule-env/bin/activate 
-    ```
-    *(Note: `run-test.sh` handles activation automatically, but you'll need to do it manually here if starting a new session.)*
-
-2.  **Navigate to the role directory:**
-    ```sh
-    cd roles/<role>
+    cd ~/vps
+    source ~/molecule-env/bin/activate
     ```
 
-3.  **Run your Molecule command:**
+2.  **Ensure docker permissions (no password prompts):**
     ```sh
-    molecule destroy -s default --all && molecule converge -s default
-    # or
-    molecule converge --scenario-name default
-    # login 
-    molecule login --host almalinux9 --scenario-name default
+    # If docker group not active in session:
+    sudo chmod 666 /var/run/docker.sock
     ```
-    Then you can run commands like:
-    Systemd service status: `systemctl status php-fpm.service`.
-    Journal logs for the Cockpit service: `journalctl -xeu cockpit.socket -n 100 --no-pager`
+
+3.  **Navigate to role directory and run commands:**
+    ```sh
+    cd roles/webmin
+    
+    # Full sequence
+    molecule destroy
+    molecule create
+    molecule converge
+    molecule verify
+    
+    # Or shorthand
+    molecule test
+    
+    # Login to container
+    molecule login --host almalinux9
+    ```
+    
+    Inside the container:
+    ```sh
+    systemctl status webmin
+    journalctl -xeu webmin -n 100 --no-pager
+    ```
+
+4.  **Deactivate when done:**
+    ```sh
+    deactivate
+    ```
 
 ## Prerequisites
 - PowerShell 7+ (for Windows scripts)
@@ -210,7 +226,9 @@ If you need to run Molecule commands manually (e.g., `molecule login`, `molecule
 ## Notes
 - No secrets or credentials should be hardcoded in any script.
 - Update this README.md whenever you add, remove, or change scripts in this folder.
-what - For more details on testing, see `docs/molecule-admin-setup.md`.
+- Docker permissions are automatically handled by `run-test.sh` (no password prompts).
+- Use `converge` action for fast development iterations; use `test` for clean CI/CD validation.
+- For more details on testing, see `docs/molecule-deploy-setup.md`.
 
 ---
 
