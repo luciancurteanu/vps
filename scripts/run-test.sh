@@ -110,29 +110,25 @@ echo "[INFO] Starting Molecule $ACTION for role: $ROLE"
 # Ensure user has docker group access for molecule to work
 # Check if we need to activate docker group privileges
 if ! docker ps &>/dev/null; then
-  echo "[WARNING] Cannot access Docker socket. Attempting with newgrp docker..."
-  # Create a wrapper script that activates docker group and runs molecule
-  WRAPPER_SCRIPT="/tmp/molecule_wrapper_$$.sh"
-  cat > "$WRAPPER_SCRIPT" <<'WRAPPER_EOF'
-#!/bin/bash
-set -e
-source ~/molecule-env/bin/activate
-unset DOCKER_HOST
-ROLE_DIR="$1"
-ACTION="$2"
-LOGFILE="$3"
-cd "$ROLE_DIR"
-molecule "$ACTION" 2>&1 | tee "$LOGFILE"
-exit ${PIPESTATUS[0]}
-WRAPPER_EOF
-  chmod +x "$WRAPPER_SCRIPT"
+  echo "[WARNING] Cannot access Docker socket directly."
   
-  # Run with newgrp to activate docker group
-  newgrp docker <<NEWGRP_EOF
-bash "$WRAPPER_SCRIPT" "$ROLE_DIR" "$ACTION" "$VM_TERMINAL_LOG_FILE"
-NEWGRP_EOF
-  exit_status=$?
-  rm -f "$WRAPPER_SCRIPT"
+  # Check if user is in docker group
+  if groups | grep -q docker; then
+    echo "[INFO] User is in docker group, but session needs refresh. Using 'sg docker' to activate group..."
+    # Use sg (newgrp substitute) which works better for non-interactive switching
+    sg docker -c "cd '$ROLE_DIR' && molecule '$ACTION' 2>&1 | tee '$VM_TERMINAL_LOG_FILE'"
+    exit_status=${PIPESTATUS[0]}
+  else
+    echo "[ERROR] User is not in docker group. Trying with sudo..."
+    sudo docker ps &>/dev/null || {
+      echo "[ERROR] Cannot access Docker even with sudo. Please check Docker installation."
+      exit 1
+    }
+    echo "[INFO] Using sudo for docker access. Consider logging out and back in to activate docker group membership."
+    # Run molecule with sudo for docker commands
+    molecule "$ACTION" 2>&1 | tee "$VM_TERMINAL_LOG_FILE"
+    exit_status=${PIPESTATUS[0]}
+  fi
 else
   echo "[INFO] Docker access confirmed, running molecule directly"
   molecule "$ACTION" 2>&1 | tee "$VM_TERMINAL_LOG_FILE"
