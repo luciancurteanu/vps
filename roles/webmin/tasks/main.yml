@@ -43,7 +43,7 @@
 
 - name: Ensure Webmin service is enabled and started
   ansible.builtin.systemd:
-    name: Webmin
+    name: webmin
     enabled: true
     state: started
 
