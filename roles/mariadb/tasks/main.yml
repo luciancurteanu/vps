@@ -91,7 +91,6 @@
     - name: Remove anonymous users
       community.mysql.mysql_user:
         login_unix_socket: /var/lib/mysql/mysql.sock
-        ansible.builtin.user: ""
         user: ""
         state: absent
 
@@ -104,7 +103,6 @@
     - name: Disallow root login remotely
       community.mysql.mysql_user:
         login_unix_socket: /var/lib/mysql/mysql.sock
-        ansible.builtin.user: root
         user: root
         state: absent
       loop:
