@@ -406,7 +406,25 @@ function PerformFullSetup([VMConfig]$config, [SSHManager]$sshManager) {
         $ciSetupPath,
         "$($config.SSHUser)@localhost:/tmp/ci-setup.sh"
     )
-    $null = & scp $scpArgs 2>&1
+    
+    # Retry SCP upload with exponential backoff (SSH may need a moment to stabilize)
+    $maxRetries = 3
+    $retryDelay = 2
+    for ($i = 1; $i -le $maxRetries; $i++) {
+        $null = & scp $scpArgs 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            break
+        }
+        if ($i -lt $maxRetries) {
+            Write-Host "SCP attempt $i failed, retrying in $retryDelay seconds..." -ForegroundColor Yellow
+            Start-Sleep -Seconds $retryDelay
+            $retryDelay *= 2
+        } else {
+            Write-Host "Error: Failed to upload ci-setup.sh after $maxRetries attempts" -ForegroundColor Red
+            Write-Host "Setup cannot continue. Please check SSH connectivity and try again." -ForegroundColor Red
+            return
+        }
+    }
 
     # Run ci-setup.sh
     Write-Host "Uploading and executing ci-setup.sh..." -ForegroundColor Yellow
