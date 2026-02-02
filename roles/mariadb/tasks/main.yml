@@ -131,7 +131,7 @@
   loop:
     - { name: "{{ db_remote_user | default('remote_user') }}", password: "{{ db_remote_password | default(db_root_password) }}", host: '%', priv: '*.*:ALL' }
     - { name: 'webclient', password: "{{ db_webclient_password | default(db_root_password) }}", host: 'localhost', priv: '*.*:ALL' }
-  no_log: true
+  # Temporarily show output for debugging; revert after fix
 
 - name: Create database backup directory
   ansible.builtin.file:
