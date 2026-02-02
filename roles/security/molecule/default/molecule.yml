@@ -3,15 +3,18 @@ driver:
   name: docker
 platforms:
   - name: Almalinux9
-    image: trfore/docker-centos9-systemd:latest
+    image: dokken/almalinux-9
     privileged: true
-    pre_build_image: true # Usually good to ensure the image is pulled/updated
-    command: /usr/sbin/init # Add this line to start systemd
+    command: /usr/sbin/init
     volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:rw # Mount cgroups
-    tmpfs: # systemd requires /run and /tmp to be tmpfs
+      - "/sys/fs/cgroup:/sys/fs/cgroup:rw"
+    tmpfs:
       - /run
       - /tmp
+    security_opts:
+      - "seccomp=unconfined"
+    cgroupns_mode: "host"
+    stop_signal: "SIGRTMIN+3"
 provisioner:
   name: Ansible
   env:
@@ -21,14 +24,10 @@ provisioner:
   config_options:
     defaults:
       result_format: yaml
-      vars_files:
-        - ../../../../vars/secrets.yml # Load secrets explicitly
-  options:
-    extra-vars: "domain=vps.test master_domain=vps.test"
-  playbooks:
-    converge: converge.yml
   inventory:
     links:
-      group_vars: ../../../../inventory/group_vars # Points to the directory for group variables like all.yml
+      group_vars: ../../../../inventory/group_vars/  # Path to your group_vars directory
+  playbooks:
+    converge: converge.yml
 verifier:
   name: Ansible
