@@ -8,13 +8,13 @@
 # RedHat/CentOS systems - Firewalld configuration
 - name: Install firewalld (RedHat)
   ansible.builtin.package:
-    name: firewalld
+    name: Firewalld
     state: present
   when: ansible_os_family == 'RedHat' and security_firewall_service == "firewalld"
 
 - name: Ensure firewalld is enabled and running (RedHat)
   ansible.builtin.service:
-    name: firewalld
+    name: Firewalld
     state: started
     enabled: true
   when:
@@ -57,14 +57,14 @@
 # RedHat/CentOS systems - Iptables configuration
 - name: Check if firewalld service exists
   ansible.builtin.systemd:
-    name: firewalld
+    name: Firewalld
   register: firewalld_status
   when: ansible_os_family == 'RedHat' and security_firewall_service == "iptables"
   ignore_errors: true
 
 - name: Stop and mask firewalld service (RedHat)
   ansible.builtin.systemd:
-    name: firewalld
+    name: Firewalld
     state: stopped
     enabled: false
     masked: true
@@ -78,7 +78,7 @@
 
 - name: Ensure firewalld is not installed (RedHat)
   ansible.builtin.package:
-    name: firewalld
+    name: Firewalld
     state: absent
   when: ansible_os_family == 'RedHat' and security_firewall_service == "iptables"
 
@@ -113,7 +113,7 @@
 
 - name: Ensure iptables service is enabled and running (RedHat)
   ansible.builtin.service:
-    name: iptables
+    name: Iptables
     state: started
     enabled: true
   when:
@@ -123,7 +123,7 @@
 
 - name: Ensure ip6tables service is enabled and running (RedHat)
   ansible.builtin.service:
-    name: ip6tables
+    name: Ip6tables
     state: started
     enabled: true
   when:

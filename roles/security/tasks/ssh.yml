@@ -3,7 +3,7 @@
 
 - name: Ensure SSH service is installed
   ansible.builtin.package:
-    name: openssh-server
+    name: Openssh-server
     state: present
 
 - name: Generate SSH host keys if they do not exist
@@ -23,9 +23,9 @@
   ansible.builtin.copy:
     src: /etc/ssh/sshd_config
     dest: /etc/ssh/sshd_config.bak
-    remote_src: yes
-    force: no
-  ignore_errors: yes
+    remote_src: true
+    force: false
+  ignore_errors: true
 
 - name: Configure SSH
   ansible.builtin.template:

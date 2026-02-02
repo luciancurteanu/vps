@@ -6,5 +6,5 @@
   tasks:
     - name: Include mariadb role to verify its state
       ansible.builtin.include_role:
-        name: mariadb
+        name: Mariadb
 # ... any other verification tasks you might add later

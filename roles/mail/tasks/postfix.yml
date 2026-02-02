@@ -35,9 +35,9 @@
   ansible.builtin.copy:
     src: /etc/postfix/main.cf
     dest: /etc/postfix/main.cf.bak
-    remote_src: yes
-    force: no
-  ignore_errors: yes
+    remote_src: true
+    force: false
+  ignore_errors: true
 
 - name: Configure main Postfix configuration
   ansible.builtin.template:
@@ -52,9 +52,9 @@
   ansible.builtin.copy:
     src: /etc/postfix/master.cf
     dest: /etc/postfix/master.cf.bak
-    remote_src: yes
-    force: no
-  ignore_errors: yes
+    remote_src: true
+    force: false
+  ignore_errors: true
 
 - name: Configure Postfix master settings
   ansible.builtin.template:
@@ -130,6 +130,6 @@
 
 - name: Ensure Postfix service is running and enabled
   ansible.builtin.service:
-    name: postfix
+    name: Postfix
     state: started
     enabled: true

@@ -171,7 +171,7 @@
         owner: nginx
         group: nginx
         mode: '0755'
-        recurse: yes
+        recurse: true
       when: domain is defined
 
     - name: Ensure firewall is running
@@ -208,5 +208,5 @@
   handlers:
     - name: Restart Nginx
       ansible.builtin.service:
-        name: nginx
+        name: Nginx
         state: restarted

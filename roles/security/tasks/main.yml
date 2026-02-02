@@ -8,7 +8,7 @@
 # Ensure firewalld is not present
 - name: Ensure firewalld is not installed
   ansible.builtin.package:
-    name: firewalld
+    name: Firewalld
     state: absent
   when: ansible_os_family == 'RedHat' and security_firewall_service == "iptables"
   changed_when: not (ansible_virtualization_type | default('') == 'docker')
@@ -34,8 +34,8 @@
   ansible.builtin.copy:
     src: /etc/fail2ban/fail2ban.conf
     dest: /etc/fail2ban/fail2ban.local
-    remote_src: yes
-    force: no
+    remote_src: true
+    force: false
   when: security_fail2ban_enabled | default(true)
   tags: ['fail2ban', 'security']
 
@@ -83,7 +83,7 @@
   ansible.builtin.find:
     paths: /home
     patterns: 'access.log'
-    recurse: yes
+    recurse: true
     file_type: file
   register: find_access_logs
   when: security_fail2ban_enabled | default(true)
@@ -125,7 +125,7 @@
 
 - name: Ensure fail2ban service is enabled and running
   ansible.builtin.service:
-    name: fail2ban
+    name: Fail2ban
     state: started
     enabled: true
   when: security_fail2ban_enabled | default(true)

@@ -3,7 +3,7 @@
 
 - name: Ensure EPEL repository is enabled on RedHat systems
   ansible.builtin.package:
-    name: epel-release
+    name: Epel-release
     state: present
   when: ansible_facts['os_family'] == 'RedHat'
 
@@ -72,9 +72,9 @@
   ansible.builtin.copy:
     src: "{{ go_profile_script }}"
     dest: "{{ go_profile_script }}.bak"
-    remote_src: yes
-    force: no
-  ignore_errors: yes
+    remote_src: true
+    force: false
+  ignore_errors: true
 
 - name: Configure Go profile script
   ansible.builtin.template:
@@ -269,9 +269,9 @@
   ansible.builtin.copy:
     src: "{{ goproxy_home }}/config.json"
     dest: "{{ goproxy_home }}/config.json.bak"
-    remote_src: yes
-    force: no
-  ignore_errors: yes
+    remote_src: true
+    force: false
+  ignore_errors: true
 
 - name: Deploy GoProxy configuration
   ansible.builtin.template:
@@ -310,22 +310,22 @@
 
 - name: Install torsocks dependency on RedHat systems
   ansible.builtin.package:
-    name: torsocks
+    name: Torsocks
     state: present
   when: ansible_facts['os_family'] == 'RedHat'
 
 - name: Install Tor
   ansible.builtin.package:
-    name: tor
+    name: Tor
     state: present
 
 - name: Backup Tor configuration
   ansible.builtin.copy:
     src: /etc/tor/torrc
     dest: /etc/tor/torrc.bak
-    remote_src: yes
-    force: no
-  ignore_errors: yes
+    remote_src: true
+    force: false
+  ignore_errors: true
 
 - name: Deploy tor configuration
   ansible.builtin.template:
@@ -338,12 +338,12 @@
 
 - name: Ensure Tor service is enabled and running
   ansible.builtin.systemd:
-    name: tor
+    name: Tor
     enabled: true
     state: started
 
 - name: Ensure GoProxy service is enabled and running
   ansible.builtin.systemd:
-    name: goproxy
+    name: Goproxy
     enabled: true
     state: started

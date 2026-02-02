@@ -332,15 +332,15 @@
   handlers:
     - name: Restart Nginx
       ansible.builtin.service:
-        name: nginx
+        name: Nginx
         state: restarted
 
     - name: Restart PHP-FPM
       ansible.builtin.service:
-        name: php-fpm
+        name: Php-fpm
         state: restarted
 
     - name: Restart SSH
       ansible.builtin.service:
-        name: sshd
+        name: Sshd
         state: restarted

@@ -1,8 +1,8 @@
 ---
 driver:
-  name: docker
+  name: Docker
 platforms:
-  - name: almalinux9
+  - name: Almalinux9
     image: trfore/docker-centos9-systemd:latest
     privileged: true
     pre_build_image: true # Usually good to ensure the image is pulled/updated
@@ -14,7 +14,7 @@ platforms:
       - /run
       - /tmp
 provisioner:
-  name: ansible
+  name: Ansible
   env:
     ANSIBLE_LOG_PATH: ansible_molecule_output.log
     PY_COLORS: '1'
@@ -32,4 +32,4 @@ provisioner:
     links:
       group_vars: ../../../../inventory/group_vars # Points to the directory for group variables like all.yml
 verifier:
-  name: ansible
+  name: Ansible

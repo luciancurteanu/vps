@@ -3,7 +3,7 @@
 
 - name: Restart Nginx
   ansible.builtin.systemd:
-    name: nginx
+    name: Nginx
     state: restarted
     daemon_reload: true
   listen: Restart Nginx

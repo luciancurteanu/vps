@@ -44,13 +44,13 @@
 
     - name: Install Ansible via pip (AlmaLinux 9)
       ansible.builtin.pip:
-        name: ansible
+        name: Ansible
         executable: pip3 # Ensure pip3 is used
 
     # Docker CLI installation tasks
     - name: Ensure dnf-utils is installed
       ansible.builtin.dnf:
-        name: dnf-utils
+        name: Dnf-utils
         state: present
         use_backend: dnf4
       when: ansible_os_family == "RedHat"
@@ -92,7 +92,7 @@
 
     - name: Install Docker CE CLI
       ansible.builtin.dnf:
-        name: docker-ce-cli
+        name: Docker-ce-cli
         state: present
         use_backend: dnf4 # Keep dnf4 for consistency
       when: ansible_os_family == "RedHat"

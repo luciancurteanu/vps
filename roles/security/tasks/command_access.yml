@@ -41,7 +41,7 @@
     mode: "{{ item.mode | default('0755') }}"
     owner: root
     group: root
-    remote_src: yes
+    remote_src: true
   with_items:
     # internal-sftp doesn't strictly need bash, but some minimal commands might be useful for debugging if ever needed.
     # For a pure SFTP setup, these might be omitted.

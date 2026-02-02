@@ -16,18 +16,18 @@
 
 - name: Ensure nginx group exists for PHP-FPM ownership
   ansible.builtin.group:
-    name: nginx
-    system: yes
+    name: Nginx
+    system: true
     state: present
 
 - name: Ensure nginx user exists for PHP-FPM ownership
   ansible.builtin.user:
-    name: nginx
+    name: Nginx
     group: nginx
-    system: yes
+    system: true
     shell: /sbin/nologin
     home: /var/cache/nginx
-    create_home: no
+    create_home: false
 
 - name: Install PHP and PHP-FPM (RedHat)
   ansible.builtin.dnf:
@@ -56,8 +56,8 @@
   ansible.builtin.copy:
     src: /etc/php-fpm.d/www.conf
     dest: /etc/php-fpm.d/www.conf.bak
-    remote_src: yes
-    force: no
+    remote_src: true
+    force: false
 
 - name: Configure PHP-FPM to use Unix socket
   ansible.builtin.lineinfile:
@@ -112,20 +112,20 @@
     path: /var/lib/php
     owner: root
     group: nginx
-    recurse: yes
+    recurse: true
 
 - name: Set secure permissions for PHP session directory
   ansible.builtin.file:
     path: /var/lib/php/session
     mode: '0700'
-    recurse: yes
+    recurse: true
 
 - name: Apply PHP-FPM configuration changes
   meta: flush_handlers
 
 - name: Enable and start PHP-FPM service
   ansible.builtin.systemd:
-    name: php-fpm
+    name: Php-fpm
     enabled: true
     state: started
     daemon_reload: true

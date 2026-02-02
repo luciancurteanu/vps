@@ -23,9 +23,9 @@
   ansible.builtin.copy:
     src: /etc/dovecot/dovecot.conf
     dest: /etc/dovecot/dovecot.conf.bak
-    remote_src: yes
-    force: no
-  ignore_errors: yes
+    remote_src: true
+    force: false
+  ignore_errors: true
 
 - name: Configure Dovecot main configuration
   ansible.builtin.template:
@@ -40,9 +40,9 @@
   ansible.builtin.copy:
     src: /etc/dovecot/conf.d/10-auth.conf
     dest: /etc/dovecot/conf.d/10-auth.conf.bak
-    remote_src: yes
-    force: no
-  ignore_errors: yes
+    remote_src: true
+    force: false
+  ignore_errors: true
 
 - name: Configure Dovecot authentication
   ansible.builtin.template:
@@ -57,9 +57,9 @@
   ansible.builtin.copy:
     src: /etc/dovecot/conf.d/10-mail.conf
     dest: /etc/dovecot/conf.d/10-mail.conf.bak
-    remote_src: yes
-    force: no
-  ignore_errors: yes
+    remote_src: true
+    force: false
+  ignore_errors: true
 
 - name: Configure Dovecot mail locations
   ansible.builtin.template:
@@ -74,9 +74,9 @@
   ansible.builtin.copy:
     src: /etc/dovecot/conf.d/10-ssl.conf
     dest: /etc/dovecot/conf.d/10-ssl.conf.bak
-    remote_src: yes
-    force: no
-  ignore_errors: yes
+    remote_src: true
+    force: false
+  ignore_errors: true
 
 - name: Configure Dovecot SSL settings
   ansible.builtin.template:
@@ -91,9 +91,9 @@
   ansible.builtin.copy:
     src: /etc/dovecot/conf.d/20-imap.conf
     dest: /etc/dovecot/conf.d/20-imap.conf.bak
-    remote_src: yes
-    force: no
-  ignore_errors: yes
+    remote_src: true
+    force: false
+  ignore_errors: true
 
 - name: Configure Dovecot IMAP settings
   ansible.builtin.template:
@@ -108,9 +108,9 @@
   ansible.builtin.copy:
     src: /etc/dovecot/conf.d/20-pop3.conf
     dest: /etc/dovecot/conf.d/20-pop3.conf.bak
-    remote_src: yes
-    force: no
-  ignore_errors: yes
+    remote_src: true
+    force: false
+  ignore_errors: true
 
 - name: Configure Dovecot POP3 settings
   ansible.builtin.template:
@@ -125,9 +125,9 @@
   ansible.builtin.copy:
     src: /etc/dovecot/conf.d/15-lda.conf
     dest: /etc/dovecot/conf.d/15-lda.conf.bak
-    remote_src: yes
-    force: no
-  ignore_errors: yes
+    remote_src: true
+    force: false
+  ignore_errors: true
 
 - name: Configure Dovecot LDA settings
   ansible.builtin.template:
@@ -152,7 +152,7 @@
   ansible.builtin.copy:
     src: /etc/dovecot/dovecot-mysql.conf.ext
     dest: /etc/dovecot/dovecot-mysql.conf.ext.bak
-    remote_src: yes
+    remote_src: true
   when: dovecot_mysql_conf.stat.exists and not dovecot_mysql_backup.stat.exists
 
 - name: Configure Dovecot MySQL settings
@@ -177,12 +177,12 @@
     owner: vmail
     group: vmail
     mode: '0770'
-    recurse: yes
+    recurse: true
   when: domain is defined
 
 - name: Ensure Dovecot service is running and enabled
   ansible.builtin.systemd:
-    name: dovecot
+    name: Dovecot
     state: started
     enabled: true
   register: dovecot_service

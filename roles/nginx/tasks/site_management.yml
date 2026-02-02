@@ -9,7 +9,7 @@
     owner: root
     group: root
     mode: '0644'
-    backup: yes
+    backup: true
   when: nginx_site_name is defined
   notify: restart_nginx_service
 

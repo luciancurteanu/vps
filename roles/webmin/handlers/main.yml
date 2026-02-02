@@ -3,12 +3,12 @@
 
 - name: Restart webmin
   ansible.builtin.systemd:
-    name: webmin
+    name: Webmin
     state: restarted
 
 - name: Reload nginx
   ansible.builtin.systemd:
-    name: nginx
+    name: Nginx
     state: reloaded
   when: nginx_installed is defined and nginx_installed
 

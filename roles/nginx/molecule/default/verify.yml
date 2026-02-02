@@ -6,7 +6,7 @@
   tasks:
     - name: Check nginx is installed
       ansible.builtin.package:
-        name: nginx
+        name: Nginx
         state: present
       check_mode: true
       register: nginx_installed
@@ -14,7 +14,7 @@
 
     - name: Check nginx service is running
       ansible.builtin.systemd:
-        name: nginx
+        name: Nginx
         state: started
       check_mode: true
       register: nginx_service
@@ -22,7 +22,7 @@
 
     - name: Check nginx service is enabled
       ansible.builtin.systemd:
-        name: nginx
+        name: Nginx
         enabled: true
       check_mode: true
       register: nginx_enabled

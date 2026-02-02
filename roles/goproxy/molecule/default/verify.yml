@@ -6,4 +6,4 @@
   tasks:
     - name: Include goproxy role to verify its state
       ansible.builtin.include_role:
-        name: goproxy
+        name: Goproxy

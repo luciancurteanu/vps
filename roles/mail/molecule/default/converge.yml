@@ -20,13 +20,13 @@
           - python3-PyMySQL
           - nginx
         state: present
-        update_cache: yes
+        update_cache: true
 
     - name: Ensure MariaDB service is started
       ansible.builtin.systemd:
-        name: mariadb
+        name: Mariadb
         state: started
-        enabled: yes
+        enabled: true
 
   roles:
     - role: mail

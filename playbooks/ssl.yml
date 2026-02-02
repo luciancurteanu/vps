@@ -67,7 +67,7 @@
         --non-interactive
         --agree-tos
         --email {{ email }}
-        --domains {{ domain }},{{ mail_subdomain }}
+        --domains {{ domain }}, {{ mail_subdomain }}
         {{ '--force-renewal' if force_renewal else '' }}
       register: certbot_result
       changed_when: "'Congratulations! Your certificate and chain have been saved' in certbot_result.stdout"
@@ -122,5 +122,5 @@
   handlers:
     - name: Restart Nginx
       ansible.builtin.service:
-        name: nginx
+        name: Nginx
         state: restarted

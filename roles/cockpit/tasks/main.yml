@@ -13,7 +13,7 @@
 
 - name: Enable and start Cockpit socket
   ansible.builtin.systemd:
-    name: cockpit.socket
+    name: Cockpit.socket
     enabled: true
     state: started
 
@@ -21,9 +21,9 @@
   ansible.builtin.copy:
     src: /etc/cockpit/cockpit.conf
     dest: /etc/cockpit/cockpit.conf.bak
-    remote_src: yes
-    force: no
-  ignore_errors: yes
+    remote_src: true
+    force: false
+  ignore_errors: true
 
 - name: Configure Cockpit for proxy access
   ansible.builtin.template:

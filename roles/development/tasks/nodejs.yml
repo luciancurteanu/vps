@@ -22,7 +22,7 @@
   when:
     - nodejs_existing.rc != 0
     - nodejs_download is changed
-  become: yes
+  become: true
 
 - name: Install Node.js
   ansible.builtin.package:

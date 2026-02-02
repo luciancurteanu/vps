@@ -3,7 +3,7 @@
 
 - name: Ensure Python PIP is installed
   ansible.builtin.package:
-    name: python3-pip
+    name: Python3-pip
     state: present
 
 - name: Install Python packages
@@ -14,13 +14,13 @@
 
 - name: Upgrade PIP
   ansible.builtin.pip:
-    name: pip
+    name: Pip
     state: latest
   when: pip_install is succeeded
 
 - name: Ensure EPEL repository is enabled
   ansible.builtin.dnf:
-    name: epel-release
+    name: Epel-release
     state: present
 
 - name: Install Chromium headless for scraping
@@ -67,7 +67,7 @@
 
 - name: Ensure unzip is installed for ChromeDriver extraction
   ansible.builtin.package:
-    name: unzip
+    name: Unzip
     state: present
   when:
     - driver_download is defined
@@ -78,7 +78,7 @@
   ansible.builtin.unarchive:
     src: /tmp/chromedriver-linux64.zip
     dest: /tmp
-    remote_src: yes
+    remote_src: true
   when:
     - driver_download is defined
     - driver_download is not skipped
@@ -89,7 +89,7 @@
     src: /tmp/chromedriver-linux64/chromedriver
     dest: /usr/local/bin/chromedriver
     mode: '0755'
-    remote_src: yes
+    remote_src: true
   when:
     - driver_download is defined
     - driver_download is not skipped

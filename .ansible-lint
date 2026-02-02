@@ -15,13 +15,10 @@ profile: basic
 # Skip specific rules temporarily (to be addressed incrementally)
 skip_list:
   - var-naming[no-role-prefix]      # Variable naming - requires refactoring
-  - yaml[truthy]                    # yes/no vs true/false - fix incrementally
   - risky-file-permissions          # 23 violations - requires security review
-  - name[casing]                    # Naming conventions - fix incrementally
   - ignore-errors                   # Should use failed_when - requires logic review
   - no-changed-when                 # Command tasks - requires review
   - yaml[line-length]               # Line length - cosmetic
-  - yaml[commas]                    # Comma spacing - cosmetic
   - name[template]                  # Jinja in name - cosmetic
   - fqcn[action-core]               # FQCN for builtin - good practice but not critical
   - key-order[task]                 # Task key ordering - cosmetic

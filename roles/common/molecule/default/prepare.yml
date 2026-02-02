@@ -17,12 +17,12 @@
 
     - name: Install Ansible via pip (AlmaLinux 9)
       ansible.builtin.pip:
-        name: ansible
+        name: Ansible
         executable: pip3
 
     - name: Install passlib for crypt support (AlmaLinux 9)
       ansible.builtin.pip:
-        name: passlib
+        name: Passlib
         executable: pip3
 
     # Docker CLI installation tasks
@@ -35,6 +35,6 @@
 
     - name: Install Docker CE CLI (AlmaLinux 9)
       ansible.builtin.dnf:
-        name: docker-ce-cli
+        name: Docker-ce-cli
         state: present
         use_backend: dnf4

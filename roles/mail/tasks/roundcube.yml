@@ -44,7 +44,7 @@
   unarchive:
     src: /tmp/roundcube.tar.gz
     dest: /tmp
-    remote_src: yes
+    remote_src: true
   when: not roundcube_installed.stat.exists
 
 - name: Move Roundcube files to webmail directory
@@ -92,7 +92,7 @@
     owner: nginx
     group: nginx
     mode: '0755'
-    recurse: yes
+    recurse: true
 
 - name: Ensure temp and logs directories are writable
   file:
