@@ -50,7 +50,7 @@
     # Docker CLI installation tasks
     - name: Ensure dnf-utils is installed
       ansible.builtin.dnf:
-        name: Dnf-utils
+        name: dnf-utils
         state: present
         use_backend: dnf4
       when: ansible_os_family == "RedHat"
@@ -92,7 +92,7 @@
 
     - name: Install Docker CE CLI
       ansible.builtin.dnf:
-        name: Docker-ce-cli
+        name: docker-ce-cli
         state: present
         use_backend: dnf4 # Keep dnf4 for consistency
       when: ansible_os_family == "RedHat"
