@@ -7,17 +7,17 @@ AddressFamily inet
 ListenAddress 0.0.0.0
 
 # Authentication settings
-PermitRootLogin {{ common_ssh_permit_root_login }}
-PubkeyAuthentication {{ common_ssh_pubkey_authentication }}
-PasswordAuthentication {{ common_ssh_password_authentication }}
+PermitRootLogin {{ common_ssh_permit_root_login | string | lower }}
+PubkeyAuthentication {{ common_ssh_pubkey_authentication | string | lower }}
+PasswordAuthentication {{ common_ssh_password_authentication | string | lower }}
 PermitEmptyPasswords no
 ChallengeResponseAuthentication no
 UsePAM yes
 
 # Forwarding settings
-AllowAgentForwarding {{ common_ssh_allow_agent_forwarding }}
-AllowTcpForwarding {{ common_ssh_allow_tcp_forwarding }}
-X11Forwarding {{ common_ssh_x11_forwarding }}
+AllowAgentForwarding {{ common_ssh_allow_agent_forwarding | string | lower }}
+AllowTcpForwarding {{ common_ssh_allow_tcp_forwarding | string | lower }}
+X11Forwarding {{ common_ssh_x11_forwarding | string | lower }}
 
 # Connection settings
 MaxAuthTries {{ common_ssh_max_auth_tries }}
