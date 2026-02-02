@@ -14,16 +14,11 @@ profile: basic
 
 # Skip specific rules temporarily (to be addressed incrementally)
 skip_list:
-  - var-naming[no-role-prefix]      # Variable naming - requires refactoring
-  - risky-file-permissions          # 23 violations - requires security review
-  - ignore-errors                   # Should use failed_when - requires logic review
-  - no-changed-when                 # Command tasks - requires review
-  - yaml[line-length]               # Line length - cosmetic
-  - name[template]                  # Jinja in name - cosmetic
-  - key-order[task]                 # Task key ordering - cosmetic
-  - name[missing]                   # Missing names - fix incrementally
-  - risky-shell-pipe                # Pipefail - good practice but not critical
-  - yaml[key-duplicates]            # Fix separately - requires investigation
+  - var-naming[no-role-prefix]      # Variable naming - requires major refactoring
+  - risky-file-permissions          # Requires security review for each file
+  - ignore-errors                   # Most are intentional with comments explaining why
+  - yaml[line-length]               # Some lines logically need to be longer
+  - name[template]                  # Jinja2 in task names is intentional for dynamic naming
 
 # Enable offline mode if needed
 # offline: true

@@ -9,6 +9,7 @@
 - name: Generate SSH host keys for testing
   ansible.builtin.command: ssh-keygen -A
   when: ansible_virtualization_type == "docker"
+  changed_when: false
   tags:
     - molecule-notest
 
