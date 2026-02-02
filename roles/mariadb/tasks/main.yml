@@ -90,19 +90,22 @@
   block:
     - name: Remove anonymous users
       community.mysql.mysql_user:
-        login_unix_socket: /var/lib/mysql/mysql.sock
+        login_user: root
+        login_password: "{{ db_root_password }}"
         user: ""
         state: absent
 
     - name: Remove test database
       community.mysql.mysql_db:
-        login_unix_socket: /var/lib/mysql/mysql.sock
+        login_user: root
+        login_password: "{{ db_root_password }}"
         name: Test
         state: absent
 
     - name: Disallow root login remotely
       community.mysql.mysql_user:
-        login_unix_socket: /var/lib/mysql/mysql.sock
+        login_user: root
+        login_password: "{{ db_root_password }}"
         user: root
         state: absent
       loop:
