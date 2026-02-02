@@ -3,7 +3,7 @@
 
 - name: Install passlib for password hashing
   ansible.builtin.pip:
-    name: Passlib
+    name: passlib
     executable: pip3.13
     state: present
 

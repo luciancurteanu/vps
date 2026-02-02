@@ -3,7 +3,7 @@
 
 - name: Ensure SSH service is installed
   ansible.builtin.package:
-    name: Openssh-server
+    name: openssh-server
     state: present
 
 - name: Generate SSH host keys for testing
