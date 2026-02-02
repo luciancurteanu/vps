@@ -33,6 +33,6 @@
 
     - name: Install Docker CE CLI (AlmaLinux 9)
       ansible.builtin.dnf:
-        name: Docker-ce-cli
+        name: docker-ce-cli
         state: present
         use_backend: dnf4
