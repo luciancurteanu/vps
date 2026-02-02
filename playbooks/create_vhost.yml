@@ -82,7 +82,7 @@
 
     - name: Configure PHP-FPM pool
       ansible.builtin.template:
-        src: "{{ playbook_dir }}/../templates/php/pool.conf.j2"
+        src: "{{ playbook_dir | dirname }}/templates/php/pool.conf.j2"
         dest: "/etc/php-fpm.d/{{ domain }}.conf"
         owner: root
         group: root
@@ -107,7 +107,7 @@
 
     - name: Configure Nginx virtual host
       ansible.builtin.template:
-        src: "{{ playbook_dir }}/../templates/nginx/vhost.conf.j2"
+        src: "{{ playbook_dir | dirname }}/templates/nginx/vhost.conf.j2"
         dest: "/etc/nginx/sites-available/{{ domain }}.conf"
         owner: root
         group: root
@@ -134,7 +134,7 @@
 
     - name: Create index.html from template
       ansible.builtin.template:
-        src: "{{ playbook_dir }}/../templates/website/index.html.j2"
+        src: "{{ playbook_dir | dirname }}/templates/website/index.html.j2"
         dest: "{{ document_root }}/index.html"
         owner: "{{ user }}"
         group: "{{ user }}"
@@ -209,10 +209,11 @@
       when: domain != master_domain
 
     - name: Configure mail subdomain if this is the master domain
+      when: domain == master_domain
       block:
         - name: Create mail subdomain configuration
           ansible.builtin.template:
-            src: "{{ playbook_dir }}/../templates/nginx/mail.conf.j2"
+            src: "{{ playbook_dir | dirname }}/templates/nginx/mail.conf.j2"
             dest: "/etc/nginx/sites-available/{{ mail_subdomain }}.conf"
             owner: root
             group: root
@@ -309,6 +310,7 @@
             line: "default._domainkey.{{ domain }} {{ domain }}:default:/etc/opendkim/keys/{{ domain }}/default.private"
             state: present
             create: true
+            mode: '0644'
 
         - name: Add domain to OpenDKIM SigningTable
           ansible.builtin.lineinfile:
@@ -316,6 +318,7 @@
             line: "*@{{ domain }} default._domainkey.{{ domain }}"
             state: present
             create: true
+            mode: '0644'
 
         - name: Reload mail services
           ansible.builtin.service:
@@ -331,12 +334,12 @@
       ansible.builtin.service:
         name: nginx
         state: restarted
-        
+
     - name: Restart PHP-FPM
       ansible.builtin.service:
         name: php-fpm
         state: restarted
-        
+
     - name: Restart SSH
       ansible.builtin.service:
         name: sshd
