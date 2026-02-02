@@ -96,3 +96,9 @@
         state: present
         use_backend: dnf4 # Keep dnf4 for consistency
       when: ansible_os_family == "RedHat"
+
+    - name: Ensure MariaDB setup flag is removed so secure setup runs
+      ansible.builtin.file:
+        path: /var/lib/mysql/.mysql_setup_complete
+        state: absent
+      ignore_errors: true
