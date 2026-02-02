@@ -22,7 +22,10 @@ echo "[INFO] Installing 'requests<2.32' to ensure compatibility..."
 pip install 'requests<2.32'
 
 echo "[INFO] Installing other dependencies..."
-pip install 'docker<=6.1.3' ansible molecule molecule-docker ansible-lint yamllint passlib
+pip install 'docker<=6.1.3' 'ansible>=2.16,<2.18' molecule molecule-docker ansible-lint yamllint passlib
+
+echo "[INFO] Upgrading community.docker collection to latest version..."
+ansible-galaxy collection install community.docker --force
 
 # Clean up potential duplicate Ansible collection path in lib64
 # This addresses warnings if collections are found in both lib/ and lib64/ site-packages.
