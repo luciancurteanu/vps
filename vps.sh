@@ -230,7 +230,11 @@ parse_args() {
 # Run the appropriate Ansible playbook
 run_ansible() {
     start_time=$(date +%s)
+    timestamp=$(date '+%Y%m%d_%H%M%S')
+    log_file="$PROJECT_ROOT/logs/vps-${ACTION}-${MODULE}-${timestamp}.log"
+    
     log "${GREEN}Starting operation: $ACTION $MODULE for domain $DOMAIN${RESET}"
+    log "Command log: $log_file"
 
     extra_vars="domain=$DOMAIN user=$USER"
 
@@ -266,14 +270,52 @@ run_ansible() {
         TAGS_OPTS="--tags setup"
     fi
 
-    ansible-playbook "$playbook" -e "$extra_vars" $ASK_SSH_PASS $VAULT_OPTS $TAGS_OPTS
+    # Log the full command being executed
+    {
+        echo "========================================"
+        echo "VPS Operation Log"
+        echo "========================================"
+        echo "Date: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "Action: $ACTION $MODULE"
+        echo "Domain: $DOMAIN"
+        echo "User: $USER"
+        echo "Command: ansible-playbook $playbook -e \"$extra_vars\" $ASK_SSH_PASS $VAULT_OPTS $TAGS_OPTS"
+        echo "========================================"
+        echo ""
+    } > "$log_file"
+
+    # Run ansible-playbook with output tee'd to log file
+    ansible-playbook "$playbook" -e "$extra_vars" $ASK_SSH_PASS $VAULT_OPTS $TAGS_OPTS 2>&1 | tee -a "$log_file"
+    
+    ansible_exit_code=${PIPESTATUS[0]}
+
+    ansible_exit_code=${PIPESTATUS[0]}
 
     end_time=$(date +%s)
     duration=$((end_time - start_time))
     minutes=$((duration / 60))
     seconds=$((duration % 60))
 
-    log "${GREEN}Operation completed in ${minutes}m ${seconds}s${RESET}"
+    # Append summary to log file
+    {
+        echo ""
+        echo "========================================"
+        echo "Operation Summary"
+        echo "========================================"
+        echo "Exit Code: $ansible_exit_code"
+        echo "Duration: ${minutes}m ${seconds}s"
+        echo "Completed: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "========================================"
+    } >> "$log_file"
+
+    if [ $ansible_exit_code -eq 0 ]; then
+        log "${GREEN}Operation completed successfully in ${minutes}m ${seconds}s${RESET}"
+        log "${GREEN}Full log saved to: $log_file${RESET}"
+    else
+        log "${RED}Operation failed with exit code $ansible_exit_code${RESET}"
+        log "${RED}Check log for details: $log_file${RESET}"
+        exit $ansible_exit_code
+    fi
 }
 
 # Main function
