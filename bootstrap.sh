@@ -7,12 +7,31 @@ GREEN="\e[32m"
 YELLOW="\e[33m"
 RESET="\e[0m"
 
-# Repository URL - update this with your actual repository URL
+# Repository URL
 REPO_URL="https://github.com/luciancurteanu/vps.git"
 REPO_DIR="vps"
 
 echo -e "${BOLD}VPS Setup Bootstrap${RESET}"
 echo "This script will prepare your server for VPS setup."
+echo
+
+# Detect OS
+detect_os() {
+    if command -v dnf &> /dev/null; then
+        OS_TYPE="rhel"
+        PKG_MGR="dnf"
+    elif command -v apt &> /dev/null; then
+        OS_TYPE="debian"
+        PKG_MGR="apt"
+    elif command -v yum &> /dev/null; then
+        OS_TYPE="rhel"
+        PKG_MGR="yum"
+    else
+        echo -e "${RED}Unable to detect package manager.${RESET}"
+        exit 1
+    fi
+    echo -e "${GREEN}Detected OS: $OS_TYPE (using $PKG_MGR)${RESET}"
+}
 
 # Install Git
 install_git() {
@@ -20,20 +39,12 @@ install_git() {
     if ! command -v git &> /dev/null; then
         echo -e "Git is not installed. Installing Git..."
         
-        # Detect OS and use appropriate package manager
-        if command -v apt &> /dev/null; then
+        if [ "$OS_TYPE" = "debian" ]; then
             sudo apt update
             sudo apt install -y git
-        elif command -v dnf &> /dev/null; then
-            sudo dnf install -y epel-release || true
-            sudo dnf install -y git
-        elif command -v yum &> /dev/null; then
-            sudo yum install -y git
-        else
-            echo -e "${RED}Unable to detect package manager. Please install Git manually:${RESET}"
-            echo "  - For Debian/Ubuntu: sudo apt install -y git"
-            echo "  - For RHEL/CentOS: sudo dnf install -y git"
-            exit 1
+        elif [ "$OS_TYPE" = "rhel" ]; then
+            sudo $PKG_MGR install -y epel-release || true
+            sudo $PKG_MGR install -y git
         fi
         
         # Verify installation
@@ -46,6 +57,67 @@ install_git() {
     else
         echo -e "${GREEN}Git is already installed.${RESET}"
     fi
+}
+
+# Install Ansible
+install_ansible() {
+    echo -e "${YELLOW}Checking for Ansible...${RESET}"
+    if ! command -v ansible-playbook &> /dev/null; then
+        echo -e "Ansible is not installed. Installing Ansible..."
+        
+        if [ "$OS_TYPE" = "debian" ]; then
+            sudo apt update
+            sudo apt install -y ansible
+        elif [ "$OS_TYPE" = "rhel" ]; then
+            sudo $PKG_MGR install -y epel-release || true
+            if ! sudo $PKG_MGR install -y ansible; then
+                echo -e "${YELLOW}Package installation failed, trying with pip...${RESET}"
+                sudo $PKG_MGR install -y python3-pip
+                sudo pip3 install ansible
+            fi
+        fi
+        
+        # Verify installation
+        if ! command -v ansible-playbook &> /dev/null; then
+            echo -e "${RED}Ansible installation failed. Please install manually.${RESET}"
+            exit 1
+        else
+            echo -e "${GREEN}Ansible installed successfully!${RESET}"
+        fi
+    else
+        echo -e "${GREEN}Ansible is already installed.${RESET}"
+    fi
+}
+
+# Install Python dependencies
+install_python_deps() {
+    echo -e "${YELLOW}Checking for Python and pip...${RESET}"
+    
+    if [ "$OS_TYPE" = "debian" ]; then
+        sudo apt install -y python3 python3-pip python3-venv
+    elif [ "$OS_TYPE" = "rhel" ]; then
+        sudo $PKG_MGR install -y python3 python3-pip
+    fi
+    
+    if command -v python3 &> /dev/null; then
+        echo -e "${GREEN}Python $(python3 --version) is installed.${RESET}"
+    else
+        echo -e "${RED}Python installation failed.${RESET}"
+        exit 1
+    fi
+}
+
+# Install essential tools
+install_essentials() {
+    echo -e "${YELLOW}Installing essential tools...${RESET}"
+    
+    if [ "$OS_TYPE" = "debian" ]; then
+        sudo apt install -y curl wget rsync sshpass
+    elif [ "$OS_TYPE" = "rhel" ]; then
+        sudo $PKG_MGR install -y curl wget rsync sshpass
+    fi
+    
+    echo -e "${GREEN}Essential tools installed.${RESET}"
 }
 
 # Clone the repository
