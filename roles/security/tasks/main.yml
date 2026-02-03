@@ -53,7 +53,6 @@
     src: fail2ban/sendmail-lc.conf.j2
     dest: /etc/fail2ban/action.d/sendmail-lc.conf
     owner: root
-    ansible.builtin.group: root
     group: root
   when: security_fail2ban_enabled | default(true)
   tags: ['fail2ban', 'security']
@@ -101,7 +100,6 @@
     src: fail2ban/jail.local.j2
     dest: /etc/fail2ban/jail.local
     owner: root
-    ansible.builtin.group: root
     group: root
   when: security_fail2ban_enabled | default(true)
   notify: restart fail2ban
@@ -112,7 +110,6 @@
     src: "fail2ban/{{ item }}.conf.j2"
     dest: "/etc/fail2ban/filter.d/{{ item }}.conf"
     owner: root
-    ansible.builtin.group: root
     group: root
   with_items:
     - postfix

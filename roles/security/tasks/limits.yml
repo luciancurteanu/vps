@@ -6,7 +6,6 @@
     src: system/limits.conf.j2
     dest: /etc/security/limits.d/30-custom.conf
     owner: root
-    ansible.builtin.group: root
     group: root
 
 # Note: The sysctl configuration part from the original common/tasks/limits.yml

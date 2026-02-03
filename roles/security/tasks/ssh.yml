@@ -33,7 +33,6 @@
     src: ssh/sshd_config.j2
     dest: /etc/ssh/sshd_config
     owner: root
-    ansible.builtin.group: root
     group: root
     validate: '/usr/sbin/sshd -t -f %s'
   notify: restart ssh

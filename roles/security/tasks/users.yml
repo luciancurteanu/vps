@@ -9,7 +9,6 @@
 - name: Create admin user
   ansible.builtin.user:
     name: "{{ admin_user }}"
-    ansible.builtin.group: "{{ admin_group }}"
     group: "{{ admin_group }}"
     createhome: true
     # Password set conditionally below based on admin_auth
@@ -26,7 +25,6 @@
 
 - name: Set up authorized keys for admin user
   ansible.posix.authorized_key: # Explicitly using FQCN
-    ansible.builtin.user: "{{ admin_user }}"
     user: "{{ admin_user }}"
     state: present
   when: admin_ssh_public_key | default('', true) | length > 0 and admin_auth == 'key'
@@ -36,6 +34,5 @@
     src: sudoers/admin.j2 # Path relative to security role's templates
     dest: "/etc/sudoers.d/{{ admin_user }}"
     owner: root
-    ansible.builtin.group: root
     group: root
     validate: "/usr/sbin/visudo -cf %s"
