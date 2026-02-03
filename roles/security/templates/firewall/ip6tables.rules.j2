@@ -23,7 +23,7 @@
 {% endfor %}
 
 # Mail service ports (when this is the master domain)
-{% if domain == master_domain %}
+{% if domain | default('') == (master_domain | default('')) %}
 {% for service in security_mail_service_ports %}
 -A INPUT -p {{ service.proto | default('tcp') }} --dport {{ service.port }} -j ACCEPT
 {% endfor %}
