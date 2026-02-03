@@ -8,7 +8,7 @@ location /roundcube {
     # Pass PHP scripts to PHP-FPM
     location ~ ^/roundcube/(.+\.php)$ {
         alias {{ webmail_path }}/$1;
-        fastcgi_pass unix:/var/run/php-fpm/{{ domain }}.sock;
+        fastcgi_pass unix:/run/php-fpm/www.sock;
         fastcgi_index index.php;
         fastcgi_param SCRIPT_FILENAME $request_filename;
         include fastcgi_params;
