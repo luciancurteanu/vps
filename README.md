@@ -268,7 +268,7 @@ ansible-vault view vars/secrets.yml
 
 **Never commit:**
 - ❌ `vars/secrets.yml` (encrypted passwords)
-- ❌ `inventory/hosts` (server IPs/credentials)
+- ❌ `inventory/hosts.yml` (server IPs/credentials)
 - ❌ `.vault_pass` (vault password file)
 - ❌ SSH keys (*.pem, *.key files)
 
