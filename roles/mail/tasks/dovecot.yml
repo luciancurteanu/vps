@@ -153,6 +153,7 @@
     mode: '0644'
     dest: /etc/dovecot/dovecot-mysql.conf.ext.bak
     remote_src: true
+  changed_when: false
   when: dovecot_mysql_conf.stat.exists and not dovecot_mysql_backup.stat.exists
 
 - name: Configure Dovecot MySQL settings
@@ -175,7 +176,7 @@
   ansible.builtin.file:
     path: /home/{{ domain }}/mail
     owner: vmail
-    mode: '0644'
+    mode: '0755'
     group: vmail
     recurse: true
   when: domain is defined
