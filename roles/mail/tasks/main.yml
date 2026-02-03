@@ -16,10 +16,8 @@
   ansible.builtin.user:
     name: "{{ mail_user }}"
     uid: "{{ mail_uid | default(omit) }}"
-    ansible.builtin.group: "{{ mail_group }}"
     group: "{{ mail_group }}"
     system: true
-    ansible.builtin.shell: /sbin/nologin
     shell: /sbin/nologin
 - block:
     - name: Install mail server packages
