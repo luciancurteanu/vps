@@ -1,3 +1,6 @@
+# Github
+.github
+
 # Vault and secrets
 .vault_pass
 *.vault

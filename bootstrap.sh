@@ -155,14 +155,40 @@ make_executable() {
 
 # Main function
 main() {
+    detect_os
+    echo
     install_git
+    echo
+    install_python_deps
+    echo
+    install_ansible
+    echo
+    install_essentials
+    echo
     clone_repo
+    echo
     make_executable
+    echo
     
-    echo -e "${GREEN}${BOLD}Bootstrap complete!${RESET}"
-    echo -e "You can now navigate to the vps directory and run the setup script:"
-    echo -e "${BOLD}cd $REPO_DIR${RESET}"
-    echo -e "${BOLD}./vps.sh install core --domain=yourdomain.com --ask-vault-pass${RESET}"
+    echo -e "${GREEN}${BOLD}═══════════════════════════════════════════════${RESET}"
+    echo -e "${GREEN}${BOLD}  Bootstrap Complete!${RESET}"
+    echo -e "${GREEN}${BOLD}═══════════════════════════════════════════════${RESET}"
+    echo
+    echo -e "${BOLD}Installed Components:${RESET}"
+    echo -e "  ✓ Git:     $(git --version 2>/dev/null || echo 'Not found')"
+    echo -e "  ✓ Python:  $(python3 --version 2>/dev/null || echo 'Not found')"
+    echo -e "  ✓ Ansible: $(ansible --version 2>/dev/null | head -n1 || echo 'Not found')"
+    echo
+    echo -e "${BOLD}Next Steps:${RESET}"
+    echo -e "  1. Navigate to project: ${GREEN}cd $REPO_DIR${RESET}"
+    echo -e "  2. Configure inventory: ${GREEN}cp inventory/hosts.example inventory/hosts${RESET}"
+    echo -e "     Edit inventory/hosts with your server details"
+    echo -e "  3. Create vault secrets: ${GREEN}ansible-vault create vars/secrets.yml${RESET}"
+    echo -e "     (See vars/secrets.yml.example for format)"
+    echo -e "  4. Run setup: ${GREEN}./vps.sh install core --domain=yourdomain.com --ask-vault-pass${RESET}"
+    echo
+    echo -e "${YELLOW}Tip: For testing in a VM, use scripts/vm-launcher/run-vm.ps1${RESET}"
+    echo
 }
 
 # Run main function
