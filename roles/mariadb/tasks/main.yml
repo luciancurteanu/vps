@@ -29,6 +29,11 @@
     path: /etc/my.cnf.d/server.cnf.bak
   register: server_cnf_bak_stat
 
+- name: Check if MariaDB server.cnf exists
+  ansible.builtin.stat:
+    path: /etc/my.cnf.d/server.cnf
+  register: server_cnf_stat
+
 - name: Backup MariaDB server.cnf
   ansible.builtin.copy:
     src: /etc/my.cnf.d/server.cnf
@@ -36,7 +41,7 @@
     dest: /etc/my.cnf.d/server.cnf.bak
     remote_src: true
     force: false
-  when: not server_cnf_bak_stat.stat.exists
+  when: not server_cnf_bak_stat.stat.exists and server_cnf_stat.stat.exists
 
 - name: Configure MariaDB server
   ansible.builtin.template:
@@ -51,6 +56,11 @@
     path: /etc/my.cnf.d/client.cnf.bak
   register: client_cnf_bak_stat
 
+- name: Check if MariaDB client.cnf exists
+  ansible.builtin.stat:
+    path: /etc/my.cnf.d/client.cnf
+  register: client_cnf_stat
+
 - name: Backup MariaDB client.cnf
   ansible.builtin.copy:
     src: /etc/my.cnf.d/client.cnf
@@ -58,7 +68,7 @@
     dest: /etc/my.cnf.d/client.cnf.bak
     remote_src: true
     force: false
-  when: not client_cnf_bak_stat.stat.exists
+  when: not client_cnf_bak_stat.stat.exists and client_cnf_stat.stat.exists
 
 - name: Configure MariaDB client
   ansible.builtin.template:
@@ -80,7 +90,7 @@
   register: mysql_setup_stat
  
 - name: Ensure MySQL root password is set (module)
-  ansible.builtin.shell: |
+  shell: |
     mysql --protocol=socket --socket=/var/lib/mysql/mysql.sock -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '{{ db_root_password }}'; FLUSH PRIVILEGES;"
   when: not mysql_setup_stat.stat.exists and db_root_password is defined and (db_root_password | length) > 0
   register: set_root_password
