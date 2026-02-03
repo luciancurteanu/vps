@@ -14,7 +14,7 @@ webmin_repo_url: "https://download.webmin.com/download/yum"
 webmin_gpg_key: "https://download.webmin.com/jcameron-key.asc"
 
 # Nginx reverse proxy for Webmin (optional)
-webmin_nginx_proxy: false  # Set to true if you want nginx proxy
+webmin_nginx_proxy: true  # Nginx reverse proxy enabled for subdomain access
 
 # SSL configuration (Webmin runs on HTTP by default)
 webmin_ssl_enabled: false

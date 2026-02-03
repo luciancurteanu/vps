@@ -70,3 +70,39 @@
   until: webmin_check is succeeded
   changed_when: false
   failed_when: false  # TODO: Add proper failure condition
+
+- name: Create Webmin nginx proxy configuration
+  ansible.builtin.template:
+    src: nginx/webmin.conf.j2
+    dest: "/etc/nginx/sites-available/{{ webmin_subdomain }}.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  when: webmin_nginx_proxy | default(false)
+  notify: Reload nginx
+
+- name: Enable Webmin nginx proxy
+  ansible.builtin.file:
+    src: "/etc/nginx/sites-available/{{ webmin_subdomain }}.conf"
+    dest: "/etc/nginx/sites-enabled/{{ webmin_subdomain }}.conf"
+    state: link
+  when: webmin_nginx_proxy | default(false)
+  notify: Reload nginx
+
+- name: Configure Webmin trusted referers for proxy
+  ansible.builtin.lineinfile:
+    path: /etc/webmin/config
+    regexp: '^referers='
+    line: "referers={{ webmin_subdomain }}"
+    create: false
+  when: webmin_nginx_proxy | default(false)
+  notify: Restart webmin
+
+- name: Disable Webmin referers_none check for proxy
+  ansible.builtin.lineinfile:
+    path: /etc/webmin/config
+    regexp: '^referers_none='
+    line: 'referers_none=0'
+    create: false
+  when: webmin_nginx_proxy | default(false)
+  notify: Restart webmin
