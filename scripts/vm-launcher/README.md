@@ -123,7 +123,7 @@ Then run:
 | `SSHPassword`      | "Changeme123!"               | SSH password                                                                |
 | `UseLocalSSHKey`   | false                        | Inject local SSH public key (only when `-UseLocalSSHKey` is provided)       |
 | `AutoSSH`          | false                        | Auto-open SSH session (only when `-AutoSSH` is provided)                    |
-| `FullSetup`        | false                        | Complete automated setup: Docker, Molecule, project clone, and tests. Best used with `-Recreate` for cleanup before setup. |
+| `FullSetup`        | false                        | Complete automated setup: Docker, Molecule, project clone, .bashrc auto-activation. Best used with `-Recreate` for cleanup before setup. Tests run separately on demand. |
 | `BridgeAdapterName`| -                            | Network adapter name for bridged networking                                 |
 | `LanIPAddress`     | -                            | Static LAN IP address for the VM                                            |
 | `LanPrefixLength`  | 24                           | CIDR prefix length for LAN IP                                               |
@@ -209,15 +209,18 @@ When `-FullSetup` is enabled, the launcher performs complete environment setup a
 
 2. **Clone Project**: Automatically clones VPS repository to `~/vps`
 
-3. **Verify Installation**: Tests Docker accessibility and version
+3. **Setup Auto-Activation**: Configures `.bashrc` to auto-activate Molecule venv on SSH login
 
-4. **Ready to Use**: VM is fully configured and ready for molecule testing
+4. **Verify Installation**: Tests Docker accessibility and version
+
+5. **Ready to Use**: VM is fully configured and ready for Molecule testing
 
 **Important Notes:**
 - `-FullSetup` does NOT cleanup existing VMs. Use `-Recreate -FullSetup` for automatic cleanup + full setup.
 - For first-time setup (no existing VM), `-FullSetup` alone is sufficient.
 - For re-running setup on existing VM, combine with `-Recreate` flag.
-- Tests are not run automatically - you can run them manually with `bash scripts/run-test.sh <role-name>`
+- **Tests run separately**: Use `bash scripts/run-test.sh <role>` or `.\scripts\run-test.ps1 -Role <role>` from Windows
+- **Auto-install on first test**: Running `run-test.sh` on a clean server automatically installs the environment
 
 This eliminates all manual setup steps from the SSH Setup guide.
 
@@ -447,12 +450,20 @@ The refactored version maintains full compatibility:
 
 ## Changelog
 
+### v2.3 - Test Workflow Improvements (2026-02-03)
+- **Removed automatic test execution from FullSetup** - tests now run separately on demand
+- **Added auto-install to run-test.sh** - automatically installs Molecule environment if missing
+- **Updated run-test.ps1** - now SSHs to VM instead of running locally on Windows
+- **Fixed .bashrc auto-activation** - uses heredoc for proper newline handling
+- **Improved SSH stability** - added delays and retry logic to prevent connection reset errors
+- Tests are now explicitly separate from environment setup for cleaner workflows
+
 ### v2.2 - Full Automation (2026-01-31)
 - Added `-FullSetup` parameter for complete automated environment setup
 - Automated Docker installation, Python environment setup, and Molecule dependencies
-- Automated project cloning and initial test execution
+- Automated project cloning
 - Eliminates all manual setup steps from SSH Setup workflow
-- Single command now creates VM and runs first molecule test
+- Single command creates VM with complete testing environment
 
 ### v2.1 - Minor Updates (2026-01-20)
 - Changed default HostSSHPort from 2222 to 22 for standard SSH port usage

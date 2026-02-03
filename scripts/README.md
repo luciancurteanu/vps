@@ -19,8 +19,11 @@ This folder contains helper scripts for automation, testing, and environment set
 - `run-test.sh` — Run Molecule tests for a role. **Defaults to `test` action** (full test with container recreation). Use `converge` action for faster iterations without re-downloading packages.
     - Usage: `bash scripts/run-test.sh <role> [action]`
     - Actions: `test` (default, full), `converge` (fast), `verify`, `destroy`, `create`
+    - **Auto-installs environment** — automatically installs Docker/Molecule if not found (runs `ci-setup.sh`)
     - **No password prompts** — automatically handles docker permissions
-- `run-test.ps1` — PowerShell version of test runner
+- `run-test.ps1` — PowerShell wrapper that SSHs to VM and runs `run-test.sh`
+    - Usage: `.\scripts\run-test.ps1 -Role <role> [-Action <action>] [-SSHHost <host>]`
+    - Runs tests on the VM (localhost by default), not locally on Windows
 - `run-molecule-test.sh` — Molecule test wrapper
 - `setup-molecule-env.sh` — Set up Python virtual environment for Molecule testing
 - `reset-molecule-environment.sh` — Reset Molecule environment (removes `~/molecule-env`, `~/.ansible`, caches)
@@ -63,7 +66,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\vm-launcher\run-vm.ps1
 - `-VMName` — Name of the VM (default: AlmaLinux-9)
 - `-UseLocalSSHKey` — Inject your existing SSH key
 - `-Recreate` — Delete and recreate the VM
-- `-FullSetup` — Run full automated setup (Docker, Molecule, clone project, run first test)
+- `-FullSetup` — Run full automated setup (Docker, Molecule, clone project). Tests run separately on demand.
 
 ### Reset behavior
 
