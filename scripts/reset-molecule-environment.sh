@@ -69,6 +69,6 @@ fi
 echo ""
 echo "[INFO] Partial environment reset complete."
 echo "[INFO] If you also need to reset the project files, manually remove '~/vps' and re-clone."
-echo "[INFO] Then, re-run the environment setup (e.g., 'bash scripts/setup-molecule-env.sh')."
+echo "[INFO] Then, re-run the environment setup (e.g., 'bash scripts/ci-setup.sh')."
 
 exit 0

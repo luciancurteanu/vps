@@ -21,7 +21,7 @@ fi
 # Determine the project root dynamically, assuming this script is in a 'scripts' subdirectory
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VENV_PATH=~/molecule-env
-SETUP_SCRIPT_NAME="setup-molecule-env.sh"
+SETUP_SCRIPT_NAME="ci-setup.sh"
 SETUP_SCRIPT_PATH="$PROJECT_ROOT/scripts/$SETUP_SCRIPT_NAME"
 
 # Check if virtualenv activation script exists, if not, auto-install
