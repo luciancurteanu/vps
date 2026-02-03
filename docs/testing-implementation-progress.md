@@ -26,16 +26,16 @@ This document tracks the progress of implementing Molecule testing for all Ansib
 | Role        | Basic Tests | Install Tests  | Config Tests  | Func Tests | Status  |
 |-------------|-------------|----------------|---------------|------------|---------|
 | common      | ✅          | ❌            | ❌           | ❌         | Passed |
-| security    | ❌          | ❌            | ❌           | ❌         | Pending |
+| webmin      | ✅          | ❌            | ❌           | ❌         | Passed |
+| cockpit     | ✅          | ❌            | ❌           | ❌         | Passed |
 | nginx       | ✅          | ❌            | ❌           | ❌         | Passed |
-| python      | ✅          | ❌            | ❌           | ❌         | Passed |
 | php         | ✅          | ❌            | ❌           | ❌         | Passed |
 | mariadb     | ✅          | ❌            | ❌           | ❌         | Passed |
-| cockpit     | ✅          | ❌            | ❌            | ❌         | Passed |
 | mail        | ✅          | ❌            | ❌           | ❌         | Passed |
-| webmin      | ✅          | ❌            | ❌           | ❌         | Passed |
-| development | ❌          | ❌            | ❌           | ❌         | Pending |
+| python      | ✅          | ❌            | ❌           | ❌         | Passed |
 | goproxy     | ✅          | ❌            | ❌           | ❌         | Passed |
+| development | ❌          | ❌            | ❌           | ❌         | Pending |
+| security    | ❌          | ❌            | ❌           | ❌         | Pending |
 
 ## Integration Tests
 
