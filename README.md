@@ -95,6 +95,10 @@ Install complete server stack (run once):
 - ✅ SSL certificates via Let's Encrypt
 - ✅ 2GB Swap file (prevents OOM issues)
 
+**Vault password options:**
+- Interactive: `--ask-vault-pass` (prompts for password)
+- File-based: `--vault-password-file=~/.vault_pass` (reads from file)
+
 ### Domain Management
 
 **Add a new domain:**
