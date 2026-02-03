@@ -15,6 +15,7 @@ This document tracks the progress of implementing Molecule testing for all Ansib
 - ✅ Set up Python virtual environment with Molecule (Step 4 in molecule-admin-setup.md)
 - ✅ Clone project repository (Step 5 in molecule-admin-setup.md)
 - 🔄 Run initial test for common role to establish baseline (Step 6 in molecule-admin-setup.md)
+ - ✅ Run initial test for common role to establish baseline (Step 6 in molecule-admin-setup.md)
 - 🔄 Systematically test each role and update status
 - 🔄 Execute integration tests once individual roles pass
 - 🔄 Maintain this checklist as new roles or requirements are added.
@@ -24,14 +25,14 @@ This document tracks the progress of implementing Molecule testing for all Ansib
 
 | Role        | Basic Tests | Install Tests  | Config Tests  | Func Tests | Status  |
 |-------------|-------------|----------------|---------------|------------|---------|
-| common      | ❌          | ❌            | ❌           | ❌         | Pending |
+| common      | ✅          | ❌            | ❌           | ❌         | Passed |
 | security    | ❌          | ❌            | ❌           | ❌         | Pending |
 | nginx       | ❌          | ❌            | ❌           | ❌         | Pending |
 | python      | ❌          | ❌            | ❌           | ❌         | Pending |
 | php         | ❌          | ❌            | ❌           | ❌         | Pending |
 | mariadb     | ❌          | ❌            | ❌           | ❌         | Pending |
 | mail        | ❌          | ❌            | ❌           | ❌         | Pending |
-| webmin      | ❌          | ❌            | ❌           | ❌         | Pending |
+| webmin      | ✅          | ❌            | ❌           | ❌         | Passed |
 | development | ❌          | ❌            | ❌           | ❌         | Pending |
 | goproxy     | ❌          | ❌            | ❌           | ❌         | Pending |
 

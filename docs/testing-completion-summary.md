@@ -2,22 +2,23 @@
 
 This summary tracks the completion status of Molecule testing for all Ansible roles using the minimal AlmaLinux 9 VM/WSL + Docker + Molecule workflow. All references use the username `admin`.
 
-Last updated: 2026-01-20
+Last updated: 2026-02-03
 
 ## Role Test Status
 
 | Role         | Molecule Config | Tests Passing | Test User | Status   | Notes                   |
 |--------------|-----------------|---------------|-----------|----------|-------------------------|
-| common       | Yes             | No            | admin    | Pending  | Reset for fresh testing |
-| security     | Yes             | No            | admin    | Pending  | Reset for fresh testing |
-| nginx        | Yes             | No            | admin    | Pending  | Reset for fresh testing |
-| python       | Yes             | No            | admin    | Pending  | Reset for fresh testing |
-| php          | Yes             | No            | admin    | Pending  | Reset for fresh testing |
-| mariadb      | Yes             | No            | admin    | Pending  | Reset for fresh testing |
-| mail         | Yes             | No            | admin    | Pending  | Reset for fresh testing |
-| webmin       | Yes             | No            | admin    | Pending  | Reset for fresh testing |
-| development  | Yes             | No            | admin    | Pending  | Reset for fresh testing |
-| goproxy      | Yes             | No            | admin    | Pending  | Reset for fresh testing |
+| common       | Yes             | Yes           | admin     | Passed   | Molecule passed on 2026-02-03 |
+| webmin       | Yes             | Yes           | admin     | Passed   | Molecule passed on 2026-02-03 |
+| cockpit      | Yes             | No            | admin     | Pending  | Disabled by default     |
+| nginx        | Yes             | No            | admin     | Pending  | Reset for fresh testing |
+| php          | Yes             | No            | admin     | Pending  | Reset for fresh testing |
+| mariadb      | Yes             | No            | admin     | Pending  | Reset for fresh testing |
+| mail         | Yes             | No            | admin     | Pending  | Reset for fresh testing |
+| python       | Yes             | No            | admin     | Pending  | Reset for fresh testing |
+| goproxy      | Yes             | No            | admin     | Pending  | Reset for fresh testing |
+| development  | Yes             | No            | admin     | Pending  | Reset for fresh testing |
+| security     | Yes             | No            | admin     | Pending  | Reset for fresh testing |
 
 ## Notes
 - Tests use the minimal workflow: AlmaLinux 9 VM/WSL, Docker, Molecule, and user `admin`.
