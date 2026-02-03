@@ -44,12 +44,12 @@ cd ~/vps
 
 # Configure inventory with your server details
 cp inventory/hosts.yml.example inventory/hosts.yml
-# Edit with your preferred editor (e.g. nano or vi). Use sudo if your editor needs elevated rights:
-sudo ${EDITOR:-nano} inventory/hosts.yml  # Edit: set ansible_host, ansible_user, etc.
+nano inventory/hosts.yml  # Edit: set ansible_host, ansible_user, etc.
 
-# Prepare vault file from example and populate it (edit then encrypt)
+# Create vault for secrets (copy example, edit, then encrypt)
 cp vars/secrets.yml.example vars/secrets.yml
-ansible-vault edit vars/secrets.yml  # Fill in the secret values; file will be encrypted
+nano vars/secrets.yml  # Fill in your actual passwords
+ansible-vault encrypt vars/secrets.yml  # Encrypt the file
 
 # Run full setup
 ./vps.sh install core --domain=yourdomain.com --ask-vault-pass
