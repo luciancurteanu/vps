@@ -121,18 +121,6 @@ Install complete server stack (run once):
 ./vps.sh create database --domain=yourdomain.com --dbname=mydb --ask-vault-pass
 ```
 
-### Vault Password Options
-
-**Ask for password interactively:**
-```bash
-./vps.sh install core --domain=example.com --ask-vault-pass
-```
-
-**Use password file:**
-```bash
-./vps.sh install core --domain=example.com --vault-password-file=~/.vault_pass
-```
-
 ---
 
 ## 🧪 Development & Testing
