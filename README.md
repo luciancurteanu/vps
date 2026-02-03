@@ -43,8 +43,8 @@ curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.s
 cd ~/vps
 
 # Configure inventory with your server details
-cp inventory/hosts.example inventory/hosts
-nano inventory/hosts  # Edit: set ansible_host, ansible_user, etc.
+cp inventory/hosts.yml.example inventory/hosts.yml
+nano inventory/hosts.yml  # Edit: set ansible_host, ansible_user, etc.
 
 # Create encrypted vault for passwords
 ansible-vault create vars/secrets.yml
@@ -62,8 +62,8 @@ git clone https://github.com/luciancurteanu/vps.git
 cd vps
 
 # Configure inventory
-cp inventory/hosts.example inventory/hosts
-nano inventory/hosts  # Edit with your server details
+cp inventory/hosts.yml.example inventory/hosts.yml
+nano inventory/hosts.yml  # Edit with your server details
 
 # Create vault for secrets
 ansible-vault create vars/secrets.yml
@@ -211,8 +211,8 @@ vps/
 ├── bootstrap.sh                # Fresh server setup script
 ├── ansible.cfg                 # Ansible configuration
 ├── inventory/                  # Server inventory
-│   ├── hosts                   # Your servers (gitignored)
-│   └── hosts.example           # Template
+│   ├── hosts.yml               # Your servers (gitignored)
+│   └── hosts.yml.example       # Template
 ├── playbooks/                  # Ansible playbooks
 │   ├── setup.yml               # Main setup playbook
 │   ├── create_vhost.yml        # Add domain
