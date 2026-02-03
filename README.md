@@ -36,13 +36,21 @@ For a completely fresh OS installation:
 # Install curl if needed
 sudo dnf install -y curl
 
-# Download and run bootstrap
+# Download and run bootstrap (installs Git, Ansible, Python, clones repo)
 curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | bash
 
 # Navigate to repo
 cd ~/vps
 
-# Run setup
+# Configure inventory with your server details
+cp inventory/hosts.example inventory/hosts
+nano inventory/hosts  # Edit: set ansible_host, ansible_user, etc.
+
+# Create encrypted vault for passwords
+ansible-vault create vars/secrets.yml
+# Add passwords (see vars/secrets.yml.example for required format)
+
+# Run full setup
 ./vps.sh install core --domain=yourdomain.com --ask-vault-pass
 ```
 
