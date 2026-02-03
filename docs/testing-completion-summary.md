@@ -14,8 +14,8 @@ Last updated: 2026-02-03
 | nginx        | Yes             | Yes           | admin     | Passed   | Molecule passed on 2026-02-03 |
 | php          | Yes             | Yes           | admin     | Passed   | Molecule passed on 2026-02-03 |
 | mariadb      | Yes             | Yes           | admin     | Passed   | Molecule passed on 2026-02-03 |
-| mail         | Yes             | No            | admin     | Pending  | Reset for fresh testing |
-| python       | Yes             | No            | admin     | Pending  | Reset for fresh testing |
+| mail         | Yes             | Yes           | admin     | Passed   | Molecule passed on 2026-02-03 |
+| python       | Yes             | Yes           | admin     | Passed   | Molecule passed on 2026-02-03 |
 | goproxy      | Yes             | No            | admin     | Pending  | Reset for fresh testing |
 | development  | Yes             | No            | admin     | Pending  | Reset for fresh testing |
 | security     | Yes             | No            | admin     | Pending  | Reset for fresh testing |
