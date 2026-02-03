@@ -169,14 +169,14 @@
 
 - name: Configure SELinux for Nginx
   ansible.posix.seboolean:
-    name: Httpd_enable_homedirs
+    name: httpd_enable_homedirs
     state: true
     persistent: true
   when: ansible_selinux.status is defined and ansible_selinux.status == "enabled"
 
 - name: Allow Nginx to connect to network services (for proxying)
   ansible.posix.seboolean:
-    name: Httpd_can_network_connect
+    name: httpd_can_network_connect
     state: true
     persistent: true
   when: ansible_selinux.status is defined and ansible_selinux.status == "enabled"
