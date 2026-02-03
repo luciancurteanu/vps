@@ -35,7 +35,7 @@ This document tracks the progress of implementing Molecule testing for all Ansib
 | mail        | ✅          | ❌            | ❌           | ❌         | Passed |
 | webmin      | ✅          | ❌            | ❌           | ❌         | Passed |
 | development | ❌          | ❌            | ❌           | ❌         | Pending |
-| goproxy     | ❌          | ❌            | ❌           | ❌         | Pending |
+| goproxy     | ✅          | ❌            | ❌           | ❌         | Passed |
 
 ## Integration Tests
 

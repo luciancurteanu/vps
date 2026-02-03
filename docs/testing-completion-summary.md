@@ -16,7 +16,7 @@ Last updated: 2026-02-03
 | mariadb      | Yes             | Yes           | admin     | Passed   | Molecule passed on 2026-02-03 |
 | mail         | Yes             | Yes           | admin     | Passed   | Molecule passed on 2026-02-03 |
 | python       | Yes             | Yes           | admin     | Passed   | Molecule passed on 2026-02-03 |
-| goproxy      | Yes             | No            | admin     | Pending  | Reset for fresh testing |
+| goproxy      | Yes             | Yes           | admin     | Passed   | Molecule passed on 2026-02-03 |
 | development  | Yes             | No            | admin     | Pending  | Reset for fresh testing |
 | security     | Yes             | No            | admin     | Pending  | Reset for fresh testing |
 
