@@ -3,20 +3,20 @@
 
 - name: Restart postfix
   ansible.builtin.service:
-    name: Postfix
+    name: postfix
     state: restarted
 
 - name: Restart dovecot
   ansible.builtin.service:
-    name: Dovecot
+    name: dovecot
     state: restarted
 
 - name: Restart opendkim
   ansible.builtin.service:
-    name: Opendkim
+    name: opendkim
     state: restarted
 
 - name: Restart nginx
   ansible.builtin.service:
-    name: Nginx
+    name: nginx
     state: restarted
