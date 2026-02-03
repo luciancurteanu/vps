@@ -8,8 +8,8 @@ bantime = -1
 findtime = 86400
 maxretry = 3
 # Email notifications
-destemail = {{ mail_admin_email | default('no-reply@' + domain) }}
-sender = {{ mail_admin_email | default('no-reply@' + domain) }}
+destemail = {{ mail_admin_email | default('no-reply@' + (domain | default('example.com'))) }}
+sender = {{ mail_admin_email | default('no-reply@' + (domain | default('example.com'))) }}
 mta = sendmail
 action = %(action_)s
          %(mta)s-lc[sender="%(sender)s", dest="%(destemail)s", logpath="%(logpath)s", chain="%(chain)s"]
