@@ -3,8 +3,8 @@
   hosts: all
   become: true
   vars:
-    domain: vps.test
-    master_domain: vps.test
+    domain: yourdomain.com
+    master_domain: yourdomain.com
     mail_db_password: mailpass
     roundcube_db_password: roundcubepass
     db_root_user: root

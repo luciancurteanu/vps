@@ -232,21 +232,21 @@ Virtual hosts are managed through dedicated playbooks, not directly by this role
 ```bash
 # Create HTTP-only virtual host
 ansible-playbook -i inventory/hosts.yml playbooks/create_vhost.yml \
-  --extra-vars "domain=vps.test"
+  --extra-vars "domain=yourdomain.com"
 ```
 
 This creates:
-- `/etc/nginx/sites-available/vps.test.conf`
-- `/etc/nginx/sites-enabled/vps.test.conf` (symlink)
-- `/home/vps.test/public_html/` (document root)
-- `/home/vps.test/logs/` (access/error logs)
+- `/etc/nginx/sites-available/yourdomain.com.conf`
+- `/etc/nginx/sites-enabled/yourdomain.com.conf` (symlink)
+- `/home/yourdomain.com/public_html/` (document root)
+- `/home/yourdomain.com/logs/` (access/error logs)
 
 ### Adding SSL/TLS
 
 ```bash
 # Obtain Let's Encrypt certificate and enable HTTPS
 ansible-playbook -i inventory/hosts.yml playbooks/ssl.yml \
-  --extra-vars "domain=vps.test email=admin@vps.test"
+  --extra-vars "domain=yourdomain.com email=admin@yourdomain.com"
 ```
 
 This adds:
@@ -261,7 +261,7 @@ This adds:
 ```bash
 # Remove virtual host and clean up
 ansible-playbook -i inventory/hosts.yml playbooks/remove_vhost.yml \
-  --extra-vars "domain=vps.test"
+  --extra-vars "domain=yourdomain.com"
 ```
 
 ### Virtual Host Template Features
@@ -448,19 +448,19 @@ ls -l /etc/nginx/sites-available/
 ls -l /etc/nginx/sites-enabled/
 
 # Check symlink
-ls -l /etc/nginx/sites-enabled/vps.test.conf
+ls -l /etc/nginx/sites-enabled/yourdomain.com.conf
 
 # Test configuration
 nginx -t
 
 # Check server_name directive
-grep server_name /etc/nginx/sites-available/vps.test.conf
+grep server_name /etc/nginx/sites-available/yourdomain.com.conf
 
 # Reload nginx
 systemctl reload nginx
 
 # Test with curl
-curl -H "Host: vps.test" http://localhost/
+curl -H "Host: yourdomain.com" http://localhost/
 ```
 
 ### 502 Bad Gateway (PHP-FPM)
@@ -471,7 +471,7 @@ curl -H "Host: vps.test" http://localhost/
 
 ```bash
 # Verify socket exists
-ls -l /var/run/php-fpm/vps.test.sock
+ls -l /var/run/php-fpm/yourdomain.com.sock
 
 # Check PHP-FPM service
 systemctl status php-fpm
@@ -480,7 +480,7 @@ systemctl status php-fpm
 tail -f /var/log/php-fpm/error.log
 
 # Verify socket path in nginx config
-grep fastcgi_pass /etc/nginx/sites-enabled/vps.test.conf
+grep fastcgi_pass /etc/nginx/sites-enabled/yourdomain.com.conf
 
 # Check socket permissions
 ls -l /var/run/php-fpm/
@@ -527,9 +527,9 @@ The default configuration provides production-ready security:
 For additional security:
 
 1. **Enable SSL/TLS for all sites**:
-   ```bash
-   ansible-playbook playbooks/ssl.yml --extra-vars "domain=vps.test"
-   ```
+  ```bash
+  ansible-playbook playbooks/ssl.yml --extra-vars "domain=yourdomain.com"
+  ```
 
 2. **Disable default server** (after all vhosts configured):
    ```bash
@@ -637,23 +637,23 @@ Virtual host template with:
 All virtual hosts follow this structure:
 
 ```
-/home/vps.test/
+/home/yourdomain.com/
 ├── public_html/          # Document root (nginx serves from here)
 │   ├── index.html
 │   └── index.php
 └── logs/                 # Access and error logs
-    ├── access.log
-    └── error.log
+  ├── access.log
+  └── error.log
 ```
 
 PHP-FPM sockets:
 ```
-/var/run/php-fpm/vps.test.sock
+/var/run/php-fpm/yourdomain.com.sock
 ```
 
 SSL certificates:
 ```
-/etc/letsencrypt/live/vps.test/
+/etc/letsencrypt/live/yourdomain.com/
 ├── fullchain.pem
 └── privkey.pem
 ```
@@ -769,19 +769,19 @@ After the nginx role completes:
 
 3. **Create first virtual host**:
    ```bash
-   ansible-playbook playbooks/create_vhost.yml \
-     --extra-vars "domain=vps.test"
+  ansible-playbook playbooks/create_vhost.yml \
+    --extra-vars "domain=yourdomain.com"
    ```
 
 4. **Add SSL certificate**:
    ```bash
-   ansible-playbook playbooks/ssl.yml \
-     --extra-vars "domain=vps.test email=admin@vps.test"
+  ansible-playbook playbooks/ssl.yml \
+    --extra-vars "domain=yourdomain.com email=admin@yourdomain.com"
    ```
 
 5. **Deploy application**:
-   - Upload files to `/home/vps.test/public_html/`
-   - Set proper ownership: `chown -R nginx:nginx /home/vps.test/`
+  - Upload files to `/home/yourdomain.com/public_html/`
+  - Set proper ownership: `chown -R nginx:nginx /home/yourdomain.com/`
 
 ## Version History
 

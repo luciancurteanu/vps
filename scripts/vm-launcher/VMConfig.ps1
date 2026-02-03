@@ -292,7 +292,7 @@ class VMConfig {
                     continue
                 }
 
-                # Look for hostname: (e.g., vps.test:)
+                # Look for hostname: (e.g., yourdomain.com:)
                 if ($trimmed -match '^([a-zA-Z0-9][a-zA-Z0-9.-]+[a-zA-Z0-9]):$') {
                     $hostname = $matches[1]
                     # Ensure it looks like a domain (not an IP)

@@ -79,7 +79,7 @@ service = Service(executable_path="/usr/local/bin/chromedriver")
 driver = webdriver.Chrome(service=service, options=chrome_options)
 
 # Navigate to a page
-driver.get("https://vps.test")
+driver.get("https://yourdomain.com")
 
 # Extract information
 title = driver.title

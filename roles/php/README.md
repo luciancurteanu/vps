@@ -213,10 +213,10 @@ The [pool.conf.j2](templates/pool.conf.j2) template provides:
 ### Example Domain Pool
 
 ```ini
-[vps.test]
-user = vps.test
-group = vps.test
-listen = /var/run/php-fpm/vps.test.sock
+[yourdomain.com]
+user = yourdomain.com
+group = yourdomain.com
+listen = /var/run/php-fpm/yourdomain.com.sock
 listen.owner = nginx
 listen.group = nginx
 pm = dynamic

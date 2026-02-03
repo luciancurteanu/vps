@@ -48,9 +48,9 @@ show_help() {
     echo "  --help, -h                   Show this help message"
     echo
     echo -e "${BOLD}Examples:${RESET}"
-    echo "  $0 install core --domain=vps.test --ask-pass --ask-vault-pass"
-    echo "  $0 create host --domain=vps.test --ask-vault-pass"
-    echo "  $0 install ssl --domain=vps.test --vault-password-file=~/.vault_pass"
+    echo "  $0 install core --domain=yourdomain.com --ask-pass --ask-vault-pass"
+    echo "  $0 create host --domain=yourdomain.com --ask-vault-pass"
+    echo "  $0 install ssl --domain=yourdomain.com --vault-password-file=~/.vault_pass"
 }
 
 # Check for Git installation and install if necessary

@@ -72,12 +72,12 @@ The templates use variables from:
 When you run:
 
 ```bash
-./vps.sh create host --domain=vps.test
+./vps.sh create host --domain=yourdomain.com
 ```
 
 The system:
-1. Processes `vhost.conf.j2` with domain=vps.test
-2. Creates `/etc/nginx/sites-available/vps.test.conf` and symlinks it into `/etc/nginx/sites-enabled/`
-3. Processes `pool.conf.j2` with domain=vps.test
-4. Creates `/etc/php-fpm.d/vps.test.conf`
-5. Copies website templates to `/home/vps.test/public_html/`
+1. Processes `vhost.conf.j2` with domain=yourdomain.com
+2. Creates `/etc/nginx/sites-available/yourdomain.com.conf` and symlinks it into `/etc/nginx/sites-enabled/`
+3. Processes `pool.conf.j2` with domain=yourdomain.com
+4. Creates `/etc/php-fpm.d/yourdomain.com.conf`
+5. Copies website templates to `/home/yourdomain.com/public_html/`

@@ -124,12 +124,12 @@ server {
     }
 
     #location /upload/ {
-  		#valid_referers none blocked vps.test *.vps.test;
-  		#if ($invalid_referer) {
-    		#return 403;
-  		#}
-        #root   /home/vps.test/public_html;
-	#}
+        #valid_referers none blocked yourdomain.com *.yourdomain.com;
+        #if ($invalid_referer) {
+            #return 403;
+        #}
+        #root   /home/yourdomain.com/public_html;
+    #}
 
     # PHP handler
     location ~ \.php$ {
@@ -213,11 +213,11 @@ server {
     }
 
     #location /upload/ {
-    #    valid_referers none blocked vps.test *.vps.test;
+    #    valid_referers none blocked yourdomain.com *.yourdomain.com;
     #    if ($invalid_referer) {
     #        return 403;
     #    }
-    #    root   /home/vps.test/public_html;
+    #    root   /home/yourdomain.com/public_html;
     #}
 
     # PHP handler

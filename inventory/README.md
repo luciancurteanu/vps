@@ -19,7 +19,7 @@ ansible_connection=ssh
 
 [webservers]
 # Add your server(s) here, for example:
-# vps.test ansible_host=192.168.1.100
+# yourdomain.com ansible_host=192.168.1.100
 
 [database]
 # Add database servers here
@@ -38,7 +38,7 @@ ansible_connection=ssh
 2. Add your server details:
    ```ini
    [webservers]
-   vps.test ansible_host=192.168.1.100 ansible_user=root
+   yourdomain.com ansible_host=192.168.1.100 ansible_user=root
    ```
 
 3. Optional: Configure connection variables:

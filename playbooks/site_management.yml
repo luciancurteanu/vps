@@ -1,8 +1,8 @@
 ---
 # Nginx Site Management Playbook
 # Usage examples:
-#   Enable a site:  ansible-playbook site_management.yml -e "site_name=vps.test action=enable"
-#   Disable a site: ansible-playbook site_management.yml -e "site_name=vps.test action=disable"
+#   Enable a site:  ansible-playbook site_management.yml -e "site_name=yourdomain.com action=enable"
+#   Disable a site: ansible-playbook site_management.yml -e "site_name=yourdomain.com action=disable"
 #   List sites:     ansible-playbook site_management.yml -e "action=list"
 
 - name: Nginx Site Management

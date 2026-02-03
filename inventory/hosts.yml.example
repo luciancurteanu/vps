@@ -14,7 +14,7 @@ all:
   children:
     primary:
       hosts:
-        vps.test:
+        yourdomain.com:
           ansible_host: 192.168.88.8
     
     # Use group inheritance for servers on the same host
@@ -33,16 +33,16 @@ all:
     # For multi-server setups, you can specify different hosts directly in functional groups:
     # webservers:
     #   hosts:
-    #     web1.vps.test:
+    #     web1.yourdomain.com:
     #       ansible_host: 203.0.113.11
-    #     web2.vps.test:
+    #     web2.yourdomain.com:
     #       ansible_host: 203.0.113.12
     
     # mailservers:
     #   hosts:
-    #     mail1.vps.test:
+    #     mail1.yourdomain.com:
     #       ansible_host: 203.0.113.13
 
 # You can add more groups and hosts as needed
 # To use variables for a specific host or group, create a file in group_vars/ or host_vars/
-# Example: group_vars/webservers.yml or host_vars/web1.vps.test.yml
+# Example: group_vars/webservers.yml or host_vars/web1.yourdomain.com.yml

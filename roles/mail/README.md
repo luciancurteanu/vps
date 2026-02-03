@@ -53,22 +53,22 @@ For the mail server to work properly, you need to set up these DNS records:
 
 1. **MX record**: 
    ```
-   vps.test. IN MX 10 mail.vps.test.
+   yourdomain.com. IN MX 10 mail.yourdomain.com.
    ```
 
 2. **SPF record**:
    ```
-   vps.test. IN TXT "v=spf1 a mx ip4:YOUR_SERVER_IP ~all"
+   yourdomain.com. IN TXT "v=spf1 a mx ip4:YOUR_SERVER_IP ~all"
    ```
 
 3. **DKIM record**: (generated during installation)
    ```
-   mail._domainkey.vps.test. IN TXT "v=DKIM1; k=rsa; p=MIIBIjANBgk..."
+   mail._domainkey.yourdomain.com. IN TXT "v=DKIM1; k=rsa; p=MIIBIjANBgk..."
    ```
 
 4. **DMARC record**:
    ```
-   _dmarc.vps.test. IN TXT "v=DMARC1; p=none; rua=mailto:postmaster@vps.test"
+   _dmarc.yourdomain.com. IN TXT "v=DMARC1; p=none; rua=mailto:postmaster@yourdomain.com"
    ```
 
 ## Included Components
@@ -100,12 +100,12 @@ Mail passwords are managed securely using Ansible Vault. To set up:
 
 ```yaml
 - hosts: mail_servers
-  roles:
-    - role: nginx
-    - role: php
-    - role: mail
-      vars:
-        mail_domain: "vps.test"
+   roles:
+      - role: nginx
+      - role: php
+      - role: mail
+         vars:
+            mail_domain: "yourdomain.com"
 ```
 
 ## License

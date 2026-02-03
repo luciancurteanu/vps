@@ -9,7 +9,7 @@ This directory contains standalone Ansible playbooks for different aspects of VP
 The main playbook for setting up a complete VPS with all components.
 
 - **Purpose**: Full server provisioning with web, database, mail, and security components
-- **Usage**: `./vps.sh install core --domain=vps.test --ask-pass --ask-vault-pass`
+-- **Usage**: `./vps.sh install core --domain=yourdomain.com --ask-pass --ask-vault-pass`
 - **Requirements**: Domain name pointing to server IP
 - **Components Installed**:
   - Common server tools
@@ -58,7 +58,7 @@ Removes a virtual host configuration and optionally its files.
 Obtains and installs SSL certificates using Let's Encrypt.
 
 - **Purpose**: Secure websites with HTTPS
-- **Usage**: `./vps.sh install ssl --domain=vps.test --ask-vault-pass`
+-- **Usage**: `./vps.sh install ssl --domain=yourdomain.com --ask-vault-pass`
 - **Requirements**: Existing virtual host configuration
 - **Operations Performed**:
   - Installs Certbot

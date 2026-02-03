@@ -3,34 +3,34 @@
 This file shows concrete commands and the expected behavior for a master server (full install) and a non-master virtual host (config-only).
 
 **Assumptions**
-- Inventory entry for the master host uses the domain name as the `inventory_hostname` (e.g., `vps.test` in `inventory/hosts.yml`).
+-- Inventory entry for the master host uses the domain name as the `inventory_hostname` (e.g., `yourdomain.com` in `inventory/hosts.yml`).
 - `master_domain` in `inventory/group_vars/all.yml` is configured as:
 
   ```yaml
   master_domain: "{{ domain | default(inventory_hostname) }}"
   ```
 
-  so passing `--domain=vps.test` makes `vps.test` the master for that run.
+  so passing `--domain=yourdomain.com` makes `yourdomain.com` the master for that run.
 
 ---
 
-## 1) Full master install (vps.test)
+## 1) Full master install (yourdomain.com)
 
 Command:
 ```bash
-./vps.sh install core --domain=vps.test --ask-pass --ask-vault-pass
+./vps.sh install core --domain=yourdomain.com --ask-pass --ask-vault-pass
 ```
 
 What this does:
-- `vps.sh` passes `domain=vps.test` to Ansible and automatically adds `--tags setup`.
+-- `vps.sh` passes `domain=yourdomain.com` to Ansible and automatically adds `--tags setup`.
 - The `playbooks/setup.yml` roles tagged `setup` are selected.
-- On the host matching `vps.test` (master) the playbook will perform the full installation and configuration: `common`, `security`, `nginx`, `php`, `mariadb`, `python`, `mail`, `webmin`, `goproxy` (subject to per-role `install_*` vars, which default to `true`).
+- On the host matching `yourdomain.com` (master) the playbook will perform the full installation and configuration: `common`, `security`, `nginx`, `php`, `mariadb`, `python`, `mail`, `webmin`, `goproxy` (subject to per-role `install_*` vars, which default to `true`).
 - Packages, services, users, DBs and control panel will be installed and configured.
 
 Quick checks (dry-run / syntax-check):
 ```bash
-ansible-inventory --list -i inventory/hosts.yml -e domain=vps.test
-ansible-playbook --syntax-check playbooks/setup.yml -i inventory/hosts.yml -e domain=vps.test --tags setup
+ansible-inventory --list -i inventory/hosts.yml -e domain=yourdomain.com
+ansible-playbook --syntax-check playbooks/setup.yml -i inventory/hosts.yml -e domain=yourdomain.com --tags setup
 ```
 
 ---
@@ -63,7 +63,7 @@ ansible-playbook --syntax-check playbooks/create_vhost.yml -i inventory/hosts.ym
 - Example to disable a role on a run:
 
 ```bash
-./vps.sh install core --domain=vps.test --ask-pass --ask-vault-pass --extra-vars "install_webmin=false"
+./vps.sh install core --domain=yourdomain.com --ask-pass --ask-vault-pass --extra-vars "install_webmin=false"
 ```
 
 - If you want `lucian.com` to receive only templates/configs (not package installs) via `install core`, prefer running `./vps.sh create host` for that host — the `create_vhost` playbook is designed for config-level operations for additional domains.
@@ -72,7 +72,7 @@ ansible-playbook --syntax-check playbooks/create_vhost.yml -i inventory/hosts.ym
 
 ## What each domain will install / create
 
-- Master domain (vps.test) — `./vps.sh install core --domain=vps.test --ask-pass --ask-vault-pass`
+-- Master domain (yourdomain.com) — `./vps.sh install core --domain=yourdomain.com --ask-pass --ask-vault-pass`
   - Roles/packages installed and configured (subject to `install_*` flags):
     - `common` (base users, system defaults)
     - `security` (ssh hardening, firewall, fail2ban)

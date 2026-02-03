@@ -73,7 +73,7 @@ all:
   children:
     primary:
       hosts:
-        vps.test:
+      yourdomain.com:
           ansible_host: 192.168.88.8
 ```
 
