@@ -23,13 +23,13 @@
   when: not composer_installed.stat.exists
 
 - name: Verify Composer installer signature
-  ansible.builtin.shell: php -r "if (hash_file('sha384', '/tmp/composer-setup.php') === file_get_contents('/tmp/composer-setup.sig')) { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('/tmp/composer-setup.php'); exit(1); }"
+  shell: php -r "if (hash_file('sha384', '/tmp/composer-setup.php') === file_get_contents('/tmp/composer-setup.sig')) { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('/tmp/composer-setup.php'); exit(1); }"
   register: composer_verified
   failed_when: "'Installer corrupt' in composer_verified.stdout"
   when: not composer_installed.stat.exists and composer_download is succeeded and composer_sig is succeeded
 
 - name: Install Composer globally (Composer 2.x)
-  ansible.builtin.shell: php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer --2
+  shell: php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer --2
   args:
     creates: /usr/local/bin/composer
   when: not composer_installed.stat.exists and composer_verified is succeeded
@@ -50,7 +50,7 @@
     state: present
 
 - name: Apply PATH changes
-  ansible.builtin.shell: source /etc/profile
+  shell: source /etc/profile
   args:
     executable: /bin/bash
   changed_when: false

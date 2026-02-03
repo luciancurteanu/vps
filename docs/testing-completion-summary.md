@@ -17,8 +17,8 @@ Last updated: 2026-02-03
 | mail         | Yes             | Yes           | admin     | Passed   | Molecule passed on 2026-02-03 |
 | python       | Yes             | Yes           | admin     | Passed   | Molecule passed on 2026-02-03 |
 | goproxy      | Yes             | Yes           | admin     | Passed   | Molecule passed on 2026-02-03 |
-| development  | Yes             | No            | admin     | Pending  | Reset for fresh testing |
-| security     | Yes             | No            | admin     | Pending  | Reset for fresh testing |
+| development  | Yes             | Yes           | admin     | Passed   | Molecule passed on 2026-02-03 |
+| security     | Yes             | Yes           | admin     | Passed   | Molecule passed on 2026-02-03 |
 
 ## Notes
 - Tests use the minimal workflow: AlmaLinux 9 VM/WSL, Docker, Molecule, and user `admin`.

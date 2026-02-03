@@ -3,14 +3,14 @@
 
 - name: Restart cockpit
   ansible.builtin.systemd:
-    name: Cockpit.socket
+    name: cockpit.socket
     state: restarted
 
 - name: Reload nginx
   ansible.builtin.systemd:
-    name: Nginx
+    name: nginx
     state: reloaded
 
 - name: Save iptables rules
-  ansible.builtin.shell: iptables-save > /etc/sysconfig/iptables
+  shell: iptables-save > /etc/sysconfig/iptables
   changed_when: false

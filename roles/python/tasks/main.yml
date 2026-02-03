@@ -32,7 +32,7 @@
   register: chromium_install
 
 - name: Get Chromium version
-  ansible.builtin.shell: chromium-browser --version 2>/dev/null || chromium --version
+  shell: chromium-browser --version 2>/dev/null || chromium --version
   register: chrome_version_raw
   changed_when: false
   failed_when: false

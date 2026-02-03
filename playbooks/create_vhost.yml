@@ -34,7 +34,7 @@
         comment: "Virtual host user for {{ domain }}"
         create_home: true
         home: "/home/{{ user }}"
-        ansible.builtin.shell: /bin/bash
+        shell: /bin/bash
         shell: /bin/bash
         update_password: on_create
 
@@ -43,7 +43,6 @@
         path: "{{ item }}"
         state: directory
         owner: "{{ user }}"
-        ansible.builtin.group: "{{ user }}"
         group: "{{ user }}"
       with_items:
         - "/home/{{ domain }}"
@@ -58,7 +57,6 @@
         path: "/home/{{ domain }}/logs/{{ item }}"
         state: touch
         owner: "{{ user }}"
-        ansible.builtin.group: "{{ user }}"
         group: "{{ user }}"
       with_items:
         - "access.log"
@@ -69,7 +67,6 @@
         path: "/home/{{ domain }}/logs"
         owner: "{{ user }}"
         mode: '0644'
-        ansible.builtin.group: "{{ user }}"
         group: "{{ user }}"
         recurse: true
 
@@ -78,7 +75,6 @@
         path: "/home/{{ domain }}/tmp"
         owner: "{{ user }}"
         mode: '0644'
-        ansible.builtin.group: "{{ user }}"
         group: "{{ user }}"
         recurse: true
 
@@ -87,7 +83,6 @@
         src: "{{ playbook_dir | dirname }}/templates/php/pool.conf.j2"
         dest: "/etc/php-fpm.d/{{ domain }}.conf"
         owner: root
-        ansible.builtin.group: root
         group: root
       notify: Restart php-fpm
 
@@ -96,7 +91,6 @@
         path: /etc/nginx/sites-available
         state: directory
         owner: root
-        ansible.builtin.group: root
         group: root
 
     - name: Ensure nginx sites-enabled directory exists
@@ -104,7 +98,6 @@
         path: /etc/nginx/sites-enabled
         state: directory
         owner: root
-        ansible.builtin.group: root
         group: root
 
     - name: Configure Nginx virtual host
@@ -112,7 +105,6 @@
         src: "{{ playbook_dir | dirname }}/templates/nginx/vhost.conf.j2"
         dest: "/etc/nginx/sites-available/{{ domain }}.conf"
         owner: root
-        ansible.builtin.group: root
         group: root
       vars:
         nginx_ssl_enabled: false
@@ -131,7 +123,6 @@
         src: "{{ playbook_dir }}/../templates/website/"
         dest: "{{ document_root }}/"
         owner: "{{ user }}"
-        ansible.builtin.group: "{{ user }}"
         group: "{{ user }}"
         directory_mode: '0755'
 
@@ -140,7 +131,6 @@
         src: "{{ playbook_dir | dirname }}/templates/website/index.html.j2"
         dest: "{{ document_root }}/index.html"
         owner: "{{ user }}"
-        ansible.builtin.group: "{{ user }}"
         group: "{{ user }}"
         force: true
 
@@ -155,11 +145,11 @@
       changed_when: false
 
     - name: Set specific permissions for PHP files
-      ansible.builtin.shell: find {{ document_root }} -type f -name "*.php" -exec chmod 640 {} \;
+      shell: find {{ document_root }} -type f -name "*.php" -exec chmod 640 {} \;
       changed_when: false
 
     - name: Set specific permissions for non-PHP files
-      ansible.builtin.shell: find {{ document_root }} -type f ! -name "*.php" -exec chmod 755 {} \;
+      shell: find {{ document_root }} -type f ! -name "*.php" -exec chmod 755 {} \;
       changed_when: false
 
     - name: Create SFTP group if it doesn't exist
@@ -219,7 +209,6 @@
             src: "{{ playbook_dir | dirname }}/templates/nginx/mail.conf.j2"
             dest: "/etc/nginx/sites-available/{{ mail_subdomain }}.conf"
             owner: root
-            ansible.builtin.group: root
             group: root
           notify: Restart Nginx
 
@@ -236,7 +225,7 @@
             path: "/home/{{ domain }}/mail"
             state: directory
             owner: "{{ user }}"
-            ansible.builtin.group: "{{ user }}"
+            group: "{{ user }}"
             group: "{{ user }}"
       when: domain == master_domain
 
@@ -274,7 +263,7 @@
             path: "/home/{{ master_domain }}/mail/virtual/{{ domain }}/{{ item }}"
             state: directory
             owner: "{{ mail_user }}"
-            ansible.builtin.group: "{{ mail_group }}"
+            group: "{{ mail_group }}"
             group: "{{ mail_group }}"
             recurse: true
           with_items:
@@ -294,7 +283,7 @@
             mode: '0700'
 
         - name: Generate OpenDKIM keys
-          ansible.builtin.shell: cd /etc/opendkim/keys/{{ domain }} && opendkim-genkey -r -b 2048 -d {{ domain }}
+          shell: cd /etc/opendkim/keys/{{ domain }} && opendkim-genkey -r -b 2048 -d {{ domain }}
           args:
             creates: "/etc/opendkim/keys/{{ domain }}/default.private"
 
@@ -305,7 +294,7 @@
             recurse: true
 
         - name: Set permissions for OpenDKIM key files
-          ansible.builtin.shell: find /etc/opendkim/keys/{{ domain }} -type f -exec chmod 600 {} \;
+          shell: find /etc/opendkim/keys/{{ domain }} -type f -exec chmod 600 {} \;
           changed_when: true
 
         - name: Add domain to OpenDKIM KeyTable
@@ -336,12 +325,12 @@
   handlers:
     - name: Restart Nginx
       ansible.builtin.service:
-        name: Nginx
+        name: nginx
         state: restarted
 
     - name: Restart PHP-FPM
       ansible.builtin.service:
-        name: Php-fpm
+        name: php-fpm.service
         state: restarted
 
     - name: Restart SSH

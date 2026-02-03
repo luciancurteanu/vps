@@ -46,7 +46,6 @@
     path: "{{ php_fpm_listen | dirname }}"
     state: directory
     owner: root
-    ansible.builtin.group: root
     group: root
   when: ansible_os_family == "RedHat"
 
@@ -55,7 +54,6 @@
     path: /var/log/php-fpm
     state: directory
     owner: nginx
-    ansible.builtin.group: root
     group: root
   when: ansible_os_family == "RedHat"
 
@@ -66,7 +64,6 @@
     state: directory
     mode: '0755'
     owner: root
-    ansible.builtin.group: nginx
     group: nginx
   when: ansible_os_family == "RedHat"
 
@@ -75,13 +72,12 @@
     path: /var/lib/php/session
     state: directory
     owner: nginx
-    ansible.builtin.group: nginx
     group: nginx
   when: ansible_os_family == "RedHat"
 
 - name: Enable and start php-fpm service
   ansible.builtin.systemd:
-    name: Php-fpm.service
+    name: php-fpm.service
     enabled: true
     state: started
   when: ansible_os_family == "RedHat"
@@ -91,7 +87,6 @@
     src: pool.conf.j2
     dest: "/etc/php-fpm.d/{{ item }}.conf"
     owner: root
-    ansible.builtin.group: root
     group: root
   loop: "{{ php_fpm_pools }}"
   when: php_fpm_pools | length > 0 and ansible_os_family == 'RedHat'

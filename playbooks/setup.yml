@@ -25,7 +25,6 @@
         path: "{{ item }}"
         state: directory
         owner: root
-        ansible.builtin.group: root
         group: root
       loop:
         - "/home/{{ domain }}"
@@ -85,7 +84,6 @@
         src: "{{ playbook_dir }}/../templates/nginx/vhost.conf.j2"
         dest: "/etc/nginx/sites-available/{{ domain }}.conf"
         owner: root
-        ansible.builtin.group: root
         group: root
       vars:
         vhost_domain: "{{ domain }}"
@@ -110,7 +108,6 @@
         path: "/home/{{ domain }}/public_html"
         state: directory
         owner: root
-        ansible.builtin.group: root
         group: root
       when: domain is defined
 
@@ -120,7 +117,6 @@
         src: "{{ playbook_dir }}/../templates/website/index.html.j2"
         dest: "/home/{{ domain }}/public_html/index.html"
         owner: root
-        ansible.builtin.group: root
         group: root
         force: true
       when: domain is defined
@@ -171,7 +167,6 @@
         path: "/home/{{ domain }}/logs"
         owner: nginx
         mode: '0644'
-        ansible.builtin.group: nginx
         group: nginx
         recurse: true
       when: domain is defined
@@ -210,5 +205,5 @@
   handlers:
     - name: Restart Nginx
       ansible.builtin.service:
-        name: Nginx
+        name: nginx
         state: restarted

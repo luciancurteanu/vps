@@ -9,7 +9,7 @@
   when: ansible_os_family == "RedHat"
 
 - name: Enable PHP module from Remi (RedHat)
-  ansible.builtin.shell: "dnf module enable php:remi-{{ php_version }} -y"
+  shell: "dnf module enable php:remi-{{ php_version }} -y"
   when: ansible_os_family == "RedHat"
   register: php_module_enabled
   changed_when: "'Enabling' in php_module_enabled.stdout"
@@ -123,7 +123,7 @@
   ansible.builtin.meta: flush_handlers
 - name: Enable and start PHP-FPM service
   ansible.builtin.systemd:
-    name: php-fpm
+    name: php-fpm.service
     enabled: true
     state: started
     daemon_reload: true

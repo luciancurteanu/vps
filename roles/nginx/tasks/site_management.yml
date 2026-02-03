@@ -7,7 +7,6 @@
     src: "{{ nginx_vhost_template | default('vhost.conf.j2') }}"
     dest: "/etc/nginx/sites-available/{{ nginx_site_name }}.conf"
     owner: root
-    ansible.builtin.group: root
     group: root
     backup: true
   when: nginx_site_name is defined
@@ -20,7 +19,6 @@
     state: link
     mode: '0644'
     owner: root
-    ansible.builtin.group: root
     group: root
     - nginx_site_name is defined
     - nginx_site_enabled | default(true)

@@ -12,5 +12,5 @@ domain: vps.test
 db_root_user: root
 db_root_password: ''
 # Service users
-ansible.builtin.user: nginx
+user: nginx
 user: nginx

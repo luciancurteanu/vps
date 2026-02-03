@@ -58,7 +58,7 @@
   when: domain is defined
 
 - name: Generate DKIM keys
-  ansible.builtin.shell: opendkim-genkey -D /etc/opendkim/keys/{{ domain }}/ -d {{ domain }} -s mail
+  shell: opendkim-genkey -D /etc/opendkim/keys/{{ domain }}/ -d {{ domain }} -s mail
   args:
     creates: /etc/opendkim/keys/{{ domain }}/mail.private
   when: domain is defined and not dkim_key.stat.exists
@@ -75,7 +75,7 @@
   when: domain is defined
 
 - name: Display DKIM DNS record information
-  ansible.builtin.shell: cat /etc/opendkim/keys/{{ domain }}/mail.txt
+  shell: cat /etc/opendkim/keys/{{ domain }}/mail.txt
   register: dkim_txt
   changed_when: false
   when: domain is defined

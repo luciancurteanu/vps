@@ -13,6 +13,6 @@
   when: nginx_installed is defined and nginx_installed
 
 - name: Save iptables rules
-  ansible.builtin.shell: iptables-save > /etc/sysconfig/iptables
+  shell: iptables-save > /etc/sysconfig/iptables
   when: ansible_os_family == 'RedHat'
   changed_when: false

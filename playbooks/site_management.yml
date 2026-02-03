@@ -33,7 +33,7 @@
   tasks:
     - name: Enable nginx site
       ansible.builtin.include_role:
-        name: Nginx
+        name: nginx
         tasks_from: site_helpers
       vars:
         site_name: "{{ site_name }}"
@@ -41,7 +41,7 @@
 
     - name: Disable nginx site
       ansible.builtin.include_role:
-        name: Nginx
+        name: nginx
         tasks_from: site_helpers
       vars:
         site_name: "{{ site_name }}"
@@ -49,7 +49,7 @@
 
     - name: Remove nginx site
       ansible.builtin.include_role:
-        name: Nginx
+        name: nginx
         tasks_from: site_management
       vars:
         nginx_site_name: "{{ site_name }}"
@@ -58,7 +58,7 @@
 
     - name: List available and enabled sites
       ansible.builtin.include_role:
-        name: Nginx
+        name: nginx
         tasks_from: site_helpers
       vars:
         nginx_show_sites: true
@@ -67,6 +67,6 @@
   handlers:
     - name: Restart_nginx_service
       ansible.builtin.systemd:
-        name: Nginx
+        name: nginx
         state: restarted
         daemon_reload: true

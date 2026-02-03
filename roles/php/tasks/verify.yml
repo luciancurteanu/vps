@@ -23,12 +23,12 @@
 
 - name: Ensure php-fpm service is running
   ansible.builtin.service:
-    name: Php-fpm.service
+    name: php-fpm.service
     state: started
   when: ansible_service_mgr == 'systemd' and ansible_facts.services['php-fpm.service'].state != 'running'
 
 - name: Ensure php-fpm is enabled
   ansible.builtin.systemd:
-    name: Php-fpm.service
+    name: php-fpm.service
     enabled: true
   when: ansible_service_mgr == 'systemd'

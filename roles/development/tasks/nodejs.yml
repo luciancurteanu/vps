@@ -16,7 +16,7 @@
   when: nodejs_existing.rc != 0
 
 - name: Run NodeSource setup script
-  ansible.builtin.shell: bash /tmp/nodesource_setup.sh
+  shell: bash /tmp/nodesource_setup.sh
   args:
     creates: /etc/yum.repos.d/nodesource-el*.repo
   when:

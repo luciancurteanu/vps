@@ -96,7 +96,7 @@
   when: domain is defined
 
 - name: Generate password hash for default email accounts
-  ansible.builtin.shell: |
+  shell: |
     python3 -c "import crypt; print(crypt.crypt('{{ vault_mail_default_password }}', crypt.mksalt(crypt.METHOD_SHA512)))"
   register: mail_password_hash_result
   changed_when: false

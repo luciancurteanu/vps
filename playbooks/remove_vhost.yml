@@ -85,10 +85,10 @@
   handlers:
     - name: Restart Nginx
       ansible.builtin.service:
-        name: Nginx
+        name: nginx
         state: restarted
 
     - name: Restart PHP-FPM
       ansible.builtin.service:
-        name: Php-fpm
+        name: php-fpm.service
         state: restarted

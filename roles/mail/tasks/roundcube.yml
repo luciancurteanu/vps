@@ -47,7 +47,7 @@
   when: not roundcube_installed.stat.exists
 
 - name: Move Roundcube files to webmail directory
-  ansible.builtin.shell: cp -r /tmp/roundcubemail-{{ webmail_version }}/* {{ webmail_path }}/
+  shell: cp -r /tmp/roundcubemail-{{ webmail_version }}/* {{ webmail_path }}/
   shell: cp -r /tmp/roundcubemail-{{ webmail_version }}/* {{ webmail_path }}/
     creates: "{{ webmail_path }}/index.php"
   when: not roundcube_installed.stat.exists

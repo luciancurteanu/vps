@@ -148,7 +148,7 @@
 
 # Special task to initialize fail2ban chains (needed first time)
 - name: Initialize fail2ban chains with test bans
-  ansible.builtin.shell: |
+  shell: |
     # Initialize all enabled jails
     {% if stat_secure_log.stat.exists %}
     fail2ban-client set sshd banip 1.1.1.1 || true

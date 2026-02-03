@@ -82,7 +82,7 @@
         weekday: "1"  # Monday
 
     - name: Display certificate information
-      ansible.builtin.shell: "certbot certificates -d {{ domain }}"
+      shell: "certbot certificates -d {{ domain }}"
       register: cert_info
       changed_when: false
 
@@ -95,7 +95,6 @@
         src: "{{ playbook_dir }}/../templates/nginx/vhost.conf.j2"
         dest: "/etc/nginx/sites-available/{{ domain }}.conf"
         owner: root
-        ansible.builtin.group: root
         group: root
       vars:
         nginx_ssl_enabled: true
@@ -122,5 +121,5 @@
   handlers:
     - name: Restart Nginx
       ansible.builtin.service:
-        name: Nginx
+        name: nginx
         state: restarted
