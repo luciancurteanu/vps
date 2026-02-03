@@ -30,7 +30,8 @@ This document tracks the progress of implementing Molecule testing for all Ansib
 | nginx       | ✅          | ❌            | ❌           | ❌         | Passed |
 | python      | ❌          | ❌            | ❌           | ❌         | Pending |
 | php         | ✅          | ❌            | ❌           | ❌         | Passed |
-| mariadb     | ❌          | ❌            | ❌           | ❌         | Pending |
+| mariadb     | ✅          | ❌            | ❌           | ❌         | Passed |
+| cockpit     | ✅          | ❌            | ❌            | ❌         | Passed |
 | mail        | ❌          | ❌            | ❌           | ❌         | Pending |
 | webmin      | ✅          | ❌            | ❌           | ❌         | Passed |
 | development | ❌          | ❌            | ❌           | ❌         | Pending |

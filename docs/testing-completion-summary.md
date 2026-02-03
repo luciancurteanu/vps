@@ -10,10 +10,10 @@ Last updated: 2026-02-03
 |--------------|-----------------|---------------|-----------|----------|-------------------------|
 | common       | Yes             | Yes           | admin     | Passed   | Molecule passed on 2026-02-03 |
 | webmin       | Yes             | Yes           | admin     | Passed   | Molecule passed on 2026-02-03 |
-| cockpit      | Yes             | No            | admin     | Pending  | Disabled by default     |
+| cockpit      | Yes             | Yes           | admin     | Passed   | Molecule passed on 2026-02-03 |
 | nginx        | Yes             | Yes           | admin     | Passed   | Molecule passed on 2026-02-03 |
 | php          | Yes             | Yes           | admin     | Passed   | Molecule passed on 2026-02-03 |
-| mariadb      | Yes             | No            | admin     | Pending  | Reset for fresh testing |
+| mariadb      | Yes             | Yes           | admin     | Passed   | Molecule passed on 2026-02-03 |
 | mail         | Yes             | No            | admin     | Pending  | Reset for fresh testing |
 | python       | Yes             | No            | admin     | Pending  | Reset for fresh testing |
 | goproxy      | Yes             | No            | admin     | Pending  | Reset for fresh testing |
