@@ -30,6 +30,7 @@ jobs:
           - php
           - mariadb
           - webmin
+          - cockpit
           - mail
           - development
           - goproxy
