@@ -1,0 +1,7 @@
+---
+# Molecule test variables for cockpit
+domain: example.com
+default_user: admin
+firewall_enabled: false
+cockpit_port: 9090
+cockpit_nginx_proxy: false

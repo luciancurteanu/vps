@@ -1,0 +1,30 @@
+---
+- name: Verify Cockpit installation
+  hosts: all
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Ensure cockpit.socket is active
+      ansible.builtin.command:
+        cmd: systemctl is-active --quiet cockpit.socket
+      register: cockpit_active
+      changed_when: false
+      failed_when: cockpit_active.rc != 0
+
+    - name: Wait for Cockpit port to be listening
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: "{{ cockpit_port | default(9090) }}"
+        timeout: 10
+
+    - name: Check Cockpit configuration exists
+      ansible.builtin.stat:
+        path: /etc/cockpit/cockpit.conf
+      register: cockpit_conf
+
+    - name: Assert Cockpit config exists
+      ansible.builtin.assert:
+        that:
+          - cockpit_conf.stat.exists
+        fail_msg: "Cockpit configuration file not found"
