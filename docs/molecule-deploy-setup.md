@@ -314,5 +314,5 @@ See [../scripts/README.md](../scripts/README.md) for details on available script
 
 - Run tests for other roles: `bash scripts/run-test.sh <role-name>`
 - Reset environment: `bash scripts/reset-molecule-environment.sh`
-- View test progress: See `docs/testing-implementation-progress.md`
+- View test status: See `docs/testing-completion-summary.md`
 <parameter name="filePath">c:\Users\Lucian\Documents\Github\Repositories\vps\docs\molecule-admin-setup-simple.md
