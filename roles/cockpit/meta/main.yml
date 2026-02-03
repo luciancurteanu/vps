@@ -2,10 +2,12 @@
 dependencies: []
 
 galaxy_info:
-  author: VPS Setup
-  description: Install and configure Cockpit web-based server management interface
-  company:
-  license: MIT
+  author: 'Lucian Curteanu'
+  namespace: lucian
+  role_name: cockpit
+  description: 'Install and configure Cockpit web-based server management interface'
+  company: ''
+  license: 'MIT'
   min_ansible_version: '2.9'
   platforms:
     - name: EL
