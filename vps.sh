@@ -230,6 +230,10 @@ parse_args() {
 # Run the appropriate Ansible playbook
 run_ansible() {
     start_time=$(date +%s)
+    
+    # Ensure logs directory exists
+    mkdir -p "$PROJECT_ROOT/logs"
+    
     timestamp=$(date '+%Y%m%d_%H%M%S')
     log_file="$PROJECT_ROOT/logs/vps-${ACTION}-${MODULE}-${timestamp}.log"
     
