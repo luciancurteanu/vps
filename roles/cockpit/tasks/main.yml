@@ -13,7 +13,7 @@
 
 - name: Enable and start Cockpit socket
   ansible.builtin.systemd:
-    name: Cockpit.socket
+    name: cockpit.socket
     enabled: true
     state: started
 
@@ -25,13 +25,13 @@
     remote_src: true
     force: false
   failed_when: false  # TODO: Add proper failure condition
+  changed_when: false
 
 - name: Configure Cockpit for proxy access
   ansible.builtin.template:
     src: cockpit.conf.j2
     dest: /etc/cockpit/cockpit.conf
     owner: root
-    ansible.builtin.group: root
     group: root
   notify: Restart cockpit
 
@@ -56,7 +56,6 @@
     src: nginx/cockpit.conf.j2
     dest: /etc/nginx/conf.d/{{ cockpit_subdomain }}.conf
     owner: root
-    ansible.builtin.group: root
     group: root
   notify: Reload nginx
   when: cockpit_nginx_proxy | default(true)
