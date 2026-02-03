@@ -14,9 +14,21 @@ if [[ -z "$ROLE" ]]; then
   exit 1
 fi
 
-# Activate virtualenv if available
-if [[ -d ~/molecule-env/venv ]]; then
-  source ~/molecule-env/venv/bin/activate
+VENV_PATH=~/molecule-env
+SETUP_SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/scripts/setup-molecule-env.sh"
+
+# Ensure virtualenv exists and activate it
+if [[ ! -f "$VENV_PATH/bin/activate" ]]; then
+  if [[ -f "$SETUP_SCRIPT_PATH" ]]; then
+    echo "[INFO] Virtualenv not found; running $SETUP_SCRIPT_PATH to create it..."
+    bash "$SETUP_SCRIPT_PATH"
+  fi
+fi
+
+if [[ -f "$VENV_PATH/bin/activate" ]]; then
+  # shellcheck disable=SC1091
+  source "$VENV_PATH/bin/activate"
+  echo "[INFO] Activated Python virtual environment from $VENV_PATH"
 fi
 
 ROLE_DIR="$(pwd)/roles/$ROLE"
