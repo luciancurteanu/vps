@@ -24,29 +24,12 @@ VENV_PATH=~/molecule-env
 SETUP_SCRIPT_NAME="setup-molecule-env.sh"
 SETUP_SCRIPT_PATH="$PROJECT_ROOT/scripts/$SETUP_SCRIPT_NAME"
 
-# Check if virtualenv activation script exists, if not, try to set it up
+# Check if virtualenv activation script exists, if not, provide clear guidance
 if [[ ! -f "$VENV_PATH/bin/activate" ]]; then
-  echo "[WARNING] Python virtual environment activation script not found at $VENV_PATH/bin/activate."
-  if [[ -f "$SETUP_SCRIPT_PATH" ]]; then
-    echo "[INFO] Attempting to set up the environment by running 'bash $SETUP_SCRIPT_PATH'..."
-    if bash "$SETUP_SCRIPT_PATH"; then
-      echo "[INFO] Environment setup script completed."
-      # Check again if activation script exists
-      if [[ ! -f "$VENV_PATH/bin/activate" ]]; then
-        echo "[ERROR] Environment setup script ran, but activation script $VENV_PATH/bin/activate is still missing." >&2
-        echo "[ADVICE] Please check the output of '$SETUP_SCRIPT_NAME' and ensure it created the environment correctly." >&2
-        exit 1
-      fi
-    else
-      echo "[ERROR] Environment setup script '$SETUP_SCRIPT_PATH' failed." >&2
-      echo "[ADVICE] Please check the output above for errors from the setup script." >&2
-      exit 1
-    fi
-  else
-    echo "[ERROR] Python virtual environment not found, and setup script '$SETUP_SCRIPT_PATH' is also missing." >&2
-    echo "[ADVICE] Please ensure your 'vps' project directory is up-to-date (e.g., run 'git pull')." >&2
-    exit 1
-  fi
+  echo "[ERROR] Python virtual environment not found at $VENV_PATH/bin/activate"
+  echo "[ADVICE] Install Molecule environment by running: sudo bash $PROJECT_ROOT/scripts/ci-setup.sh"
+  echo "[ADVICE] Or use FullSetup: .\scripts\vm-launcher\run-vm.ps1 -VMName AlmaLinux-9 -UseLocalSSHKey -Recreate -FullSetup"
+  exit 1
 fi
 
 # Activate virtualenv
@@ -65,15 +48,8 @@ fi
 
 # Check for molecule command
 if ! command -v molecule &> /dev/null; then
-    echo "[ERROR] 'molecule' command not found after attempting to activate virtual environment." >&2
-    echo "[ERROR] This means the 'molecule' executable is not in your PATH." >&2
-    echo "[ERROR] Possible reasons:" >&2
-    echo "[ERROR]   1. The Python virtual environment at '$VENV_PATH' was not found or not activated correctly." >&2
-    echo "[ERROR]   2. 'molecule' was not installed correctly within the virtual environment." >&2
-    echo "[ERROR]   3. The 'vps' project files (especially '$SETUP_SCRIPT_PATH') are outdated on this machine." >&2
-    echo "[ADVICE] Please ensure on this machine ('$(pwd)'):" >&2
-    echo "[ADVICE]   a. Your 'vps' project directory is up-to-date (e.g., run 'git pull')." >&2
-    echo "[ADVICE]   b. You have successfully run 'bash $SETUP_SCRIPT_PATH' from the project root if issues persist." >&2
+    echo "[ERROR] 'molecule' command not found in PATH" >&2
+    echo "[ADVICE] Install Molecule environment: sudo bash $PROJECT_ROOT/scripts/ci-setup.sh" >&2
     exit 127 # Standard exit code for command not found
 fi
 
