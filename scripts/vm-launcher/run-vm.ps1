@@ -407,22 +407,61 @@ function PerformFullSetup([VMConfig]$config, [SSHManager]$sshManager) {
         "$($config.SSHUser)@localhost:/tmp/ci-setup.sh"
     )
     
+    # Compute local checksum for verification
+    try {
+        $localHash = (Get-FileHash -Algorithm SHA256 $ciSetupPath).Hash.ToLower()
+    }
+    catch {
+        Write-Host "Warning: Could not compute local hash for $ciSetupPath: $_" -ForegroundColor Yellow
+        $localHash = $null
+    }
+
     # Retry SCP upload with exponential backoff (SSH may need a moment to stabilize)
     $maxRetries = 3
     $retryDelay = 2
     for ($i = 1; $i -le $maxRetries; $i++) {
         $null = & scp $scpArgs 2>&1
-        if ($LASTEXITCODE -eq 0) {
-            break
+        if ($LASTEXITCODE -ne 0) {
+            if ($i -lt $maxRetries) {
+                Write-Host "SCP attempt $i failed, retrying in $retryDelay seconds..." -ForegroundColor Yellow
+                Start-Sleep -Seconds $retryDelay
+                $retryDelay *= 2
+                continue
+            } else {
+                Write-Host "Error: Failed to upload ci-setup.sh after $maxRetries attempts" -ForegroundColor Red
+                Write-Host "Setup cannot continue. Please check SSH connectivity and try again." -ForegroundColor Red
+                return
+            }
         }
-        if ($i -lt $maxRetries) {
-            Write-Host "SCP attempt $i failed, retrying in $retryDelay seconds..." -ForegroundColor Yellow
-            Start-Sleep -Seconds $retryDelay
-            $retryDelay *= 2
-        } else {
-            Write-Host "Error: Failed to upload ci-setup.sh after $maxRetries attempts" -ForegroundColor Red
-            Write-Host "Setup cannot continue. Please check SSH connectivity and try again." -ForegroundColor Red
-            return
+
+        # If we have a local hash, verify the remote file matches after upload
+        if ($localHash) {
+            $verifyCmd = "if command -v sha256sum >/dev/null 2>&1; then sha256sum /tmp/ci-setup.sh | awk '{print \$1}'; elif command -v shasum >/dev/null 2>&1; then shasum -a 256 /tmp/ci-setup.sh | awk '{print \$1}'; else echo 'NOHASH'; fi"
+            $sshArgsWithVerify = $sshArgs + @($verifyCmd)
+            $remoteHashOutput = & $sshCmd $sshArgsWithVerify 2>$null
+            $remoteHash = $null
+            if ($remoteHashOutput) { $remoteHash = ($remoteHashOutput -join "`n").Trim().ToLower() }
+
+            if (-not $remoteHash -or $remoteHash -eq 'nohash' -or $remoteHash -ne $localHash) {
+                Write-Host "Checksum mismatch for uploaded ci-setup.sh (attempt $i). Local: $localHash Remote: $remoteHash" -ForegroundColor Yellow
+                if ($i -lt $maxRetries) {
+                    Write-Host "Retrying upload in $retryDelay seconds..." -ForegroundColor Yellow
+                    Start-Sleep -Seconds $retryDelay
+                    $retryDelay *= 2
+                    continue
+                } else {
+                    Write-Host "Error: Uploaded ci-setup.sh checksum did not match after $maxRetries attempts" -ForegroundColor Red
+                    return
+                }
+            }
+            else {
+                Write-Host "Uploaded ci-setup.sh verified (sha256: $localHash)" -ForegroundColor Green
+                break
+            }
+        }
+        else {
+            # No local hash available; assume upload succeeded
+            break
         }
     }
 
