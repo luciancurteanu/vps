@@ -1,5 +1,5 @@
 ---
 collections:
-  - name: Community.general
-    version: ">=4.0.0"
+  - name: community.general
+    version: "3.11.0"
 roles: []
