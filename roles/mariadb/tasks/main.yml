@@ -42,6 +42,7 @@
     remote_src: true
     force: false
   when: not server_cnf_bak_stat.stat.exists and server_cnf_stat.stat.exists
+  changed_when: false
 
 - name: Configure MariaDB server
   ansible.builtin.template:
@@ -69,6 +70,7 @@
     remote_src: true
     force: false
   when: not client_cnf_bak_stat.stat.exists and client_cnf_stat.stat.exists
+  changed_when: false
 
 - name: Configure MariaDB client
   ansible.builtin.template:
