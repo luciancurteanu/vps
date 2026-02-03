@@ -185,25 +185,6 @@
   notify: restart nginx
   when: mail_enable_nginx | default(true)
 
-- name: Configure Nginx for Roundcube (included in mail subdomain config)
-  ansible.builtin.template:
-    src: nginx/roundcube.conf.j2
-    dest: "/etc/nginx/sites-available/roundcube.{{ domain }}.conf"
-    owner: root
-    group: root
-  notify: restart nginx
-  when:
-    - mail_enable_nginx | default(true)
-    - mail_enable_roundcube | default(false)
-
-- name: Enable roundcube site (if separate from mail subdomain)
-  ansible.builtin.file:
-    src: "/etc/nginx/sites-available/roundcube.{{ domain }}.conf"
-    mode: '0644'
-    dest: "/etc/nginx/sites-enabled/roundcube.{{ domain }}.conf"
-    state: link
-  notify: restart nginx
-  when:
-    - mail_enable_nginx | default(true)
-    - mail_enable_roundcube | default(false)
-    - mail_roundcube_separate_domain | default(false)
+# Roundcube is served directly from mail.{{ domain }} subdomain
+# No separate nginx config needed - roundcube.conf.j2 template not used
+# The mail-subdomain.conf.j2 template already serves Roundcube on mail.{{ domain }}
