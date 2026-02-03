@@ -1,324 +1,374 @@
 # VPS Setup
 
-An Ansible-based automation toolkit for setting up and managing virtual private servers with a complete web, database, and mail stack.
+Ansible-based automation for deploying and managing LEMP stack servers (Linux, Nginx, MariaDB, PHP) with mail, security, and control panel.
 
-## Features
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-- **Complete Server Setup**: One-command deployment of a full-featured LEMP stack (Linux, Nginx, MariaDB, PHP)
-- **Virtual Host Management**: Easy creation and removal of virtual hosts with proper configurations
-- **Mail Server**: Integrated mail server with Postfix, Dovecot, and Roundcube webmail
-- **SSL Automation**: Automatic SSL certificate issuance and renewal using Let's Encrypt
-- **Security Hardening**: System security configuration including firewall, fail2ban, and SSH hardening
-- **Web Automation**: Python utilities, Chrome, and ChromeDriver for web scraping and browser automation
-- **Control Panel**: Webmin installation and configuration for web-based administration
-- **Multi-domain Support**: Manage multiple domains on a single server
-- **Development Tools**: Optional installation of developer tools (Composer, Laravel, Node.js)
-- **Proxy Services**: Integrated GoProxy with Tor support for privacy and censorship circumvention
-- **Secure Password Management**: Centralized password management using Ansible Vault
+## ✨ Features
 
-## Quick Bootstrap for Fresh Servers
+- 🚀 **One-Command Setup**: Complete LEMP stack deployment
+- 🌐 **Multi-Domain**: Easy virtual host creation and management
+- 🔒 **SSL Automation**: Let's Encrypt certificates with auto-renewal
+- 📧 **Mail Server**: Postfix, Dovecot, OpenDKIM, Roundcube webmail
+- 🛡️ **Security**: Firewall, Fail2ban, SSH hardening
+- 🎛️ **Control Panel**: Webmin for web-based administration
+- 🔐 **Vault Integration**: Secure password management with Ansible Vault
+- 🧪 **Testing**: Automated Molecule tests for all roles
 
-For setting up on a completely fresh OS installation, use our bootstrap script:
+---
 
-```bash
-# For CentOS/RHEL systems, install curl first if needed
-dnf install -y curl
+## 📋 Requirements
 
-# Download the bootstrap script
-curl -O https://raw.githubusercontent.com/luciancurteanu/vps/master/bootstrap.sh
+- **OS**: AlmaLinux 9 / RHEL 9 / CentOS Stream 9
+- **Control Machine**: Ansible 2.15+ installed
+- **Target Server**: SSH access with sudo privileges
+- **Domain**: Valid domain with DNS configured
 
-# Make it executable
-chmod +x bootstrap.sh
+---
 
-# Run the bootstrap script
-./bootstrap.sh
-```
+## 🚀 Quick Start
 
-This script will:
-1. Install Git if it's not already available
-2. Clone the VPS setup repository
-3. Make all necessary scripts executable
+### Option 1: Fresh Server Bootstrap
 
-After bootstrap is complete, navigate to the repository directory and proceed with installation:
+For a completely fresh OS installation:
 
 ```bash
-cd vps
+# Install curl if needed
+sudo dnf install -y curl
+
+# Download and run bootstrap
+curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | bash
+
+# Navigate to repo
+cd ~/vps
+
+# Run setup
 ./vps.sh install core --domain=yourdomain.com --ask-vault-pass
 ```
 
-## Ansible Implementation
-
-This project provides an Ansible-based implementation with:
-
-- A declarative approach to server configuration
-- Enhanced maintainability through modular roles
-- Idempotent execution for reliable deployments
-- Flexible configuration with variable management
-
-## Requirements
-
-- CentOS 9 Stream or compatible RHEL-based distribution (some support for Debian/Ubuntu)
-- Ansible 2.9 or higher on the control machine
-- SSH access to the target server with root or sudo privileges
-- Valid domain name(s) with DNS pointing to your server
-
-## Installation
-
-1. Clone this repository:
-   ```
-   git clone https://github.com/luciancurteanu/vps.git
-   cd vps
-   ```
-
-2. Configure your inventory:
-   ```
-   cp inventory/hosts.example inventory/hosts
-   ```
-   Edit `inventory/hosts` and add your server details using the example file as a template.
-
-3. Create vault file for secrets (strongly recommended):
-   ```
-   ansible-vault create vars/secrets.yml
-   ```
-   Add passwords and other sensitive information to this file. See `vars/secrets.yml.example` for the expected format.
-
-## Configuration Example Files
-
-The repository includes several example files to guide your configuration:
-
-- `inventory/hosts.example` - Example server inventory configuration
-- `vars/secrets.yml.example` - Template for Ansible vault variables
-
-
-Copy these example files (removing the `.example` extension) and customize them with your actual configuration values.
-
-## Usage
-
-### Basic Server Setup
-
-To set up a complete server with all components:
+### Option 2: Manual Installation
 
 ```bash
-# Run with password prompt for vault
-./vps.sh install core --domain=vps.test --ask-vault-pass
+# Clone repository
+git clone https://github.com/luciancurteanu/vps.git
+cd vps
 
-# Or using a vault password file
-./vps.sh install core --domain=vps.test --vault-password-file=~/.vault_pass
+# Configure inventory
+cp inventory/hosts.example inventory/hosts
+nano inventory/hosts  # Edit with your server details
+
+# Create vault for secrets
+ansible-vault create vars/secrets.yml
+# Add passwords (see vars/secrets.yml.example for format)
+
+# Run full setup
+./vps.sh install core --domain=yourdomain.com --ask-vault-pass
 ```
 
-This will install and configure:
-- Base system with security hardening
-- **Swap configuration (2GB)** - Critical for preventing OOM issues
-- **Webmin control panel** - Installed FIRST with memory optimizations
-- Nginx web server
-- PHP-FPM
-- MariaDB database server
-- Mail server (Postfix, Dovecot, OpenDKIM, Roundcube)
-- SSL certificates
+---
 
-**IMPORTANT**: Webmin is now installed automatically as part of the core setup with proper memory management. Do NOT manually install Webmin before running this command, as it may cause memory issues on low-RAM systems.
+## 📖 Usage Guide
 
-### Virtual Host Management
+### Core Setup
 
-Our virtual host management supports two types of domains:
-- **Master Domain**: The primary domain that hosts the control panel, mail server, and proxy services
-- **Regular Domains**: Additional domains hosted on the same server
-
-By default, the first domain you set up with `install core` becomes your master domain. The system automatically configures:
-
-- Complete user and domain setup
-- PHP-FPM pool configuration specific to each domain
-- Nginx virtual host configuration
-- SFTP access with proper chroot configuration (for master domain only)
-- Proper permissions for different file types (PHP vs non-PHP)
-- Mail configuration for each domain (Postfix, OpenDKIM)
-- Directory structure with logs, tmp, backup, and ssl directories
-
-#### Creating the Master Domain:
-```bash
-# This first domain automatically becomes your master domain
-./vps.sh install core --domain=vps.test
-```
-
-#### Adding Regular Domains:
-```bash
-# Regular domain configurations automatically detect they're not the master
-./vps.sh create host --domain=secondary.com
-```
-
-#### Explicitly Setting Master Domain:
-If you need to specify which domain is the master domain (for advanced setups):
-```bash
-# Override which domain is considered the master
-./vps.sh create host --domain=newdomain.com --extra-vars "master_domain=vps.test"
-```
-
-#### Removing a Domain:
-```bash
-./vps.sh remove host --domain=olddomain.com
-```
-
-### SSL Certificate Management
-
-Install SSL certificate for a domain:
+Install complete server stack (run once):
 
 ```bash
-   ./vps.sh install ssl --domain=vps.test
+./vps.sh install core --domain=yourdomain.com --ask-vault-pass
+```
 
-### Database Management
+**This installs:**
+- ✅ Base system + security hardening
+- ✅ Nginx web server
+- ✅ PHP-FPM with optimized configuration
+- ✅ MariaDB database server
+- ✅ Mail server (Postfix, Dovecot, OpenDKIM, Roundcube)
+- ✅ Webmin control panel (with memory optimizations)
+- ✅ SSL certificates via Let's Encrypt
+- ✅ 2GB Swap file (prevents OOM issues)
 
-Create a new database and user:
+### Domain Management
+
+**Add a new domain:**
+```bash
+./vps.sh create host --domain=newsite.com --ask-vault-pass
+```
+
+**Remove a domain:**
+```bash
+./vps.sh remove host --domain=oldsite.com --ask-vault-pass
+```
+
+### SSL Certificates
+
+**Install SSL for a domain:**
+```bash
+./vps.sh install ssl --domain=yourdomain.com --ask-vault-pass
+```
+
+### Database Operations
+
+**Create database and user:**
+```bash
+./vps.sh create database --domain=yourdomain.com --dbname=mydb --ask-vault-pass
+```
+
+### Vault Password Options
+
+**Ask for password interactively:**
+```bash
+./vps.sh install core --domain=example.com --ask-vault-pass
+```
+
+**Use password file:**
+```bash
+./vps.sh install core --domain=example.com --vault-password-file=~/.vault_pass
+```
+
+---
+
+## 🧪 Development & Testing
+
+### Local VM Testing (Windows)
+
+Automated VM creation and testing using PowerShell:
+
+```powershell
+# Quick setup (manual steps after VM creation)
+.\scripts\vm-launcher\run-vm.ps1 -VMName "AlmaLinux-9" -UseLocalSSHKey -autoSSH
+
+# Full automated setup (one command - RECOMMENDED)
+.\scripts\vm-launcher\run-vm.ps1 -VMName "AlmaLinux-9" -UseLocalSSHKey -FullSetup
+```
+
+**FullSetup includes:**
+- Creates AlmaLinux 9 VM in VirtualBox
+- Installs Docker + Molecule test environment
+- Clones project to VM
+- Configures SSH keys
+- Ready for testing
+
+### Running Molecule Tests
+
+**On the VM (SSH to localhost):**
+```bash
+ssh localhost  # or ssh admin@192.168.88.8
+
+# Run tests for a specific role
+cd ~/vps
+bash scripts/run-test.sh common
+
+# Run specific test action
+bash scripts/run-test.sh nginx converge
+bash scripts/run-test.sh nginx verify
+```
+
+**From Windows (via PowerShell):**
+```powershell
+# SSH to VM and run tests
+.\scripts\run-test.ps1 -RoleName common
+```
+
+### Environment Setup
+
+**Automated (recommended):**
+```bash
+# Auto-installs Docker, Molecule, dependencies
+sudo bash scripts/ci-setup.sh --yes
+```
+
+**Manual setup:**
+```bash
+# Install Docker
+sudo dnf config-manager --add-repo=https://download.docker.com/linux/rhel/docker-ce.repo
+sudo dnf install -y docker-ce docker-ce-cli containerd.io
+sudo systemctl enable --now docker
+sudo usermod -aG docker $USER
+
+# Create Python venv
+python3 -m venv ~/molecule-env
+source ~/molecule-env/bin/activate
+pip install 'docker<=6.1.3' ansible molecule molecule-docker ansible-lint yamllint 'requests<2.32'
+```
+
+### Reset Test Environment
 
 ```bash
-./vps.sh create database --domain=vps.test --dbname=mydb
+# Clean molecule environment
+bash scripts/reset-molecule-environment.sh
+
+# Fresh VM (from Windows)
+.\scripts\vm-launcher\run-vm.ps1 -VMName "AlmaLinux-9" -Recreate -FullSetup
 ```
 
-### Additional Options
+---
 
-The setup script supports various options:
-
-```bash
-./vps.sh --help
-```
-
-This displays all available commands, modules, and options:
-
-```
-Usage: ./vps.sh command module [options]
-
-Commands:
-  install      Install components or configurations
-  create       Create new configurations (like virtual hosts)
-  remove       Remove configurations or components
-
-Modules:
-  core         Full server setup (base system, web server, database, etc.)
-  host         Virtual host management
-  ssl          SSL certificate management
-  mariadb      Database server management
-
-Options:
-  --domain, -d                 Domain name (required for most operations)
-  --user, -u                   Override system username (default: derived from domain)
-  --ask-vault-pass             Ask for vault password
-  --vault-password-file=FILE   File containing the vault password
-  --help, -h                   Show this help message
-
-Examples:
-   ./vps.sh install core --domain=vps.test
-   ./vps.sh create host --domain=vps.test --ask-vault-pass
-   ./vps.sh install ssl --domain=vps.test --vault-password-file=~/.vault_pass
-```
-
-## Project Structure
-
-The project follows a modular structure based on Ansible best practices:
+## 📂 Project Structure
 
 ```
 vps/
-├── ansible.cfg                 # Ansible configuration file
-├── bootstrap.sh                # Bootstrap script for new installations
-├── CONTRIBUTING.md             # Contribution guidelines
-├── LICENSE                     # MIT license file
-├── README.md                   # Main project documentation
-├── STRUCTURE.md                # Detailed structure documentation
-├── vps.sh                      # Main command-line interface script
-├── .gitignore                  # Git exclusion patterns
-├── inventory/                  # Ansible inventory configuration
-│   ├── hosts                   # Local host definitions for Ansible 
-│   ├── hosts.example           # Example host configuration
-│   └── group_vars/             # Variables for groups of hosts
-│       ├── all.yml             # Global variables for all hosts
-│       └── webservers.yml      # Variables specific to web servers
-├── playbooks/                  # Standalone Ansible playbooks
-│   ├── create_vhost.yml        # Create virtual host configuration
-│   ├── remove_vhost.yml        # Remove virtual host configuration
+├── vps.sh                      # Main CLI interface
+├── bootstrap.sh                # Fresh server setup script
+├── ansible.cfg                 # Ansible configuration
+├── inventory/                  # Server inventory
+│   ├── hosts                   # Your servers (gitignored)
+│   └── hosts.example           # Template
+├── playbooks/                  # Ansible playbooks
 │   ├── setup.yml               # Main setup playbook
-│   └── ssl.yml                 # SSL certificate management
-├── roles/                      # Ansible roles for different components
-│   ├── common/                 # Base system configuration
-│   ├── development/            # Development tools
-│   ├── goproxy/                # GoProxy with Tor integration
-│   ├── mail/                   # Mail server stack
-│   ├── mariadb/                # MariaDB database server
-│   ├── nginx/                  # Nginx web server
-│   ├── php/                    # PHP-FPM configuration
-│   ├── python/                 # Python utilities
+│   ├── create_vhost.yml        # Add domain
+│   ├── remove_vhost.yml        # Remove domain
+│   └── ssl.yml                 # SSL management
+├── roles/                      # Ansible roles
+│   ├── common/                 # Base system
+│   ├── nginx/                  # Web server
+│   ├── php/                    # PHP-FPM
+│   ├── mariadb/                # Database
+│   ├── mail/                   # Mail server
 │   ├── security/               # Security hardening
-│   └── webmin/                 # Webmin control panel
-├── templates/                  # Global templates
-│   ├── nginx/                  # Nginx templates
-│   ├── php/                    # PHP templates
-│   └── website/                # Website templates
-└── vars/                       # Global variables
-    ├── secrets.yml             # Encrypted secrets (vault file)
-    └── secrets.yml.example     # Example secrets file
+│   ├── cockpit/                # Cockpit panel
+│   └── ...                     # Other roles
+├── scripts/                    # Automation scripts
+│   ├── ci-setup.sh             # CI environment setup
+│   ├── run-test.sh             # Molecule test runner
+│   ├── run-test.ps1            # Windows test wrapper
+│   └── vm-launcher/            # VM automation
+├── docs/                       # Documentation
+│   ├── BEGINNER-GUIDE.md       # Comprehensive guide
+│   └── molecule-deploy-setup.md # Testing setup
+├── templates/                  # Jinja2 templates
+└── vars/                       # Variables
+    ├── secrets.yml             # Encrypted (gitignored)
+    └── secrets.yml.example     # Template
 ```
 
-## Quick Reference
+---
 
-### Common Tasks
+## 🔒 Security Best Practices
 
-1. **Setting up a new website**:
-   ```bash
-   # Set up core server components
-   ./vps.sh install core --domain=vps.test
-   
-   # Create a virtual host for a new domain
-   ./vps.sh create host --domain=newsite.com
-   
-   # Install SSL for the new domain
-   ./vps.sh install ssl --domain=newsite.com
-   ```
+**Included Security Features:**
+- ✅ Firewall (firewalld) with minimal open ports
+- ✅ Fail2ban for brute-force protection
+- ✅ SSH key-only authentication
+- ✅ SELinux enabled
+- ✅ Automatic security updates
+- ✅ Resource limits (prevent DoS)
+- ✅ Secure PHP configuration
 
-2. **Removing a website**:
-   ```bash
-   ./vps.sh remove host --domain=oldsite.com
-   ```
+**Managing Secrets:**
+```bash
+# Create encrypted vault
+ansible-vault create vars/secrets.yml
 
-## Security Features
+# Edit existing vault
+ansible-vault edit vars/secrets.yml
 
-The VPS setup includes several security-focused features:
+# View vault contents
+ansible-vault view vars/secrets.yml
+```
 
-- Firewall configuration with restricted access
-- Fail2ban integration for blocking malicious attempts
-- SSH hardening with key-based authentication
-- System resource limits to prevent DoS attacks
-- Security-enhanced PHP configuration
-- SSL/TLS enforcement for all services
+**Never commit:**
+- ❌ `vars/secrets.yml` (encrypted passwords)
+- ❌ `inventory/hosts` (server IPs/credentials)
+- ❌ `.vault_pass` (vault password file)
+- ❌ SSH keys (*.pem, *.key files)
 
-## Customization
+---
 
-You can customize the deployment by editing the variables in:
-- `inventory/group_vars/all.yml` - Global configuration variables
-- `roles/*/defaults/main.yml` - Role-specific default variables
+## 🎯 Common Tasks
 
-## Troubleshooting
+### Setup New Website
 
-If you encounter issues during installation or operation:
+```bash
+# 1. Initial server setup (run once)
+./vps.sh install core --domain=primary.com --ask-vault-pass
 
-1. Check the Ansible logs for detailed error messages
-2. Verify that all required ports are open on your server
-3. Ensure DNS records are correctly configured for your domains
-4. Check service status with `systemctl status [service-name]`
+# 2. Add additional domain
+./vps.sh create host --domain=secondary.com --ask-vault-pass
 
-## Contributing
+# 3. Install SSL
+./vps.sh install ssl --domain=secondary.com --ask-vault-pass
 
-Contributions are welcome! Please refer to [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+# 4. Access your sites
+# https://primary.com
+# https://secondary.com
+```
 
-## License
+### Remove Website
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+```bash
+./vps.sh remove host --domain=oldsite.com --ask-vault-pass
+```
 
-## Security Best Practices
+### Access Control Panel
 
-This project handles sensitive information such as passwords and server details. To maintain security:
+```bash
+# Webmin URL (installed automatically)
+https://yourdomain.com:10000
 
-1. **Never commit sensitive files**: Real configuration files containing passwords or server details should never be committed to Git
-2. **Use Ansible Vault**: Encrypt secrets using `ansible-vault create vars/secrets.yml`
-3. **Create configurations from examples**: Copy `.example` files and update with your actual values
-4. **Keep vault passwords secure**: Store your Ansible Vault password in a secure location
+# Cockpit URL (if installed)
+https://yourdomain.com:9090
+```
 
-The `.gitignore` file is configured to exclude sensitive files, but always verify no secrets are being committed before pushing changes.
+---
 
-# Trigger workflows
+## 🛠️ Troubleshooting
+
+**Check service status:**
+```bash
+sudo systemctl status nginx
+sudo systemctl status php-fpm
+sudo systemctl status mariadb
+sudo systemctl status postfix
+```
+
+**View logs:**
+```bash
+sudo journalctl -u nginx -f
+sudo journalctl -u php-fpm -f
+sudo tail -f /var/log/maillog
+```
+
+**Test Molecule locally:**
+```bash
+cd ~/vps
+bash scripts/run-test.sh common test
+```
+
+**VM issues:**
+```powershell
+# Clean restart
+.\scripts\vm-launcher\run-vm.ps1 -VMName "AlmaLinux-9" -CleanupMode force -Recreate
+```
+
+---
+
+## 📚 Documentation
+
+- **[BEGINNER-GUIDE.md](docs/BEGINNER-GUIDE.md)** - Comprehensive beginner's guide
+- **[STRUCTURE.md](STRUCTURE.md)** - Detailed project structure
+- **[molecule-deploy-setup.md](docs/molecule-deploy-setup.md)** - Testing environment setup
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
+
+---
+
+## 🤝 Contributing
+
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+---
+
+## 📜 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
+## 👤 Author
+
+**Lucian Curteanu**  
+Website: [https://luciancurteanu.com](https://luciancurteanu.com)  
+GitHub: [@luciancurteanu](https://github.com/luciancurteanu)
+
+---
+
+**⭐ If this project helped you, consider giving it a star!**
