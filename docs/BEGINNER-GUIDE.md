@@ -175,7 +175,7 @@ ansible-vault encrypt vars/secrets.yml
 2) Run core install (example):
 
 ```bash
-./vps.sh install core --domain=vps.test --ask-vault-pass
+./vps.sh install core --domain=vps.test --ask-pass --ask-vault-pass
 ```
 
 Read `README.md` and `playbooks/README.md` for details about production roles and flags.

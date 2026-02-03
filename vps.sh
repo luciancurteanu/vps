@@ -276,73 +276,11 @@ run_ansible() {
     log "${GREEN}Operation completed in ${minutes}m ${seconds}s${RESET}"
 }
 
-# Ensure SSH public key is installed on target host for passwordless login
-ensure_ssh_key_on_host() {
-    if [[ -z "$DOMAIN" || -z "$USER" ]]; then
-        return 0
-    fi
-
-    # Try to find ansible_host in inventory, fallback to DOMAIN
-    TARGET_HOST=$(awk -v host="$DOMAIN" 'BEGIN{found=0} $0~host":"{found=1; next} found && $1=="ansible_host:"{print $2; exit}' inventory/hosts.yml)
-    if [[ -z "$TARGET_HOST" ]]; then
-        TARGET_HOST="$DOMAIN"
-    fi
-
-    echo "Checking key-based SSH access to $USER@$TARGET_HOST..."
-    if ssh -o BatchMode=yes -o ConnectTimeout=5 "$USER@$TARGET_HOST" 'echo ok' &>/dev/null; then
-        echo "Key-based SSH already works for $USER@$TARGET_HOST"
-        return 0
-    fi
-
-    echo "No key-based SSH detected for $USER@$TARGET_HOST."
-    read -p "Would you like to upload your public key now (will prompt for password)? (y/n): " -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo "Skipping automatic key upload. You can run with --ask-pass or install the key manually." 
-        return 1
-    fi
-
-    # Ensure a public key exists locally
-    PUBKEY=""
-    if [[ -f "$HOME/.ssh/id_ed25519.pub" ]]; then
-        PUBKEY="$HOME/.ssh/id_ed25519.pub"
-    elif [[ -f "$HOME/.ssh/id_rsa.pub" ]]; then
-        PUBKEY="$HOME/.ssh/id_rsa.pub"
-    fi
-
-    if [[ -z "$PUBKEY" ]]; then
-        echo "No SSH public key found in ~/.ssh. Generating an ed25519 keypair..."
-        ssh-keygen -t ed25519 -f "$HOME/.ssh/id_ed25519"
-        PUBKEY="$HOME/.ssh/id_ed25519.pub"
-    fi
-
-    # Use ssh-copy-id if available (it will prompt for password), otherwise fallback to manual cat over ssh
-    if command -v ssh-copy-id &> /dev/null; then
-        ssh-copy-id -i "$PUBKEY" "$USER@$TARGET_HOST" || {
-            echo "ssh-copy-id failed; trying manual installation..."
-            cat "$PUBKEY" | ssh "$USER@$TARGET_HOST" 'mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys'
-        }
-    else
-        cat "$PUBKEY" | ssh "$USER@$TARGET_HOST" 'mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys'
-    fi
-
-    # Test again
-    if ssh -o BatchMode=yes -o ConnectTimeout=5 "$USER@$TARGET_HOST" 'echo ok' &>/dev/null; then
-        echo "Public key successfully installed on $TARGET_HOST"
-        return 0
-    else
-        echo "Failed to install public key or still cannot authenticate with key." 
-        return 1
-    fi
-}
-
 # Main function
 main() {
     check_git
     parse_args "$@"
     check_ansible
-    # Ensure key-based SSH works or offer to upload public key
-    ensure_ssh_key_on_host || true
     run_ansible
 }
 

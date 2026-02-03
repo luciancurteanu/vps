@@ -25,7 +25,7 @@ The script follows a consistent command structure:
 
 ### Basic Server Setup
 ```bash
-./vps.sh install core --domain=vps.test
+./vps.sh install core --domain=vps.test --ask-pass --ask-vault-pass
 ```
 
 ### Adding a New Domain
@@ -52,13 +52,13 @@ The script automatically validates required arguments, maps commands and modules
 For secure operations with passwords:
 
 ```bash
-./vps.sh install core --domain=vps.test --ask-vault-pass
+./vps.sh install core --domain=vps.test --ask-pass --ask-vault-pass
 ```
 
 Or using a vault password file:
 
 ```bash
-./vps.sh install core --domain=vps.test --vault-password-file=~/.vault_pass
+./vps.sh install core --domain=vps.test --ask-pass --vault-password-file=~/.vault_pass
 ```
 
 ## Dependencies

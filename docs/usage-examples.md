@@ -18,7 +18,7 @@ This file shows concrete commands and the expected behavior for a master server 
 
 Command:
 ```bash
-./vps.sh install core --domain=vps.test
+./vps.sh install core --domain=vps.test --ask-pass --ask-vault-pass
 ```
 
 What this does:
@@ -63,7 +63,7 @@ ansible-playbook --syntax-check playbooks/create_vhost.yml -i inventory/hosts.ym
 - Example to disable a role on a run:
 
 ```bash
-./vps.sh install core --domain=vps.test --extra-vars "install_webmin=false"
+./vps.sh install core --domain=vps.test --ask-pass --ask-vault-pass --extra-vars "install_webmin=false"
 ```
 
 - If you want `lucian.com` to receive only templates/configs (not package installs) via `install core`, prefer running `./vps.sh create host` for that host — the `create_vhost` playbook is designed for config-level operations for additional domains.
@@ -72,7 +72,7 @@ ansible-playbook --syntax-check playbooks/create_vhost.yml -i inventory/hosts.ym
 
 ## What each domain will install / create
 
-- Master domain (vps.test) — `./vps.sh install core --domain=vps.test`
+- Master domain (vps.test) — `./vps.sh install core --domain=vps.test --ask-pass --ask-vault-pass`
   - Roles/packages installed and configured (subject to `install_*` flags):
     - `common` (base users, system defaults)
     - `security` (ssh hardening, firewall, fail2ban)

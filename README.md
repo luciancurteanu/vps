@@ -84,7 +84,7 @@ ansible-vault encrypt vars/secrets.yml  # Encrypt the file
 Install complete server stack (run once):
 
 ```bash
-./vps.sh install core --domain=yourdomain.com --ask-vault-pass
+./vps.sh install core --domain=primary.com --ask-pass --ask-vault-pass
 ```
 
 **This installs:**
@@ -282,7 +282,7 @@ ansible-vault view vars/secrets.yml
 
 ```bash
 # 1. Initial server setup (run once)
-./vps.sh install core --domain=primary.com --ask-vault-pass
+./vps.sh install core --domain=primary.com --ask-pass --ask-vault-pass
 
 # 2. Add additional domain
 ./vps.sh create host --domain=secondary.com --ask-vault-pass

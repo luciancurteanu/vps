@@ -73,7 +73,7 @@ ansible-playbook playbooks/setup.yml --vault-password-file=~/.vault_pass
 When using the `vps.sh` script, you can pass vault options:
 
 ```bash
-./vps.sh install core --domain=vps.test --ask-vault-pass
+./vps.sh install core --domain=vps.test --ask-pass --ask-vault-pass
 ```
 
 ## Vault Password File
@@ -88,7 +88,7 @@ For automation purposes, you can create a vault password file:
 
 2. Reference it in your commands:
    ```bash
-   ./vps.sh install core --domain=vps.test --vault-password-file=~/.vault_pass
+   ./vps.sh install core --domain=vps.test --ask-pass --vault-password-file=~/.vault_pass
    ```
 
 ## Security Best Practices

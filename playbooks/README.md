@@ -9,7 +9,7 @@ This directory contains standalone Ansible playbooks for different aspects of VP
 The main playbook for setting up a complete VPS with all components.
 
 - **Purpose**: Full server provisioning with web, database, mail, and security components
-- **Usage**: `./vps.sh install core --domain=vps.test`
+- **Usage**: `./vps.sh install core --domain=vps.test --ask-pass --ask-vault-pass`
 - **Requirements**: Domain name pointing to server IP
 - **Components Installed**:
   - Common server tools

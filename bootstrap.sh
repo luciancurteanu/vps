@@ -187,7 +187,7 @@ main() {
     echo -e "  3. Create vault secrets: ${GREEN}cp vars/secrets.yml.example vars/secrets.yml${RESET}"
     echo -e "     Fill in passwords: ${GREEN}nano vars/secrets.yml${RESET}"
     echo -e "     Encrypt the file: ${GREEN}ansible-vault encrypt vars/secrets.yml${RESET}"
-    echo -e "  4. Run setup: ${GREEN}./vps.sh install core --domain=yourdomain.com --ask-vault-pass${RESET}"
+    echo -e "  4. Run setup: ${GREEN}./vps.sh install core --domain=yourdomain.com --ask-pass --ask-vault-pass${RESET}"
     echo
     echo -e "${YELLOW}Tip: For testing in a VM, use scripts/vm-launcher/run-vm.ps1${RESET}"
     echo
