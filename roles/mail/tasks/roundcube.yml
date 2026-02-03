@@ -55,7 +55,7 @@
 
 - name: Configure Roundcube
   ansible.builtin.template:
-    src: roundcube-config.php.j2
+    src: roundcube/config.inc.php.j2
     dest: "{{ webmail_path }}/config/config.inc.php"
     owner: nginx
     group: nginx
