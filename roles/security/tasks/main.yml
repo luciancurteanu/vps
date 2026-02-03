@@ -123,7 +123,7 @@
 
 - name: Ensure fail2ban service is enabled and running
   ansible.builtin.service:
-    name: Fail2ban
+    name: fail2ban
     state: started
     enabled: true
   when: security_fail2ban_enabled | default(true)
