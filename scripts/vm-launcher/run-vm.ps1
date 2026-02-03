@@ -516,15 +516,8 @@ function PerformFullSetup([VMConfig]$config, [SSHManager]$sshManager) {
         Write-Host "Project cloned successfully" -ForegroundColor Green
     }
 
-    # Step 2.5: Run a quick sanity Molecule test for 'common' role if present
-    Write-Host "`n[2.5/5] Running quick Molecule sanity check for 'common' role (if available)..." -ForegroundColor Cyan
-    $sanityCmd = "if [ -d ~/vps/roles/common ]; then cd ~/vps && source ~/molecule-env/bin/activate >/dev/null 2>&1 || true; cd ~/vps && bash scripts/run-test.sh common test || echo 'Molecule sanity check failed'; else echo 'No common role present; skipping sanity check'; fi"
-    $sshArgsWithSanity = $sshArgs + @($sanityCmd)
-    & $sshCmd $sshArgsWithSanity
-    if ($LASTEXITCODE -eq 0) { Write-Host "Molecule sanity check completed (or skipped)" -ForegroundColor Green } else { Write-Host "Molecule sanity check reported non-zero exit code" -ForegroundColor Yellow }
-
     # Step 3: Apply docker group membership
-    Write-Host "`n[3/5] Applying docker group membership..." -ForegroundColor Cyan
+    Write-Host "`n[3/4] Applying docker group membership..." -ForegroundColor Cyan
     Write-Host "Docker group applied (will use 'sudo docker' for commands)" -ForegroundColor Green
 
     # Step 4: Verify Docker is accessible
