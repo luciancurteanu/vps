@@ -17,6 +17,12 @@ log() {
     echo -e "$(date '+%Y-%m-%d %H:%M:%S') - $1"
 }
 
+# Auto-activate per-user Molecule virtualenv if present
+if [ -f "$HOME/molecule-env/bin/activate" ]; then
+    # shellcheck disable=SC1091
+    . "$HOME/molecule-env/bin/activate"
+fi
+
 # Display usage information
 show_help() {
     echo -e "${BOLD}Usage:${RESET} $0 command module [options]"
