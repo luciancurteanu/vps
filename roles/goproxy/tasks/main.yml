@@ -3,7 +3,7 @@
 
 - name: Ensure EPEL repository is enabled on RedHat systems
   ansible.builtin.package:
-    name: Epel-release
+    name: epel-release
     state: present
   when: ansible_facts['os_family'] == 'RedHat'
 
@@ -17,7 +17,6 @@
     name: "{{ goproxy_user }}"
     home: "{{ goproxy_home }}"
     create_home: true
-    ansible.builtin.shell: /sbin/nologin
     shell: /sbin/nologin
 
 - name: Ensure GoProxy home directory permissions
@@ -25,7 +24,6 @@
     path: "{{ goproxy_home }}"
     state: directory
     owner: "{{ goproxy_user }}"
-    ansible.builtin.group: "{{ goproxy_user }}"
     group: "{{ goproxy_user }}"
 
 - name: Check installed Go version
@@ -77,12 +75,12 @@
     force: false
   failed_when: false  # TODO: Add proper failure condition
 
+
 - name: Configure Go profile script
   ansible.builtin.template:
     src: go.sh.j2
     dest: "{{ go_profile_script }}"
     owner: root
-    ansible.builtin.group: root
     group: root
 
 - name: Ensure GOPATH directory exists
@@ -90,7 +88,6 @@
     path: "{{ goproxy_home }}/go"
     state: directory
     owner: "{{ goproxy_user }}"
-    ansible.builtin.group: "{{ goproxy_user }}"
     group: "{{ goproxy_user }}"
 
 - name: Ensure GoProxy log directory exists
@@ -98,7 +95,6 @@
     path: "{{ goproxy_home }}/{{ goproxy_log_file | dirname }}"
     state: directory
     owner: "{{ goproxy_user }}"
-    ansible.builtin.group: "{{ goproxy_user }}"
     group: "{{ goproxy_user }}"
 
 - name: Define Go environment for build commands
@@ -119,7 +115,6 @@
     path: "{{ goproxy_install_dir }}"
     state: directory
     owner: "{{ goproxy_user }}"
-    ansible.builtin.group: "{{ goproxy_user }}"
     group: "{{ goproxy_user }}"
 
 - name: Check if GoProxy repository already exists
@@ -165,7 +160,6 @@
     path: "{{ goproxy_install_dir }}"
     state: directory
     owner: "{{ goproxy_user }}"
-    ansible.builtin.group: "{{ goproxy_user }}"
     group: "{{ goproxy_user }}"
     mode: '0755'
   when: goproxy_source.changed
@@ -280,7 +274,6 @@
     src: goproxy/config.j2
     dest: "{{ goproxy_home }}/config.json"
     owner: "{{ goproxy_user }}"
-    ansible.builtin.group: "{{ goproxy_user }}"
     group: "{{ goproxy_user }}"
   notify: restart goproxy
 
@@ -289,7 +282,7 @@
     src: goproxy.service.j2
     dest: /etc/systemd/system/goproxy.service
     owner: root
-    ansible.builtin.group: root
+    # group is set below
     group: root
   notify:
     - reload systemd
@@ -300,7 +293,6 @@
     src: tor/torproject.repo.j2
     dest: /etc/yum.repos.d/torproject.repo
     owner: root
-    ansible.builtin.group: root
     group: root
   when: ansible_facts['os_family'] == 'RedHat'
 
@@ -312,13 +304,13 @@
 
 - name: Install torsocks dependency on RedHat systems
   ansible.builtin.package:
-    name: Torsocks
+    name: torsocks
     state: present
   when: ansible_facts['os_family'] == 'RedHat'
 
 - name: Install Tor
   ansible.builtin.package:
-    name: Tor
+    name: tor
     state: present
 
 - name: Backup Tor configuration
@@ -335,18 +327,17 @@
     src: tor/torrc.j2
     dest: /etc/tor/torrc
     owner: root
-    ansible.builtin.group: root
     group: root
   notify: restart tor
 
 - name: Ensure Tor service is enabled and running
   ansible.builtin.systemd:
-    name: Tor
+    name: tor
     enabled: true
     state: started
 
 - name: Ensure GoProxy service is enabled and running
   ansible.builtin.systemd:
-    name: Goproxy
+    name: goproxy
     enabled: true
     state: started
