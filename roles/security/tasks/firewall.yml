@@ -48,11 +48,7 @@
     state: enabled
     immediate: true
   loop: "{{ security_mail_service_ports }}"
-  when:
-    - ansible_os_family == 'RedHat'
-    - security_firewall_service == "firewalld"
-    - domain is defined
-    - domain == master_domain | default('')
+  when: ansible_os_family == 'RedHat' and security_firewall_service == "firewalld" and (domain is defined and domain == (master_domain | default('')))
 
 # RedHat/CentOS systems - Iptables configuration
 - name: Check if firewalld service exists
