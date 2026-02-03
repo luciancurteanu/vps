@@ -29,7 +29,7 @@
 
     - name: Ensure MariaDB service is running for mail database
       ansible.builtin.systemd:
-        name: Mariadb
+        name: mariadb
         state: started
         enabled: true
       when: "'mariadb-server' in mail_packages"
