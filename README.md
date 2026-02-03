@@ -44,7 +44,8 @@ cd ~/vps
 
 # Configure inventory with your server details
 cp inventory/hosts.yml.example inventory/hosts.yml
-nano inventory/hosts.yml  # Edit: set ansible_host, ansible_user, etc.
+# Edit with your preferred editor (e.g. nano or vi). Bootstrap will install nano if missing:
+${EDITOR:-nano} inventory/hosts.yml  # Edit: set ansible_host, ansible_user, etc.
 
 # Create encrypted vault for passwords
 ansible-vault create vars/secrets.yml
@@ -63,7 +64,8 @@ cd vps
 
 # Configure inventory
 cp inventory/hosts.yml.example inventory/hosts.yml
-nano inventory/hosts.yml  # Edit with your server details
+# Edit with your preferred editor (e.g. nano or vi). Bootstrap will install nano if missing:
+${EDITOR:-nano} inventory/hosts.yml  # Edit with your server details
 
 # Create vault for secrets
 ansible-vault create vars/secrets.yml

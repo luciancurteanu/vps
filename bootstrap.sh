@@ -112,9 +112,9 @@ install_essentials() {
     echo -e "${YELLOW}Installing essential tools...${RESET}"
     
     if [ "$OS_TYPE" = "debian" ]; then
-        sudo apt install -y curl wget rsync sshpass
+        sudo apt install -y curl wget rsync sshpass nano
     elif [ "$OS_TYPE" = "rhel" ]; then
-        sudo $PKG_MGR install -y curl wget rsync sshpass
+        sudo $PKG_MGR install -y curl wget rsync sshpass nano
     fi
     
     echo -e "${GREEN}Essential tools installed.${RESET}"
