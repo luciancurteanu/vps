@@ -182,7 +182,7 @@
 
 - name: Ensure Dovecot service is running and enabled
   ansible.builtin.systemd:
-    name: Dovecot
+    name: dovecot
     state: started
     enabled: true
   register: dovecot_service

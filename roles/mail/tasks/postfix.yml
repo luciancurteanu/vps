@@ -125,6 +125,6 @@
 
 - name: Ensure Postfix service is running and enabled
   ansible.builtin.service:
-    name: Postfix
+    name: postfix
     state: started
     enabled: true
