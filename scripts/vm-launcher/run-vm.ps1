@@ -412,7 +412,8 @@ function PerformFullSetup([VMConfig]$config, [SSHManager]$sshManager) {
         $localHash = (Get-FileHash -Algorithm SHA256 $ciSetupPath).Hash.ToLower()
     }
     catch {
-        Write-Host "Warning: Could not compute local hash for $ciSetupPath: $_" -ForegroundColor Yellow
+        # Use formatted string to avoid PowerShell variable parsing issues with ':' inside double-quoted strings
+        Write-Host ("Warning: Could not compute local hash for {0}: {1}" -f $ciSetupPath, $_) -ForegroundColor Yellow
         $localHash = $null
     }
 
@@ -436,7 +437,8 @@ function PerformFullSetup([VMConfig]$config, [SSHManager]$sshManager) {
 
         # If we have a local hash, verify the remote file matches after upload
         if ($localHash) {
-            $verifyCmd = "if command -v sha256sum >/dev/null 2>&1; then sha256sum /tmp/ci-setup.sh | awk '{print \$1}'; elif command -v shasum >/dev/null 2>&1; then shasum -a 256 /tmp/ci-setup.sh | awk '{print \$1}'; else echo 'NOHASH'; fi"
+            # Use a single-quoted PowerShell literal to avoid accidental interpolation/escaping of $ and single quotes
+            $verifyCmd = 'if command -v sha256sum >/dev/null 2>&1; then sha256sum /tmp/ci-setup.sh | awk ''{print $1}''; elif command -v shasum >/dev/null 2>&1; then shasum -a 256 /tmp/ci-setup.sh | awk ''{print $1}''; else echo ''NOHASH''; fi'
             $sshArgsWithVerify = $sshArgs + @($verifyCmd)
             $remoteHashOutput = & $sshCmd $sshArgsWithVerify 2>$null
             $remoteHash = $null
@@ -487,6 +489,13 @@ function PerformFullSetup([VMConfig]$config, [SSHManager]$sshManager) {
     } else {
         Write-Host "Project cloned successfully" -ForegroundColor Green
     }
+
+    # Step 2.5: Run a quick sanity Molecule test for 'common' role if present
+    Write-Host "`n[2.5/5] Running quick Molecule sanity check for 'common' role (if available)..." -ForegroundColor Cyan
+    $sanityCmd = "if [ -d ~/vps/roles/common ]; then cd ~/vps && source ~/molecule-env/bin/activate >/dev/null 2>&1 || true; cd ~/vps && bash scripts/run-test.sh common test || echo 'Molecule sanity check failed'; else echo 'No common role present; skipping sanity check'; fi"
+    $sshArgsWithSanity = $sshArgs + @($sanityCmd)
+    & $sshCmd $sshArgsWithSanity
+    if ($LASTEXITCODE -eq 0) { Write-Host "Molecule sanity check completed (or skipped)" -ForegroundColor Green } else { Write-Host "Molecule sanity check reported non-zero exit code" -ForegroundColor Yellow }
 
     # Step 3: Apply docker group membership
     Write-Host "`n[3/5] Applying docker group membership..." -ForegroundColor Cyan
