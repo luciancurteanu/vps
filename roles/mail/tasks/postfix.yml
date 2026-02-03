@@ -19,7 +19,6 @@
     path: /etc/postfix/virtual
     state: directory
     owner: postfix
-    ansible.builtin.group: postfix
     group: postfix
   when: postfix_virtual_path.stat.isdir | default(False)
 
@@ -28,7 +27,6 @@
     path: /var/spool/postfix/virtual
     state: directory
     owner: postfix
-    ansible.builtin.group: postfix
     group: postfix
 
 - name: Backup Postfix main.cf
@@ -45,7 +43,6 @@
     src: postfix/main.cf.j2
     dest: /etc/postfix/main.cf
     owner: root
-    ansible.builtin.group: root
     group: root
   notify: restart postfix
 
@@ -63,7 +60,6 @@
     src: postfix/master.cf.j2
     dest: /etc/postfix/master.cf
     owner: root
-    ansible.builtin.group: root
     group: root
   notify: restart postfix
 
@@ -72,7 +68,6 @@
     src: postfix/mysql-virtual-mailbox-domains.cf.j2
     dest: /etc/postfix/mysql-virtual-mailbox-domains.cf
     owner: root
-    ansible.builtin.group: root
     group: root
   notify: restart postfix
 
@@ -81,7 +76,6 @@
     src: postfix/mysql-virtual-mailbox-maps.cf.j2
     dest: /etc/postfix/mysql-virtual-mailbox-maps.cf
     owner: root
-    ansible.builtin.group: root
     group: root
   notify: restart postfix
 

@@ -130,7 +130,6 @@
     path: "{{ item }}"
     state: directory
     owner: "{{ mail_user }}"
-    ansible.builtin.group: "{{ mail_group }}"
     group: "{{ mail_group }}"
   with_items:
     - "/home/{{ domain }}/mail"
@@ -142,7 +141,6 @@
     path: "/home/{{ domain }}/logs"
     state: directory
     owner: nginx
-    ansible.builtin.group: nginx
     group: nginx
 
 - name: Create mail log files with nginx ownership
@@ -150,7 +148,6 @@
     path: "/home/{{ domain }}/logs/{{ item }}"
     state: touch
     owner: nginx
-    ansible.builtin.group: nginx
     group: nginx
     modification_time: preserve
     access_time: preserve
@@ -175,7 +172,6 @@
     src: nginx/mail.conf.j2
     dest: "/etc/nginx/sites-available/{{ mail_subdomain }}.conf"
     owner: root
-    ansible.builtin.group: root
     group: root
   notify: restart nginx
   when: mail_enable_nginx | default(true)
@@ -194,7 +190,6 @@
     src: nginx/roundcube.conf.j2
     dest: "/etc/nginx/sites-available/roundcube.{{ domain }}.conf"
     owner: root
-    ansible.builtin.group: root
     group: root
   notify: restart nginx
   when:
