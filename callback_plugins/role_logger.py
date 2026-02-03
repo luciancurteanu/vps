@@ -73,18 +73,16 @@ class CallbackModule(CallbackBase):
         except Exception as e:
             self._display.warning(f"Failed to write to log file: {e}")
 
-    def v2_playbook_on_role_start(self, role_name, role_path):
-        """Called when a role starts."""
-        self.role_start_times[role_name] = datetime.now()
-        self._log(f"▶ ROLE START: {role_name}")
+    def v2_playbook_on_play_start(self, play):
+        """Called when a play starts."""
+        pass
 
     def v2_playbook_on_task_start(self, task, is_conditional):
-        """Track role completion via task metadata."""
-        # Check if this is the last task in a role
+        """Track role start via task metadata."""
         role_name = task._role.get_name() if task._role else None
-        if role_name and role_name in self.role_start_times:
-            # We can't detect exact role end, but we log task progress
-            pass
+        if role_name and role_name not in self.role_start_times:
+            self.role_start_times[role_name] = datetime.now()
+            self._log(f"▶ ROLE START: {role_name}")
 
     def v2_runner_on_ok(self, result):
         """Track successful task completion."""
