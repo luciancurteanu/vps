@@ -9,10 +9,11 @@ RESET="\e[0m"
 
 # Repository URL
 REPO_URL="https://github.com/luciancurteanu/vps.git"
-REPO_DIR="vps"
+REPO_DIR="${HOME}/vps"
 
 echo -e "${BOLD}VPS Setup Bootstrap${RESET}"
 echo "This script will prepare your server for VPS setup."
+echo "Repository will be cloned to: ${REPO_DIR}"
 echo
 
 # Detect OS
@@ -122,7 +123,11 @@ install_essentials() {
 
 # Clone the repository
 clone_repo() {
-    echo -e "${YELLOW}Cloning VPS setup repository...${RESET}"
+    echo -e "${YELLOW}Cloning VPS setup repository to ${REPO_DIR}...${RESET}"
+    
+    # Ensure parent directory exists
+    PARENT_DIR=$(dirname "$REPO_DIR")
+    mkdir -p "$PARENT_DIR"
     
     if [ -d "$REPO_DIR" ]; then
         echo -e "${YELLOW}Directory $REPO_DIR already exists.${RESET}"
@@ -131,13 +136,15 @@ clone_repo() {
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             cd "$REPO_DIR"
             git pull
-            cd ..
+            cd - > /dev/null
             echo -e "${GREEN}Repository updated.${RESET}"
+        else
+            echo -e "${YELLOW}Skipping repository update.${RESET}"
         fi
     else
         git clone "$REPO_URL" "$REPO_DIR"
         if [ $? -eq 0 ]; then
-            echo -e "${GREEN}Repository cloned successfully.${RESET}"
+            echo -e "${GREEN}Repository cloned successfully to ${REPO_DIR}${RESET}"
         else
             echo -e "${RED}Failed to clone repository. Please check the URL and your network connection.${RESET}"
             exit 1
