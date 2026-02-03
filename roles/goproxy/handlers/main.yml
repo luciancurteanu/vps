@@ -1,16 +1,16 @@
 ---
 # GoProxy role: Handlers
 
-- name: Restart tor
+- name: restart tor
   ansible.builtin.service:
     name: tor
     state: restarted
 
-- name: Reload systemd
+- name: reload systemd
   ansible.builtin.systemd:
     daemon_reload: true
 
-- name: Restart goproxy
+- name: restart goproxy
   ansible.builtin.service:
     name: goproxy
     state: restarted
