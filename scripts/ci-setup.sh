@@ -75,10 +75,17 @@ echoinfo "CI setup complete. If running in CI, ensure the runner user has access
 
 # Ensure the target user's interactive shells auto-activate the venv when present
 USER_BASHRC="${TARGET_HOME}/.bashrc"
-ACTIVATE_SNIPPET="\n# Auto-activate venv created by ci-setup.sh\nif [ -f \"${VENV_DIR}/bin/activate\" ]; then\n  # Only source for interactive shells\n  case \"\$-\" in*i*) source \"${VENV_DIR}/bin/activate\" ;; esac\nfi\n"
 if ! grep -Fq "Auto-activate venv created by ci-setup.sh" "${USER_BASHRC}" 2>/dev/null; then
   echoinfo "Adding venv auto-activation snippet to ${USER_BASHRC}"
-  printf "%s" "$ACTIVATE_SNIPPET" | sudo -H -u "${TARGET_USER}" tee -a "${USER_BASHRC}" >/dev/null || true
+  sudo -H -u "${TARGET_USER}" bash -c "cat >> '${USER_BASHRC}' << 'EOBASHRC'
+
+# Auto-activate venv created by ci-setup.sh
+if [ -f \"${VENV_DIR}/bin/activate\" ]; then
+  # Only source for interactive shells
+  case \"\$-\" in *i*) source \"${VENV_DIR}/bin/activate\" ;; esac
+fi
+EOBASHRC
+" || true
 fi
 
 
