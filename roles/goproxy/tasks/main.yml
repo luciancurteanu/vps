@@ -43,6 +43,15 @@
 - name: Download Go archive
   ansible.builtin.get_url:
     url: "https://go.dev/dl/go{{ go_version }}.linux-amd64.tar.gz"
+    dest: "/tmp/go{{ go_version }}.linux-amd64.tar.gz"
+    mode: '0644'
+  delegate_to: localhost
+  run_once: true
+  when: go_install_required
+
+- name: Copy Go archive to remote instance
+  ansible.builtin.copy:
+    src: "/tmp/go{{ go_version }}.linux-amd64.tar.gz"
     dest: "{{ go_archive_path }}"
     mode: '0644'
   when: go_install_required
@@ -64,6 +73,14 @@
   ansible.builtin.file:
     path: "{{ go_archive_path }}"
     state: absent
+  when: go_install_required
+
+- name: Clean up controller Go archive copy
+  ansible.builtin.file:
+    path: "/tmp/go{{ go_version }}.linux-amd64.tar.gz"
+    state: absent
+  delegate_to: localhost
+  run_once: true
   when: go_install_required
 
 - name: Backup Go profile script
