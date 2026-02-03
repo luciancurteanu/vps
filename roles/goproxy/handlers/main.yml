@@ -3,7 +3,7 @@
 
 - name: Restart tor
   ansible.builtin.service:
-    name: Tor
+    name: tor
     state: restarted
 
 - name: Reload systemd
@@ -12,5 +12,5 @@
 
 - name: Restart goproxy
   ansible.builtin.service:
-    name: Goproxy
+    name: goproxy
     state: restarted
