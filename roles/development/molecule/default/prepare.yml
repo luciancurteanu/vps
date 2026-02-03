@@ -17,7 +17,7 @@
 
     - name: Install Ansible via pip (AlmaLinux 9)
       ansible.builtin.pip:
-        name: Ansible
+        name: ansible
         executable: pip3 # Ensure pip3 is used
 
     - name: Ensure /usr/local/bin is in PATH for subsequent sessions
@@ -38,6 +38,6 @@
 
     - name: Install Docker CE CLI (AlmaLinux 9)
       ansible.builtin.dnf:
-        name: Docker-ce-cli
+        name: docker-ce-cli
         state: present
         use_backend: dnf4
