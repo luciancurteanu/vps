@@ -72,21 +72,8 @@ echoinfo "Ensuring ${TARGET_USER} is a member of the docker group (requires logo
 sudo usermod -aG docker "${TARGET_USER}" || true
 
 echoinfo "CI setup complete. If running in CI, ensure the runner user has access to Docker or configure DOCKER_HOST accordingly."
-
-# Ensure the target user's interactive shells auto-activate the venv when present
-USER_BASHRC="${TARGET_HOME}/.bashrc"
-if ! grep -Fq "Auto-activate venv created by ci-setup.sh" "${USER_BASHRC}" 2>/dev/null; then
-  echoinfo "Adding venv auto-activation snippet to ${USER_BASHRC}"
-  sudo -H -u "${TARGET_USER}" bash -c "cat >> '${USER_BASHRC}' << 'EOBASHRC'
-
-# Auto-activate venv created by ci-setup.sh
-if [ -f \"${VENV_DIR}/bin/activate\" ]; then
-  # Only source for interactive shells
-  case \"\$-\" in *i*) source \"${VENV_DIR}/bin/activate\" ;; esac
-fi
-EOBASHRC
-" || true
-fi
-
+echoinfo "Note: Virtual environment is NOT auto-activated on SSH login."
+echoinfo "To activate manually: source ${VENV_DIR}/bin/activate"
+echoinfo "Or use: bash ~/vps/scripts/run-test.sh <role> (auto-activates)"
 
 exit 0

@@ -123,7 +123,7 @@ Then run:
 | `SSHPassword`      | "Changeme123!"               | SSH password                                                                |
 | `UseLocalSSHKey`   | false                        | Inject local SSH public key (only when `-UseLocalSSHKey` is provided)       |
 | `AutoSSH`          | false                        | Auto-open SSH session (only when `-AutoSSH` is provided)                    |
-| `FullSetup`        | false                        | Complete automated setup: Docker, Molecule, project clone, .bashrc auto-activation. Best used with `-Recreate` for cleanup before setup. Tests run separately on demand. |
+| `FullSetup`        | false                        | Complete automated setup: Docker, Molecule, project clone. Best used with `-Recreate` for cleanup before setup. Tests run separately on demand. Venv NOT auto-activated on SSH (use test scripts). |
 | `BridgeAdapterName`| -                            | Network adapter name for bridged networking                                 |
 | `LanIPAddress`     | -                            | Static LAN IP address for the VM                                            |
 | `LanPrefixLength`  | 24                           | CIDR prefix length for LAN IP                                               |
@@ -209,11 +209,12 @@ When `-FullSetup` is enabled, the launcher performs complete environment setup a
 
 2. **Clone Project**: Automatically clones VPS repository to `~/vps`
 
-3. **Setup Auto-Activation**: Configures `.bashrc` to auto-activate Molecule venv on SSH login
+3. **Verify Installation**: Tests Docker accessibility and version
 
-4. **Verify Installation**: Tests Docker accessibility and version
-
-5. **Ready to Use**: VM is fully configured and ready for Molecule testing
+4. **Ready to Use**: VM is fully configured and ready for Molecule testing
+   - Virtual environment is NOT auto-activated on SSH login (for flexibility)
+   - To activate manually: `source ~/molecule-env/bin/activate`
+   - Or use test scripts which auto-activate: `bash ~/vps/scripts/run-test.sh <role>`
 
 **Important Notes:**
 - `-FullSetup` does NOT cleanup existing VMs. Use `-Recreate -FullSetup` for automatic cleanup + full setup.
