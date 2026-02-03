@@ -360,6 +360,9 @@ function PerformInstallation([VMConfig]$config) {
 
         # Run full automated setup if requested
         if ($config.FullSetup -and $pubKey) {
+            # Give SSH a moment to fully stabilize before file operations
+            Write-Host "Allowing SSH to stabilize before starting FullSetup..." -ForegroundColor Cyan
+            Start-Sleep -Seconds 5
             PerformFullSetup $config $sshManager
         }
 
@@ -387,7 +390,26 @@ function PerformFullSetup([VMConfig]$config, [SSHManager]$sshManager) {
         "-p", $config.HostSSHPort.ToString(),
         "$($config.SSHUser)@localhost"
     )
-
+    # Verify SSH is truly stable by running a simple test command
+    Write-Host "\nVerifying SSH connection stability..." -ForegroundColor Cyan
+    $testCmd = "echo 'SSH OK'"
+    $sshArgsWithTest = $sshArgs + @($testCmd)
+    $testAttempts = 0
+    $maxTestAttempts = 3
+    while ($testAttempts -lt $maxTestAttempts) {
+        $testOutput = & $sshCmd $sshArgsWithTest 2>&1 | Out-String
+        if ($LASTEXITCODE -eq 0 -and $testOutput -match 'SSH OK') {
+            Write-Host "SSH connection verified and stable" -ForegroundColor Green
+            break
+        }
+        $testAttempts++
+        if ($testAttempts -lt $maxTestAttempts) {
+            Write-Host "SSH test attempt $testAttempts failed, retrying..." -ForegroundColor Yellow
+            Start-Sleep -Seconds 3
+        } else {
+            Write-Host "Warning: SSH connection appears unstable, proceeding anyway..." -ForegroundColor Yellow
+        }
+    }
     # Step 1: Upload and run ci-setup.sh
     Write-Host "`n[1/5] Installing Docker, Python, and Molecule dependencies..." -ForegroundColor Cyan
     $ciSetupPath = Join-Path ([VMUtils]::ScriptDir) "..\..\scripts\ci-setup.sh"
@@ -418,18 +440,22 @@ function PerformFullSetup([VMConfig]$config, [SSHManager]$sshManager) {
     }
 
     # Retry SCP upload with exponential backoff (SSH may need a moment to stabilize)
-    $maxRetries = 3
-    $retryDelay = 2
+    $maxRetries = 5
+    $retryDelay = 5
     for ($i = 1; $i -le $maxRetries; $i++) {
-        $null = & scp $scpArgs 2>&1
+        # Capture both stdout and stderr for better error reporting
+        $scpOutput = & scp $scpArgs 2>&1 | Out-String
         if ($LASTEXITCODE -ne 0) {
+            $errorMsg = $scpOutput.Trim()
             if ($i -lt $maxRetries) {
-                Write-Host "SCP attempt $i failed, retrying in $retryDelay seconds..." -ForegroundColor Yellow
+                Write-Host "SCP attempt $i/$maxRetries failed: $errorMsg" -ForegroundColor Yellow
+                Write-Host "Retrying in $retryDelay seconds..." -ForegroundColor Yellow
                 Start-Sleep -Seconds $retryDelay
-                $retryDelay *= 2
+                $retryDelay = [Math]::Min($retryDelay * 2, 30)  # Cap at 30 seconds
                 continue
             } else {
                 Write-Host "Error: Failed to upload ci-setup.sh after $maxRetries attempts" -ForegroundColor Red
+                Write-Host "Last error: $errorMsg" -ForegroundColor Red
                 Write-Host "Setup cannot continue. Please check SSH connectivity and try again." -ForegroundColor Red
                 return
             }
