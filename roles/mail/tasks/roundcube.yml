@@ -21,7 +21,6 @@
   file:
     state: directory
     owner: nginx
-    ansible.builtin.group: nginx
     group: nginx
   with_items:
     - "{{ webmail_path }}"
@@ -58,7 +57,6 @@
   template:
     dest: "{{ webmail_path }}/config/config.inc.php"
     owner: nginx
-    ansible.builtin.group: nginx
     group: nginx
 
 - name: Create Roundcube database
@@ -90,7 +88,6 @@
   ansible.builtin.file:
   file:
     owner: nginx
-    ansible.builtin.group: nginx
     group: nginx
     recurse: true
 
@@ -99,7 +96,6 @@
   file:
     state: directory
     owner: nginx
-    ansible.builtin.group: nginx
     group: nginx
   with_items:
     - "{{ webmail_path }}/temp"

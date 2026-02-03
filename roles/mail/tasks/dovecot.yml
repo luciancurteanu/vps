@@ -134,7 +134,6 @@
     src: dovecot/conf.d/15-lda.conf.j2
     dest: /etc/dovecot/conf.d/15-lda.conf
     owner: root
-    ansible.builtin.group: root
     group: root
   notify: restart dovecot
 
@@ -161,7 +160,6 @@
     src: dovecot/dovecot-mysql.conf.ext.j2
     dest: /etc/dovecot/dovecot-mysql.conf.ext
     owner: root
-    ansible.builtin.group: root
     group: root
   notify: restart dovecot
 

@@ -84,7 +84,6 @@
     src: postfix/mysql-virtual-alias-maps.cf.j2
     dest: /etc/postfix/mysql-virtual-alias-maps.cf
     owner: root
-    ansible.builtin.group: root
     group: root
   notify: restart postfix
 

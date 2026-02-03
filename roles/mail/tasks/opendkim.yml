@@ -13,7 +13,6 @@
     path: "{{ item }}"
     state: directory
     owner: opendkim
-    ansible.builtin.group: opendkim
     group: opendkim
   with_items:
     - /etc/opendkim
@@ -25,7 +24,6 @@
     src: opendkim/opendkim.conf.j2
     dest: /etc/opendkim.conf
     owner: root
-    ansible.builtin.group: root
     group: root
   notify: restart opendkim
 
@@ -34,7 +32,6 @@
     src: opendkim/KeyTable.j2
     dest: /etc/opendkim/KeyTable
     owner: root
-    ansible.builtin.group: root
     group: root
   notify: restart opendkim
 
@@ -43,7 +40,6 @@
     src: opendkim/SigningTable.j2
     dest: /etc/opendkim/SigningTable
     owner: root
-    ansible.builtin.group: root
     group: root
   notify: restart opendkim
 
@@ -52,7 +48,6 @@
     src: opendkim/TrustedHosts.j2
     dest: /etc/opendkim/TrustedHosts
     owner: root
-    ansible.builtin.group: root
     group: root
   notify: restart opendkim
 
@@ -73,7 +68,6 @@
     path: "{{ item }}"
     owner: opendkim
     mode: '0644'
-    ansible.builtin.group: opendkim
     group: opendkim
   with_items:
     - /etc/opendkim/keys/{{ domain }}/mail.private
