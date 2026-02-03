@@ -9,11 +9,20 @@ vps/
 ├── ansible.cfg                 # Ansible configuration file
 ├── bootstrap.sh                # Bootstrap script for new installations
 ├── CONTRIBUTING.md             # Contribution guidelines
+├── encrypt-vault.sh            # Utility to encrypt vault files
 ├── LICENSE                     # MIT license file
 ├── README.md                   # Main project documentation
 ├── STRUCTURE.md                # This file, explaining project structure
+├── update-vm-hosts.sh          # Update VM hosts configuration
 ├── vps.sh                      # Main command-line interface script
+├── vps.md                      # VPS shell script documentation
 ├── .gitignore                  # Git exclusion patterns
+├── docs/                       # Documentation
+│   ├── BEGINNER-GUIDE.md       # Comprehensive beginner's guide
+│   ├── molecule-deploy-setup.md # Molecule testing setup guide
+│   ├── role-readme-template.md # Template for role documentation
+│   ├── testing-completion-summary.md # Test status tracking
+│   └── usage-examples.md       # Usage examples
 ├── inventory/                  # Ansible inventory configuration
 │   ├── hosts                   # Local host definitions for Ansible 
 │   ├── hosts.example           # Example host configuration
@@ -26,8 +35,10 @@ vps/
 │   ├── README.md               # Playbooks documentation
 │   ├── remove_vhost.yml        # Playbook for removing virtual hosts
 │   ├── setup.yml               # Main setup playbook
+│   ├── site_management.yml     # Site management playbook
 │   └── ssl.yml                 # SSL certificate management playbook
 ├── roles/                      # Ansible roles for different components
+│   ├── cockpit/                # Cockpit control panel
 │   ├── common/                 # Base system configuration
 │   ├── development/            # Development tools installation
 │   ├── goproxy/                # GoProxy with Tor integration
@@ -36,8 +47,17 @@ vps/
 │   ├── nginx/                  # Nginx web server
 │   ├── php/                    # PHP-FPM configuration
 │   ├── python/                 # Python utilities
-│   ├── security/               # Security hardening
-│   └── cockpit/                # Cockpit control panel
+│   └── security/               # Security hardening
+├── scripts/                    # Automation scripts
+│   ├── ci-setup.sh             # CI environment setup (Docker, Molecule)
+│   ├── README.md               # Scripts documentation
+│   ├── reset-molecule-environment.sh # Reset testing environment
+│   ├── resume-deployment.sh    # Resume interrupted deployments
+│   ├── run-test.ps1            # Windows wrapper for running tests
+│   ├── run-test.sh             # Primary Molecule test runner
+│   └── vm-launcher/            # VM automation tools
+│       ├── run-vm.ps1          # PowerShell VM launcher
+│       └── Binary/             # Fallback mkisofs binaries
 ├── templates/                  # Global templates
 │   ├── README.md               # Templates documentation
 │   ├── nginx/                  # Nginx templates
@@ -54,6 +74,14 @@ vps/
 ### Main Script
 
 - `vps.sh`: The main command-line interface script that provides a friendly user interface to the Ansible playbooks.
+
+### Scripts
+
+- `scripts/ci-setup.sh`: Automated CI environment setup - installs Docker, creates Python venv, installs Molecule dependencies
+- `scripts/run-test.sh`: Primary test runner with auto-install capability
+- `scripts/run-test.ps1`: Windows PowerShell wrapper that SSHs to VM and runs tests
+- `scripts/reset-molecule-environment.sh`: Resets/cleans the Molecule testing environment
+- `scripts/vm-launcher/run-vm.ps1`: PowerShell VM launcher for automated AlmaLinux VM creation and configuration
 
 ### Bootstrap
 
