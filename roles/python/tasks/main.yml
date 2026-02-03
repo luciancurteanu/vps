@@ -3,7 +3,7 @@
 
 - name: Ensure Python PIP is installed
   ansible.builtin.package:
-    name: Python3-pip
+    name: python3-pip
     state: present
 
 - name: Install Python packages
@@ -14,13 +14,13 @@
 
 - name: Upgrade PIP
   ansible.builtin.pip:
-    name: Pip
+    name: pip
     state: latest
   when: pip_install is succeeded
 
 - name: Ensure EPEL repository is enabled
   ansible.builtin.dnf:
-    name: Epel-release
+    name: epel-release
     state: present
 
 - name: Install Chromium headless for scraping
@@ -67,7 +67,7 @@
 
 - name: Ensure unzip is installed for ChromeDriver extraction
   ansible.builtin.package:
-    name: Unzip
+    name: unzip
     state: present
   when:
     - driver_download is defined
