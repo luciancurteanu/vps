@@ -9,7 +9,7 @@ Briefly describe the purpose of this role.
 Prerequisites for local testing:
 - AlmaLinux 9 VM/WSL environment
 - Docker installed and running
-- Python virtual environment with Molecule and dependencies (see `docs/molecule-admin-setup.md`)
+- Python virtual environment with Molecule and dependencies (see `docs/molecule-deploy-setup.md`)
 - User: `admin` (must be in the `docker` group)
 
 ### Role Variables
@@ -29,7 +29,7 @@ List any role dependencies. If the role uses external collections or roles from 
 ```
 
 ### Molecule Testing
-- Ensure you are using the `admin` user and the minimal AlmaLinux 9 + Docker + Molecule workflow as described in `docs/molecule-admin-setup.md`.
+- Ensure you are using the `admin` user and the minimal AlmaLinux 9 + Docker + Molecule workflow as described in `docs/molecule-deploy-setup.md`.
 - Run tests from the project root using: `bash scripts/run-test.sh <role_name>`
 - **Test Dependencies**: If this role requires specific external Ansible Galaxy roles or collections for its Molecule tests, they will be defined in `roles/<role_name>/molecule/default/requirements.yml`. These are automatically handled by Molecule during the `dependency` phase.
 - **Custom Cleanup**: If this role utilizes a custom `cleanup.yml` playbook for its Molecule tests (for actions beyond standard instance destruction), it will be located at `roles/<role_name>/molecule/default/cleanup.yml` and configured in the scenario's `molecule.yml`.
