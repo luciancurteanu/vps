@@ -24,12 +24,32 @@ VENV_PATH=~/molecule-env
 SETUP_SCRIPT_NAME="setup-molecule-env.sh"
 SETUP_SCRIPT_PATH="$PROJECT_ROOT/scripts/$SETUP_SCRIPT_NAME"
 
-# Check if virtualenv activation script exists, if not, provide clear guidance
+# Check if virtualenv activation script exists, if not, auto-install
 if [[ ! -f "$VENV_PATH/bin/activate" ]]; then
-  echo "[ERROR] Python virtual environment not found at $VENV_PATH/bin/activate"
-  echo "[ADVICE] Install Molecule environment by running: sudo bash $PROJECT_ROOT/scripts/ci-setup.sh"
-  echo "[ADVICE] Or use FullSetup: .\scripts\vm-launcher\run-vm.ps1 -VMName AlmaLinux-9 -UseLocalSSHKey -Recreate -FullSetup"
-  exit 1
+  echo "[WARNING] Python virtual environment not found at $VENV_PATH/bin/activate"
+  
+  if [[ -f "$PROJECT_ROOT/scripts/ci-setup.sh" ]]; then
+    echo "[INFO] Attempting to install Molecule environment automatically..."
+    echo "[INFO] Running: sudo bash $PROJECT_ROOT/scripts/ci-setup.sh"
+    
+    if sudo bash "$PROJECT_ROOT/scripts/ci-setup.sh"; then
+      echo "[INFO] Molecule environment installation completed successfully"
+      
+      # Verify installation
+      if [[ ! -f "$VENV_PATH/bin/activate" ]]; then
+        echo "[ERROR] Installation completed but virtualenv still not found at $VENV_PATH/bin/activate" >&2
+        exit 1
+      fi
+    else
+      echo "[ERROR] Molecule environment installation failed" >&2
+      echo "[ADVICE] Try running manually: sudo bash $PROJECT_ROOT/scripts/ci-setup.sh" >&2
+      exit 1
+    fi
+  else
+    echo "[ERROR] ci-setup.sh not found at $PROJECT_ROOT/scripts/ci-setup.sh" >&2
+    echo "[ADVICE] Ensure you have the vps repository cloned completely" >&2
+    exit 1
+  fi
 fi
 
 # Activate virtualenv
