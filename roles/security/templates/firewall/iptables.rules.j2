@@ -58,7 +58,7 @@
 -A f2b-{{ service }} -j RETURN
 {% endif %}
 {% endfor %}
-{% endif %}
+{% endif -%}
 
 # Log and drop all other traffic
 -A INPUT -j LOG --log-prefix "IPTABLES DROP: " --log-level 4
