@@ -16,4 +16,4 @@
   tasks:
     - name: Include mail role to verify its state
       ansible.builtin.include_role:
-        name: Mail
+        name: mail
