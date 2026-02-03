@@ -52,7 +52,7 @@ nano vars/secrets.yml  # Fill in your actual passwords
 ansible-vault encrypt vars/secrets.yml  # Encrypt the file
 
 # Run full setup
-./vps.sh install core --domain=yourdomain.com --ask-vault-pass
+./vps.sh install core --domain=yourdomain.com --ask-pass --ask-vault-pass
 ```
 
 ### Option 2: Manual Installation
@@ -72,7 +72,7 @@ nano vars/secrets.yml  # Fill in your actual passwords
 ansible-vault encrypt vars/secrets.yml  # Encrypt the file
 
 # Run full setup
-./vps.sh install core --domain=yourdomain.com --ask-vault-pass
+./vps.sh install core --domain=yourdomain.com --ask-pass --ask-vault-pass
 ```
 
 ---

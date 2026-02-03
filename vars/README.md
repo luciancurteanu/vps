@@ -62,10 +62,10 @@ When running playbooks that reference vault-encrypted variables, you need to pro
 
 ```bash
 # Prompt for vault password
-ansible-playbook playbooks/setup.yml --ask-vault-pass
+ansible-playbook playbooks/setup.yml --ask-pass --ask-vault-pass
 
 # Use a password file
-ansible-playbook playbooks/setup.yml --vault-password-file=~/.vault_pass
+ansible-playbook playbooks/setup.yml --ask-pass --vault-password-file=~/.vault_pass
 ```
 
 ### With the VPS Script

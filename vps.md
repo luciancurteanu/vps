@@ -40,7 +40,7 @@ The script follows a consistent command structure:
 
 ### Installing SSL Certificates
 ```bash
-./vps.sh install ssl --domain=vps.test
+./vps.sh install ssl --domain=vps.test --ask-vault-pass
 ```
 
 ## Ansible Integration

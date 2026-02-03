@@ -486,7 +486,7 @@ Passwords are managed securely using Ansible Vault. To use vault passwords:
 
 3. Run playbooks with:
    ```
-   ansible-playbook playbooks/setup.yml --ask-vault-pass
+   ansible-playbook playbooks/setup.yml --ask-pass --ask-vault-pass
    ```
 
 ## Custom Configuration

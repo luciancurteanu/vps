@@ -58,7 +58,7 @@ Removes a virtual host configuration and optionally its files.
 Obtains and installs SSL certificates using Let's Encrypt.
 
 - **Purpose**: Secure websites with HTTPS
-- **Usage**: `./vps.sh install ssl --domain=vps.test`
+- **Usage**: `./vps.sh install ssl --domain=vps.test --ask-vault-pass`
 - **Requirements**: Existing virtual host configuration
 - **Operations Performed**:
   - Installs Certbot
