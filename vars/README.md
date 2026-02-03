@@ -17,14 +17,20 @@ The following password variables should be defined in your vault file:
 ```yaml
 # MariaDB passwords
 vault_db_root_password: "secure-root-password"
-vault_db_standard_password: "secure-standard-password"
+vault_db_webclient_password: "secure-webclient-password"
+vault_db_remote_password: "secure-remote-password"
 
 # Admin user password
 vault_admin_password: "secure-admin-password"
+vault_admin_ssh_public_key: "ssh-ed25519 AAAA... your-key-here"
+
+# Domain user password (if master_domain is true)
+vault_domain_user_password: "secure-domain-user-password"
 
 # Mail service passwords
 vault_mail_db_password: "secure-mail-db-password"
 vault_roundcube_db_password: "secure-roundcube-password"
+vault_mail_default_password: "secure-mail-default-password"
 
 # Cockpit uses system authentication (no separate password needed)
 # Login with admin user and vault_admin_password

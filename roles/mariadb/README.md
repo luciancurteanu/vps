@@ -481,7 +481,8 @@ Passwords are managed securely using Ansible Vault. To use vault passwords:
 2. Add the MariaDB passwords:
    ```yaml
    vault_db_root_password: "secure-password-here"
-   vault_db_standard_password: "another-secure-password"
+   vault_db_webclient_password: "secure-webclient-password"
+   vault_db_remote_password: "secure-remote-password"
    ```
 
 3. Run playbooks with:
