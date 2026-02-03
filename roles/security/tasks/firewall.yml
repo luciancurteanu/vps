@@ -8,13 +8,13 @@
 # RedHat/CentOS systems - Firewalld configuration
 - name: Install firewalld (RedHat)
   ansible.builtin.package:
-    name: Firewalld
+    name: firewalld
     state: present
   when: ansible_os_family == 'RedHat' and security_firewall_service == "firewalld"
 
 - name: Ensure firewalld is enabled and running (RedHat)
   ansible.builtin.service:
-    name: Firewalld
+    name: firewalld
     state: started
     enabled: true
   when:
@@ -24,7 +24,6 @@
 
 - name: Configure firewalld - Add HTTP/HTTPS services
   ansible.posix.firewalld:
-    ansible.builtin.service: "{{ item }}"
     service: "{{ item }}"
     state: enabled
     immediate: true
@@ -35,7 +34,6 @@
 
 - name: Configure firewalld - Add SSH service
   ansible.posix.firewalld:
-    ansible.builtin.service: ssh
     service: ssh
     state: enabled
     immediate: true
@@ -53,14 +51,14 @@
 # RedHat/CentOS systems - Iptables configuration
 - name: Check if firewalld service exists
   ansible.builtin.systemd:
-    name: Firewalld
+    name: firewalld
   register: firewalld_status
   when: ansible_os_family == 'RedHat' and security_firewall_service == "iptables"
   failed_when: false  # TODO: Add proper failure condition
 
 - name: Stop and mask firewalld service (RedHat)
   ansible.builtin.systemd:
-    name: Firewalld
+    name: firewalld
     state: stopped
     enabled: false
     masked: true
@@ -74,7 +72,7 @@
 
 - name: Ensure firewalld is not installed (RedHat)
   ansible.builtin.package:
-    name: Firewalld
+    name: firewalld
     state: absent
   when: ansible_os_family == 'RedHat' and security_firewall_service == "iptables"
 
@@ -85,7 +83,7 @@
       - iptables-services
       - iptables-utils
     state: present
-  when: ansible_os_family == 'RedHat'
+  when: ansible_os_family == 'RedHat' and security_firewall_service == "iptables"
 
 - name: Configure iptables rules (RedHat)
   ansible.builtin.template:
@@ -93,7 +91,7 @@
     dest: /etc/sysconfig/iptables
     owner: root
     group: root
-  when: ansible_os_family == 'RedHat'
+  when: ansible_os_family == 'RedHat' and security_firewall_service == "iptables"
   notify: restart iptables
 
 - name: Configure ip6tables rules (RedHat)
@@ -102,26 +100,28 @@
     dest: /etc/sysconfig/ip6tables
     owner: root
     group: root
-  when: ansible_os_family == 'RedHat' and security_firewall_use_ipv6 | default(true)
+  when: ansible_os_family == 'RedHat' and security_firewall_use_ipv6 | default(true) and security_firewall_service == "iptables"
   notify: restart ip6tables
 
 - name: Ensure iptables service is enabled and running (RedHat)
   ansible.builtin.service:
-    name: Iptables
+    name: iptables
     state: started
     enabled: true
   when:
     - ansible_os_family == 'RedHat'
+    - security_firewall_service == "iptables"
     - not (ansible_virtualization_type | default('') == 'docker')
   ignore_errors: "{{ ansible_virtualization_type | default('') == 'docker' }}"
 
 - name: Ensure ip6tables service is enabled and running (RedHat)
   ansible.builtin.service:
-    name: Ip6tables
+    name: ip6tables
     state: started
     enabled: true
   when:
     - ansible_os_family == 'RedHat'
     - security_firewall_use_ipv6 | default(true)
+    - security_firewall_service == "iptables"
     - not (ansible_virtualization_type | default('') == 'docker')
   ignore_errors: "{{ ansible_virtualization_type | default('') == 'docker' }}"

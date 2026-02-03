@@ -8,7 +8,7 @@
 # Ensure firewalld is not present
 - name: Ensure firewalld is not installed
   ansible.builtin.package:
-    name: Firewalld
+    name: firewalld
     state: absent
   when: ansible_os_family == 'RedHat' and security_firewall_service == "iptables"
   changed_when: not (ansible_virtualization_type | default('') == 'docker')
