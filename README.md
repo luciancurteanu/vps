@@ -44,12 +44,12 @@ cd ~/vps
 
 # Configure inventory with your server details
 cp inventory/hosts.yml.example inventory/hosts.yml
-# Edit with your preferred editor (e.g. nano or vi). Bootstrap will install nano if missing:
-${EDITOR:-nano} inventory/hosts.yml  # Edit: set ansible_host, ansible_user, etc.
+# Edit with your preferred editor (e.g. nano or vi). Use sudo if your editor needs elevated rights:
+sudo ${EDITOR:-nano} inventory/hosts.yml  # Edit: set ansible_host, ansible_user, etc.
 
-# Create encrypted vault for passwords
-ansible-vault create vars/secrets.yml
-# Add passwords (see vars/secrets.yml.example for required format)
+# Prepare vault file from example and populate it (edit then encrypt)
+cp vars/secrets.yml.example vars/secrets.yml
+ansible-vault edit vars/secrets.yml  # Fill in the secret values; file will be encrypted
 
 # Run full setup
 ./vps.sh install core --domain=yourdomain.com --ask-vault-pass
@@ -64,12 +64,12 @@ cd vps
 
 # Configure inventory
 cp inventory/hosts.yml.example inventory/hosts.yml
-# Edit with your preferred editor (e.g. nano or vi). Bootstrap will install nano if missing:
-${EDITOR:-nano} inventory/hosts.yml  # Edit with your server details
+# Edit with your preferred editor (e.g. nano or vi). Use sudo if your editor needs elevated rights:
+sudo ${EDITOR:-nano} inventory/hosts.yml  # Edit with your server details
 
-# Create vault for secrets
-ansible-vault create vars/secrets.yml
-# Add passwords (see vars/secrets.yml.example for format)
+# Prepare vault file from example and populate it (edit then encrypt)
+cp vars/secrets.yml.example vars/secrets.yml
+ansible-vault edit vars/secrets.yml  # Fill in the secret values; file will be encrypted
 
 # Run full setup
 ./vps.sh install core --domain=yourdomain.com --ask-vault-pass
