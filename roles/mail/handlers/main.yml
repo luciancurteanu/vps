@@ -1,22 +1,22 @@
 ---
 # Mail role: Handlers
 
-- name: Restart postfix
+- name: restart postfix
   ansible.builtin.service:
     name: postfix
     state: restarted
 
-- name: Restart dovecot
+- name: restart dovecot
   ansible.builtin.service:
     name: dovecot
     state: restarted
 
-- name: Restart opendkim
+- name: restart opendkim
   ansible.builtin.service:
     name: opendkim
     state: restarted
 
-- name: Restart nginx
+- name: restart nginx
   ansible.builtin.service:
     name: nginx
     state: restarted
