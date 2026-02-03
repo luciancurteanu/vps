@@ -25,16 +25,16 @@ jobs:
       matrix:
         role:
           - common
-          - security
+          - webmin
+          - cockpit
           - nginx
           - php
           - mariadb
-          - webmin
-          - cockpit
           - mail
-          - development
-          - goproxy
           - python
+          - goproxy
+          - development
+          - security
 
     steps:
       - name: Check out code
