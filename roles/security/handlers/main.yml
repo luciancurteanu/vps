@@ -2,19 +2,19 @@
 
 - name: restart iptables
   ansible.builtin.service:
-    name: Iptables
+    name: iptables
     state: restarted
   when: ansible_virtualization_type | default('') != 'docker'
 
 - name: restart ip6tables
   ansible.builtin.service:
-    name: Ip6tables
+    name: ip6tables
     state: restarted
   when: ansible_virtualization_type | default('') != 'docker'
 
 - name: restart fail2ban
   ansible.builtin.service:
-    name: Fail2ban
+    name: fail2ban
     state: restarted
 
 - name: restart ssh
