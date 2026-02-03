@@ -212,7 +212,6 @@
     path: "{{ goproxy_home }}/goproxy"
     state: file
     owner: "{{ goproxy_user }}"
-    ansible.builtin.group: "{{ goproxy_user }}"
     group: "{{ goproxy_user }}"
   when:
     - goproxy_binary_stat.stat.exists
