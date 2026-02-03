@@ -11,7 +11,7 @@ Last updated: 2026-02-03
 | common       | Yes             | Yes           | admin     | Passed   | Molecule passed on 2026-02-03 |
 | webmin       | Yes             | Yes           | admin     | Passed   | Molecule passed on 2026-02-03 |
 | cockpit      | Yes             | No            | admin     | Pending  | Disabled by default     |
-| nginx        | Yes             | No            | admin     | Pending  | Reset for fresh testing |
+| nginx        | Yes             | Yes           | admin     | Passed   | Molecule passed on 2026-02-03 |
 | php          | Yes             | No            | admin     | Pending  | Reset for fresh testing |
 | mariadb      | Yes             | No            | admin     | Pending  | Reset for fresh testing |
 | mail         | Yes             | No            | admin     | Pending  | Reset for fresh testing |
