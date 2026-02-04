@@ -6,55 +6,25 @@
     path: /etc/webmin/version
   register: webmin_installed
 
-- name: Read existing Webmin version
-  ansible.builtin.slurp:
-    src: /etc/webmin/version
-  register: webmin_version_content
-  when: webmin_installed.stat.exists
-  changed_when: false
+- name: Ensure Webmin repository is configured
+  ansible.builtin.yum_repository:
+    name: Webmin
+    description: Webmin Distribution Neutral
+    baseurl: "{{ webmin_repo_url }}"
+    enabled: true
+    gpgcheck: true
+    gpgkey: "{{ webmin_gpg_key }}"
+  when: ansible_os_family == 'RedHat'
 
-- name: Set fact for installed version
-  ansible.builtin.set_fact:
-    webmin_current_version: "{{ webmin_version_content.content | b64decode | trim }}"
-  when: webmin_installed.stat.exists
-
-- name: Display current Webmin version
-  ansible.builtin.debug:
-    msg: "Webmin {{ webmin_current_version }} is already installed"
-  when: webmin_installed.stat.exists
-
-- name: Add Webmin repository
-  block:
-    - name: Download official webmin-setup-repo.sh
-      ansible.builtin.get_url:
-        url: https://raw.githubusercontent.com/webmin/webmin/master/webmin-setup-repo.sh
-        dest: /tmp/webmin-setup-repo.sh
-        mode: '0755'
-      when: webmin_repo_setup_script | default(false)
-
-    - name: Run webmin-setup-repo.sh to configure repository
-      ansible.builtin.shell: /tmp/webmin-setup-repo.sh
-      args:
-        creates: /etc/yum.repos.d/webmin.repo
-      when: webmin_repo_setup_script | default(false)
-
-    - name: Ensure Webmin yum repository (fallback)
-      ansible.builtin.yum_repository:
-        name: Webmin
-        description: Webmin Distribution Neutral
-        baseurl: "{{ webmin_repo_url }}"
-        enabled: true
-        gpgcheck: true
-        gpgkey: "{{ webmin_gpg_key }}"
-      when: not webmin_repo_setup_script | default(false) and ansible_os_family == 'RedHat'
+- name: Update DNF cache for Webmin repository
+  ansible.builtin.dnf:
+    update_cache: true
   when: ansible_os_family == 'RedHat'
 
 - name: Install Webmin package
   ansible.builtin.dnf:
-    name: "webmin{% if webmin_version is defined and webmin_version %}-{{ webmin_version }}{% endif %}"
+    name: "webmin{{ '-' + webmin_version if webmin_version else '' }}"
     state: present
-    disable_gpg_check: false
-  when: not webmin_installed.stat.exists or (webmin_current_version is defined and webmin_version is defined and webmin_version and webmin_current_version != webmin_version)
   notify: Restart webmin
 
 - name: Create systemd override directory for Webmin
@@ -88,13 +58,6 @@
     name: webmin
     enabled: true
     state: started
-# Firewall task
-- name: Install iptables-services when firewall is enabled
-  ansible.builtin.yum:
-    name: iptables-services
-    state: present
-  when: firewall_enabled | default(true) and webmin_use_iptables_service | default(true)
-  notify: Save iptables rules
 
 - name: Configure firewall for Webmin (iptables)
   ansible.builtin.shell: |
@@ -103,19 +66,7 @@
     executable: /bin/bash
   when: firewall_enabled | default(true)
   notify: Save iptables rules
-- name: Verify Webmin is accessible
-  ansible.builtin.uri:
-    url: "{{ 'https' if webmin_ssl_enabled | default(false) else 'http' }}://{{ ansible_host }}:{{ webmin_port }}"
-    method: GET
-    status_code: [200, 302, 401]
-    timeout: 10
-    validate_certs: false
-  register: webmin_check
-  retries: 3
-  delay: 5
-  until: webmin_check is succeeded
   changed_when: false
-  failed_when: false  # TODO: Add proper failure condition
 
 - name: Create Webmin nginx proxy configuration
   ansible.builtin.template:
@@ -135,12 +86,17 @@
   when: webmin_nginx_proxy | default(false)
   notify: Reload nginx
 
+- name: Wait for Webmin to be available
+  ansible.builtin.wait_for:
+    port: "{{ webmin_port }}"
+    timeout: 60
+  when: not webmin_installed.stat.exists
+
 - name: Configure Webmin trusted referers for proxy
   ansible.builtin.lineinfile:
     path: /etc/webmin/config
     regexp: '^referers='
     line: "referers={{ webmin_subdomain }}"
-    create: false
   when: webmin_nginx_proxy | default(false)
   notify: Restart webmin
 
@@ -149,75 +105,49 @@
     path: /etc/webmin/config
     regexp: '^referers_none='
     line: 'referers_none=0'
-    create: false
   when: webmin_nginx_proxy | default(false)
   notify: Restart webmin
 
-- name: Configure Webmin theme to Authentic Theme with low-resource settings
+- name: Configure Webmin theme to Authentic Theme
   ansible.builtin.lineinfile:
     path: /etc/webmin/config
     regexp: '^theme='
     line: "theme={{ webmin_theme }}"
-    create: false
+  when: webmin_theme == 'authentic-theme'
   notify: Restart webmin
 
 - name: Ensure Authentic Theme is installed
+  when: webmin_theme == 'authentic-theme'
   block:
-    - name: Determine Authentic theme download URL
-      ansible.builtin.set_fact:
-        webmin_authentic_download_url: >-
-          {% if webmin_authentic_version %}
-          https://github.com/webmin/authentic-theme/archive/refs/tags/{{ webmin_authentic_version }}.tar.gz
-          {% else %}
-          https://github.com/webmin/authentic-theme/archive/refs/heads/master.tar.gz
-          {% endif %}
-
-    - name: Download Authentic Theme release tarball
+    - name: Download Authentic Theme release
       ansible.builtin.get_url:
-        url: "{{ webmin_authentic_download_url }}"
-        dest: /tmp/authentic-theme-{{ webmin_authentic_version | default('master') }}.tar.gz
+        url: "https://github.com/webmin/authentic-theme/archive/refs/tags/{{ webmin_authentic_version }}.tar.gz"
+        dest: "/tmp/authentic-theme-{{ webmin_authentic_version }}.tar.gz"
         mode: '0644'
         timeout: 60
-        validate_certs: true
-      register: authentic_download
-      retries: 3
-      delay: 5
-      until: authentic_download is succeeded
 
-    - name: Verify checksum if provided
-      ansible.builtin.assert:
-        that:
-          - "webmin_authentic_checksum == '' or (webmin_authentic_checksum != '' and lookup('ansible.builtin.hash', '/tmp/authentic-theme-{{ webmin_authentic_version | default('master') }}.tar.gz', 'sha256') == webmin_authentic_checksum)"
-        fail_msg: "Authentic Theme checksum mismatch"
-      when: webmin_authentic_checksum is defined
-
-    - name: Extract Authentic Theme tarball
+    - name: Extract Authentic Theme
       ansible.builtin.unarchive:
-        src: /tmp/authentic-theme-{{ webmin_authentic_version | default('master') }}.tar.gz
-        dest: /usr/share/webmin/
+        src: "/tmp/authentic-theme-{{ webmin_authentic_version }}.tar.gz"
+        dest: /tmp/
         remote_src: true
-      register: authentic_unarchive
 
-    - name: Move extracted theme dir to expected location
-      ansible.builtin.shell: |
-        extracted_dir=$(tar -tf /tmp/authentic-theme-{{ webmin_authentic_version | default('master') }}.tar.gz | head -1 | cut -f1 -d"/")
-        mv /usr/share/webmin/${extracted_dir} /usr/share/webmin/authentic-theme || true
-      args:
-        executable: /bin/bash
-
-    - name: Set permissions for Authentic Theme
-      ansible.builtin.file:
-        path: /usr/share/webmin/authentic-theme
+    - name: Install Authentic Theme
+      ansible.builtin.copy:
+        src: "/tmp/authentic-theme-{{ webmin_authentic_version }}/"
+        dest: /usr/share/webmin/authentic-theme/
+        remote_src: true
         owner: root
         group: root
         mode: '0755'
-        recurse: true
 
-    - name: Clean up downloaded file
+    - name: Clean up Authentic Theme download
       ansible.builtin.file:
-        path: /tmp/authentic-theme-{{ webmin_authentic_version | default('master') }}.tar.gz
+        path: "{{ item }}"
         state: absent
-  when: webmin_theme == 'authentic-theme' and not ansible_check_mode
+      loop:
+        - "/tmp/authentic-theme-{{ webmin_authentic_version }}.tar.gz"
+        - "/tmp/authentic-theme-{{ webmin_authentic_version }}"
 
 - name: Create Authentic Theme config directory
   ansible.builtin.file:
@@ -228,52 +158,18 @@
     mode: '0755'
   when: webmin_theme == 'authentic-theme'
 
-- name: Configure Authentic Theme low-resource settings
-  ansible.builtin.lineinfile:
-    path: /etc/webmin/authentic-theme/config
-    regexp: '^live_stats='
-    line: "live_stats={{ '0' if not webmin_authentic_live_stats else '1' }}"
-    create: true
-    owner: root
-    group: root
-    mode: '0644'
-  when: webmin_theme == 'authentic-theme'
-  notify: Restart webmin
-
-- name: Configure Authentic Theme stats interval
-  ansible.builtin.lineinfile:
-    path: /etc/webmin/authentic-theme/config
-    regexp: '^stats_interval='
-    line: "stats_interval={{ webmin_authentic_stats_interval }}"
-    create: true
-    owner: root
-    group: root
-    mode: '0644'
-  when: webmin_theme == 'authentic-theme'
-  notify: Restart webmin
-
-- name: Configure Authentic Theme stats history duration
-  ansible.builtin.lineinfile:
-    path: /etc/webmin/authentic-theme/config
-    regexp: '^stats_history_duration='
-    line: "stats_history_duration={{ webmin_authentic_stats_history_duration }}"
-    create: true
-    owner: root
-    group: root
-    mode: '0644'
-  when: webmin_theme == 'authentic-theme'
-  notify: Restart webmin
-
-- name: Configure Authentic Theme monitoring modules
-  ansible.builtin.blockinfile:
-    path: /etc/webmin/authentic-theme/config
-    block: |
+- name: Configure Authentic Theme settings
+  ansible.builtin.copy:
+    content: |
+      live_stats={{ '1' if webmin_authentic_live_stats else '0' }}
+      stats_interval={{ webmin_authentic_stats_interval }}
+      stats_history_duration={{ webmin_authentic_stats_history_duration }}
       monitor_cpu={{ '1' if webmin_authentic_monitor_cpu else '0' }}
       monitor_memory={{ '1' if webmin_authentic_monitor_memory else '0' }}
       monitor_disk={{ '1' if webmin_authentic_monitor_disk else '0' }}
       monitor_network={{ '1' if webmin_authentic_monitor_network else '0' }}
       monitor_services={{ '1' if webmin_authentic_monitor_services else '0' }}
-    create: true
+    dest: /etc/webmin/authentic-theme/config
     owner: root
     group: root
     mode: '0644'
