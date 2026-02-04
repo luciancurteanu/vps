@@ -222,6 +222,20 @@ make_executable() {
     echo -e "${GREEN}Scripts are now executable.${RESET}"
 }
 
+# Auto-change into the repository directory and open an interactive shell when appropriate.
+auto_cd() {
+    if [ -t 1 ] && [ -d "$REPO_DIR" ]; then
+        if [ "$EUID" -eq 0 ] && [ -n "${SUDO_USER:-}" ]; then
+            echo -e "${GREEN}Opening an interactive shell as ${SUDO_USER} inside ${REPO_DIR}${RESET}"
+            sudo -H -u "${SUDO_USER}" bash -lic "cd '${REPO_DIR}' && exec \$SHELL"
+        else
+            echo -e "${GREEN}Changing into ${REPO_DIR}${RESET}"
+            cd "$REPO_DIR" || true
+            exec "$SHELL"
+        fi
+    fi
+}
+
 # Main function
 main() {
     detect_os
@@ -237,6 +251,9 @@ main() {
     clone_repo
     echo
     make_executable
+    echo
+    # If running interactively, drop into the repo directory/shell now.
+    auto_cd
     echo
     
     echo -e "${GREEN}${BOLD}═══════════════════════════════════════════════${RESET}"
