@@ -250,7 +250,7 @@ make_executable() {
     echo -e "${YELLOW}Making scripts executable...${RESET}"
     chmod +x "$REPO_DIR/vps.sh"
     chmod +x "$REPO_DIR/bootstrap.sh"
-
+    chmod +x "$REPO_DIR/encrypt-vault.sh"
     echo -e "${GREEN}Scripts are now executable.${RESET}"
 }
 
