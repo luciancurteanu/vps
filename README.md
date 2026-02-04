@@ -37,9 +37,12 @@ For a completely fresh OS installation:
 sudo dnf install -y curl
 
 # Download and run bootstrap (installs Git, Ansible, Python, clones repo)
+# Note: when piped, the bootstrap will force-delete and re-clone the repo by default.
+# To disable that behavior when piping, prefix with FORCE=0:
+#   curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | FORCE=0 bash
 curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | bash
 
-# Navigate to repo
+# Navigate to repo (cloned into the invoking user's home directory)
 cd ~/vps
 
 # Configure inventory with your server details
@@ -49,7 +52,8 @@ nano inventory/hosts.yml  # Edit: set ansible_host, ansible_user, etc.
 # Create vault for secrets (copy example, edit, then encrypt)
 cp vars/secrets.yml.example vars/secrets.yml
 nano vars/secrets.yml  # Fill in your actual passwords
-ansible-vault encrypt vars/secrets.yml  # Encrypt the file
+# Encrypt the file (interactive vault prompt)
+ansible-vault encrypt vars/secrets.yml
 
 # Run full setup
 ./vps.sh install core --domain=yourdomain.com --ask-pass --ask-vault-pass
