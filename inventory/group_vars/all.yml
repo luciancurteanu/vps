@@ -1,4 +1,36 @@
 ---
+default_user: admin
+
+# Admin SSH key (from vault)
+admin_ssh_public_key: "{{ vault_admin_ssh_public_key | default(omit) }}"
+
+ssh_port: 22
+security_ssh_permit_root_login: 'no'
+
+firewall_enabled: true
+firewall_service: iptables
+
+# Domain
+master_domain: "{{ domain | default(inventory_hostname) }}"
+
+# Software versions
+php_version: "8.4"
+mariadb_version: "11.4"
+install_development_tools: true
+
+# Mail
+mail_subdomain: "mail.{{ domain }}"
+mail_admin_email: "admin@{{ domain }}"
+webmail_path: "/home/{{ master_domain }}/roundcube"
+webmail_version: "1.6.11"
+mail_db_name: "mailserver"
+mail_db_user: "mailuser"
+mail_db_password: "{{ vault_mail_db_password }}"
+
+# Webmin
+webmin_port: 10000
+webmin_subdomain: "cpanel.{{ domain }}"
+---
 # Global variables for VPS
 # This file contains all default configuration values used across playbooks.
 # Override these values in host_vars files for host-specific configuration.
