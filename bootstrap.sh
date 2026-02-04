@@ -34,7 +34,7 @@ REPO_DIR="${USER_HOME}/vps"
 FORCE_CLONE=false
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --force)
+        -f|--force|force)
             FORCE_CLONE=true
             shift
             ;;
@@ -43,6 +43,16 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# Also allow forcing via environment variable (useful when piping to sudo):
+#   BOOTSTRAP_FORCE=1 curl ... | sudo bash -s
+if [ -n "${BOOTSTRAP_FORCE:-}${FORCE:-}" ]; then
+    case "${BOOTSTRAP_FORCE:-${FORCE:-}}" in
+        1|true|yes|on)
+            FORCE_CLONE=true
+            ;;
+    esac
+fi
 
 echo -e "${BOLD}VPS Setup Bootstrap${RESET}"
 echo "This script will prepare your server for VPS setup."
