@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
     <title>Welcome to {{ domain }}</title>
     <style>
         :root {
@@ -152,9 +153,9 @@
                 <div class="info-box">
                     <h3>Quick Links</h3>
                     <ul style="list-style-type: none; text-align: left;">
-                        <li><a href="http://cpanel.{{ domain }}/">Control Panel</a></li>
+                        <li><a href="http://cpanel.{{ domain }}/" target="_blank" rel="noopener noreferrer">Control Panel</a></li>
                         {% if roundcube_installed | default(false) %}
-                        <li><a href="http://mail.{{ domain }}/">Webmail (Roundcube)</a></li>
+                        <li><a href="http://mail.{{ domain }}/" target="_blank" rel="noopener noreferrer">Mail</a></li>
                         {% endif %}
                     </ul>
                 </div>
