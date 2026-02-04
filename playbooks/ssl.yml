@@ -67,11 +67,11 @@
         --non-interactive
         --agree-tos
         --email {{ email }}
-        --domains {{ domain }}, {{ mail_subdomain }}
+        --domains {{ domain }},{{ mail_subdomain }},{{ webmin_subdomain }}
         {{ '--force-renewal' if force_renewal else '' }}
       register: certbot_result
       changed_when: "'Congratulations! Your certificate and chain have been saved' in certbot_result.stdout"
-      when: (not cert_file.stat.exists or force_renewal) and domain == master_domain
+      when: (not cert_file.stat.exists or force_renewal) and install_mail | default(true)
 
     - name: Install cronjob for certificate renewal
       ansible.builtin.cron:
@@ -118,8 +118,57 @@
           # add_header Strict-Transport-Security "max-age=63072000" always;
       notify: Restart Nginx
 
+    - name: Update mail subdomain nginx configuration with SSL enabled
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../roles/mail/templates/nginx/mail.conf.j2"
+        dest: "/etc/nginx/sites-available/{{ mail_subdomain }}.conf"
+        owner: root
+        group: root
+      vars:
+        mail_enable_ssl: true
+      when: install_mail | default(true)
+      notify: Restart Nginx
+
+    - name: Update Roundcube configuration for HTTPS
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../roles/mail/templates/roundcube/config.inc.php.j2"
+        dest: "{{ webmail_path }}/config/config.inc.php"
+        owner: root
+        group: root
+        mode: '0644'
+      vars:
+        mail_enable_ssl: true
+      when: install_mail | default(true)
+
+    - name: Update Webmin nginx proxy configuration with SSL enabled
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../roles/webmin/templates/nginx/webmin.conf.j2"
+        dest: "/etc/nginx/sites-available/{{ webmin_subdomain }}.conf"
+        owner: root
+        group: root
+      vars:
+        webmin_ssl_enabled: true
+      when: install_webmin | default(true)
+      notify: Restart Nginx
+
+    - name: Enable SSL enforcement in Webmin
+      ansible.builtin.lineinfile:
+        path: /etc/webmin/miniserv.conf
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      loop:
+        - { regexp: '^ssl_hsts=', line: 'ssl_hsts=1' }
+        - { regexp: '^ssl_enforce=', line: 'ssl_enforce=2' }
+      when: install_webmin | default(true)
+      notify: Restart Webmin
+
   handlers:
     - name: Restart Nginx
       ansible.builtin.service:
         name: nginx
+        state: restarted
+
+    - name: Restart Webmin
+      ansible.builtin.service:
+        name: webmin
         state: restarted
