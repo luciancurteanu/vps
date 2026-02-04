@@ -8,9 +8,17 @@
 - name: Ensure mail system group exists
   ansible.builtin.group:
     name: "{{ mail_group }}"
-    gid: "{{ mail_gid if mail_group not in ['nginx', 'apache'] else omit }}"
+    gid: "{{ mail_gid | default(omit) }}"
     system: true
     state: present
+  when: mail_gid is defined and mail_gid != None and mail_gid != ''
+
+- name: Ensure mail system group exists (no GID specified)
+  ansible.builtin.group:
+    name: "{{ mail_group }}"
+    system: true
+    state: present
+  when: mail_gid is not defined or mail_gid == None or mail_gid == ''
 
 - name: Ensure mail system user exists
   ansible.builtin.user:

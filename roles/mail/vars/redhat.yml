@@ -14,3 +14,6 @@ db_root_password: ''
 # Service users
 mail_user: nginx
 mail_group: nginx
+# Don't set mail_uid/mail_gid when using nginx user/group as they already exist
+mail_uid:
+mail_gid:
