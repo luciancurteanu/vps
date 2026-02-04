@@ -24,13 +24,29 @@
   when: webmin_installed.stat.exists
 
 - name: Add Webmin repository
-  ansible.builtin.yum_repository:
-    name: Webmin
-    description: Webmin Distribution Neutral
-    baseurl: "{{ webmin_repo_url }}"
-    enabled: true
-    gpgcheck: true
-    gpgkey: "{{ webmin_gpg_key }}"
+  block:
+    - name: Download official webmin-setup-repo.sh
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/webmin/webmin/master/webmin-setup-repo.sh
+        dest: /tmp/webmin-setup-repo.sh
+        mode: '0755'
+      when: webmin_repo_setup_script | default(false)
+
+    - name: Run webmin-setup-repo.sh to configure repository
+      ansible.builtin.shell: /tmp/webmin-setup-repo.sh
+      args:
+        creates: /etc/yum.repos.d/webmin.repo
+      when: webmin_repo_setup_script | default(false)
+
+    - name: Ensure Webmin yum repository (fallback)
+      ansible.builtin.yum_repository:
+        name: Webmin
+        description: Webmin Distribution Neutral
+        baseurl: "{{ webmin_repo_url }}"
+        enabled: true
+        gpgcheck: true
+        gpgkey: "{{ webmin_gpg_key }}"
+      when: not webmin_repo_setup_script | default(false) and ansible_os_family == 'RedHat'
   when: ansible_os_family == 'RedHat'
 
 - name: Install Webmin package
@@ -72,17 +88,21 @@
     name: webmin
     enabled: true
     state: started
-
-- name: Configure firewall for Webmin
-  ansible.builtin.iptables:
-    chain: INPUT
-    protocol: tcp
-    destination_port: "{{ webmin_port }}"
-    jump: ACCEPT
-    comment: Allow Webmin web interface
-  when: firewall_enabled | default(true)
+# Firewall task
+- name: Install iptables-services when firewall is enabled
+  ansible.builtin.yum:
+    name: iptables-services
+    state: present
+  when: firewall_enabled | default(true) and webmin_use_iptables_service | default(true)
   notify: Save iptables rules
 
+- name: Configure firewall for Webmin (iptables)
+  ansible.builtin.shell: |
+    iptables -C INPUT -p tcp --dport {{ webmin_port }} -j ACCEPT || iptables -A INPUT -p tcp --dport {{ webmin_port }} -j ACCEPT
+  args:
+    executable: /bin/bash
+  when: firewall_enabled | default(true)
+  notify: Save iptables rules
 - name: Verify Webmin is accessible
   ansible.builtin.uri:
     url: "{{ 'https' if webmin_ssl_enabled | default(false) else 'http' }}://{{ ansible_host }}:{{ webmin_port }}"
@@ -142,10 +162,62 @@
   notify: Restart webmin
 
 - name: Ensure Authentic Theme is installed
-  ansible.builtin.command: 
-    cmd: dnf install -y webmin-authentic-theme
-    creates: /usr/share/webmin/authentic-theme
-  when: webmin_theme == 'authentic-theme'
+  block:
+    - name: Determine Authentic theme download URL
+      ansible.builtin.set_fact:
+        webmin_authentic_download_url: >-
+          {% if webmin_authentic_version %}
+          https://github.com/webmin/authentic-theme/archive/refs/tags/{{ webmin_authentic_version }}.tar.gz
+          {% else %}
+          https://github.com/webmin/authentic-theme/archive/refs/heads/master.tar.gz
+          {% endif %}
+
+    - name: Download Authentic Theme release tarball
+      ansible.builtin.get_url:
+        url: "{{ webmin_authentic_download_url }}"
+        dest: /tmp/authentic-theme-{{ webmin_authentic_version | default('master') }}.tar.gz
+        mode: '0644'
+        timeout: 60
+        validate_certs: true
+      register: authentic_download
+      retries: 3
+      delay: 5
+      until: authentic_download is succeeded
+
+    - name: Verify checksum if provided
+      ansible.builtin.assert:
+        that:
+          - "webmin_authentic_checksum == '' or (webmin_authentic_checksum != '' and lookup('ansible.builtin.hash', '/tmp/authentic-theme-{{ webmin_authentic_version | default('master') }}.tar.gz', 'sha256') == webmin_authentic_checksum)"
+        fail_msg: "Authentic Theme checksum mismatch"
+      when: webmin_authentic_checksum is defined
+
+    - name: Extract Authentic Theme tarball
+      ansible.builtin.unarchive:
+        src: /tmp/authentic-theme-{{ webmin_authentic_version | default('master') }}.tar.gz
+        dest: /usr/share/webmin/
+        remote_src: true
+      register: authentic_unarchive
+
+    - name: Move extracted theme dir to expected location
+      ansible.builtin.shell: |
+        extracted_dir=$(tar -tf /tmp/authentic-theme-{{ webmin_authentic_version | default('master') }}.tar.gz | head -1 | cut -f1 -d"/")
+        mv /usr/share/webmin/${extracted_dir} /usr/share/webmin/authentic-theme || true
+      args:
+        executable: /bin/bash
+
+    - name: Set permissions for Authentic Theme
+      ansible.builtin.file:
+        path: /usr/share/webmin/authentic-theme
+        owner: root
+        group: root
+        mode: '0755'
+        recurse: true
+
+    - name: Clean up downloaded file
+      ansible.builtin.file:
+        path: /tmp/authentic-theme-{{ webmin_authentic_version | default('master') }}.tar.gz
+        state: absent
+  when: webmin_theme == 'authentic-theme' and not ansible_check_mode
 
 - name: Create Authentic Theme config directory
   ansible.builtin.file:

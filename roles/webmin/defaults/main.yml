@@ -29,3 +29,28 @@ webmin_authentic_monitor_memory: true  # Enable memory monitoring
 webmin_authentic_monitor_disk: false  # Disable disk monitoring
 webmin_authentic_monitor_network: false  # Disable network monitoring
 webmin_authentic_monitor_services: false  # Disable services monitoring
+
+# Repository installation method
+# When true, use the official webmin-setup-repo.sh script (recommended by webmin.com)
+webmin_repo_setup_script: true
+
+# Authentic Theme release to install. Set to an explicit tag for pinned stable release.
+# Default set to the latest stable known at time of editing; override to upgrade.
+webmin_authentic_version: "26.22"
+# Optional sha256 checksum for the downloaded release tarball (leave empty to skip verification)
+webmin_authentic_checksum: ""
+
+# Ensure iptables package/service is installed when firewall is enabled
+webmin_use_iptables_service: true
+
+# Notes and how to override
+# These defaults are safe for most installs. To override globally for your inventory,
+# set the same variables in `inventory/group_vars/all.yml` (for all hosts) or
+# in `host_vars/<hostname>.yml` for per-host overrides. Example:
+#
+# inventory/group_vars/all.yml:
+#   webmin_theme: "gray-theme"
+#   webmin_authentic_live_stats: true
+#
+# Keep `webmin_authentic_version` pinned to a stable release tag to avoid installing
+# unstable master builds. See https://github.com/webmin/authentic-theme/releases for tags.
