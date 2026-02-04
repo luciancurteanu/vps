@@ -37,25 +37,28 @@ For a completely fresh OS installation:
 sudo dnf install -y curl
 
 # Download and run bootstrap (installs Git, Ansible, Python, clones repo)
-# Note: when piped, the bootstrap will force-delete and re-clone the repo by default.
-# To disable that behavior when piping, prefix with FORCE=0:
-#   curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | FORCE=0 bash
+# When piped, the bootstrap will force-delete and re-clone the repo by default.
 curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | bash
 
-# Navigate to repo (cloned into the invoking user's home directory)
+# 1) Change to the repository directory
 cd ~/vps
 
-# Configure inventory with your server details
+# 2) Configure inventory and site defaults (copy examples)
+cp inventory/group_vars/all.yml.example inventory/group_vars/all.yml
 cp inventory/hosts.yml.example inventory/hosts.yml
-nano inventory/hosts.yml  # Edit: set ansible_host, ansible_user, etc.
 
-# Create vault for secrets (copy example, edit, then encrypt)
+# 3) Create vault for secrets (copy example, edit, then encrypt)
 cp vars/secrets.yml.example vars/secrets.yml
-nano vars/secrets.yml  # Fill in your actual passwords
-# Encrypt the file (interactive vault prompt)
-ansible-vault encrypt vars/secrets.yml
 
-# Run full setup
+# Edit the following files to set your domain, SSH user, and other settings:
+nano inventory/group_vars/all.yml
+nano inventory/hosts.yml
+nano vars/secrets.yml
+
+# Encrypt the secrets file (interactive vault prompt)
+ansible-vault encrypt vars/secrets.yml --ask-vault-pass
+
+# 4) Run the setup playbook
 ./vps.sh install core --domain=yourdomain.com --ask-pass --ask-vault-pass
 ```
 
