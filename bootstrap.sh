@@ -267,9 +267,6 @@ main() {
     echo
     make_executable
     echo
-    # If running interactively, drop into the repo directory/shell now.
-    auto_cd
-    echo
     
     echo -e "${GREEN}${BOLD}═══════════════════════════════════════════════${RESET}"
     echo -e "${GREEN}${BOLD}  Bootstrap Complete!${RESET}"
@@ -313,6 +310,9 @@ main() {
     echo
     echo -e "${YELLOW}Tip: For testing in a VM, use scripts/vm-launcher/run-vm.ps1${RESET}"
     echo
+    
+    # If running interactively, drop into the repo directory/shell now (must be last)
+    auto_cd
 }
 
 # Run main function
