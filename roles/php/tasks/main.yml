@@ -62,7 +62,7 @@
   ansible.builtin.lineinfile:
     path: /etc/php-fpm.d/www.conf
     regexp: '^listen\s*='
-    line: 'listen = /run/php-fpm/www.sock'
+    line: "listen = {{ php_fpm_listen | default('/run/php-fpm/www.sock') }}"
   notify: Restart php-fpm
 
 - name: Configure PHP-FPM user and group
@@ -150,6 +150,18 @@
 
 - name: Wait for PHP-FPM socket to be created
   ansible.builtin.wait_for:
-    path: /run/php-fpm/www.sock
+    path: "{{ php_fpm_listen | default('/run/php-fpm/www.sock') }}"
     delay: 2
     timeout: 60
+
+- name: Ensure SELinux fcontext is set for PHP-FPM run directory and sockets
+  community.general.sefcontext:
+    target: '/run/php-fpm(/.*)?'
+    setype: httpd_var_run_t
+    state: present
+  when: ansible_selinux.status == "enabled"
+
+- name: Apply SELinux context to PHP-FPM run directory
+  ansible.builtin.command: restorecon -Rv /run/php-fpm
+  when: ansible_selinux.status == "enabled"
+  changed_when: false

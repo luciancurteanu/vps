@@ -19,6 +19,15 @@
     group: "{{ mail_group }}"
     system: true
     shell: /sbin/nologin
+
+- name: Ensure /var/vmail exists for virtual mail storage
+  ansible.builtin.file:
+    path: /var/vmail
+    state: directory
+    owner: "{{ mail_user }}"
+    group: "{{ mail_group }}"
+    mode: '0750'
+  when: mail_use_var_vmail | default(true)
 - block:
     - name: Install mail server packages
       ansible.builtin.package:
@@ -125,16 +134,17 @@
   tags: ['roundcube', 'webmail']
 
 # Mail directories and permissions
-- name: Create mail directories
+- name: Create mail directories under /var/vmail for domain
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: "/var/vmail/{{ domain }}/{{ item }}"
     state: directory
     owner: "{{ mail_user }}"
     group: "{{ mail_group }}"
+    recurse: true
   with_items:
-    - "/home/{{ domain }}/mail"
-    - "/home/{{ domain }}/mail/virtual"
-    - "/home/{{ domain }}/mail/spool"
+    - ""
+    - "virtual"
+    - "spool"
 
 - name: Ensure mail log directory exists (preserve nginx ownership)
   ansible.builtin.file:
@@ -157,13 +167,13 @@
 
 - name: Set SELinux context for domain log directories
   community.general.sefcontext:
-    target: '/home/.*/logs(/.*)?'
+    target: '/var/vmail(/.*)?'
     setype: httpd_log_t
     state: present
   when: ansible_selinux.status == "enabled"
 
 - name: Apply SELinux context to mail log directory
-  ansible.builtin.command: restorecon -Rv /home/{{ domain }}/logs
+  ansible.builtin.command: restorecon -Rv /var/vmail
   when: ansible_selinux.status == "enabled"
   changed_when: false
 

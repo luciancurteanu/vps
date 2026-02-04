@@ -1,0 +1,21 @@
+; Managed shared PHP-FPM pool
+[www]
+user = {{ nginx_user }}
+group = {{ nginx_group }}
+listen = {{ php_fpm_listen }}
+listen.owner = {{ nginx_user }}
+listen.group = {{ nginx_group }}
+listen.mode = 0660
+pm = dynamic
+pm.max_children = 50
+pm.start_servers = 5
+pm.min_spare_servers = 2
+pm.max_spare_servers = 10
+pm.max_requests = 500
+
+php_admin_value[error_log] = /var/log/php-fpm/www-error.log
+php_admin_value[upload_tmp_dir] = /var/lib/php/tmp
+php_admin_value[session.save_path] = /var/lib/php/session
+php_admin_value[memory_limit] = {{ php_memory_limit | default('512M') }}
+php_admin_value[post_max_size] = {{ php_post_max_size | default('64M') }}
+php_admin_value[upload_max_filesize] = {{ php_upload_max_filesize | default('64M') }}

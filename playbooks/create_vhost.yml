@@ -9,6 +9,9 @@
     required_vars:
       - domain
       - user
+    # When true, subdomains/other domains will reuse the master domain user
+    # instead of creating a separate system user. Default: false (create per-domain users).
+    reuse_master_user: false
     document_root: "/home/{{ domain }}/public_html"
     sftp_group: "sftp"
   pre_tasks:
@@ -17,6 +20,11 @@
         that: "{{ item }} is defined"
         fail_msg: "Required variable '{{ item }}' is not defined"
       loop: "{{ required_vars }}"
+
+    - name: Determine vhost owner
+      ansible.builtin.set_fact:
+        # If reuse_master_user is true and this is not the master domain, reuse master_domain_user.
+        vhost_owner: "{{ (master_domain_user | default(master_domain.split('.')[0])) if (reuse_master_user | default(false)) and domain != master_domain else user }}"
 
     - name: Check if virtual host already exists
       ansible.builtin.stat:
@@ -28,22 +36,22 @@
         msg: "Virtual host for {{ domain }} already exists. Please remove it first if you want to recreate it."
       when: nginx_conf.stat.exists
   tasks:
-    - name: Create system user if it doesn't exist
+    - name: Create system user for domain (unless reusing master user)
       ansible.builtin.user:
         name: "{{ user }}"
         comment: "Virtual host user for {{ domain }}"
         create_home: true
         home: "/home/{{ user }}"
         shell: /bin/bash
-        shell: /bin/bash
         update_password: on_create
+      when: (domain == master_domain) or (not (reuse_master_user | default(false)))
 
     - name: Create document root directories
       ansible.builtin.file:
         path: "{{ item }}"
         state: directory
-        owner: "{{ user }}"
-        group: "{{ user }}"
+        owner: "{{ vhost_owner }}"
+        group: "{{ vhost_owner }}"
       with_items:
         - "/home/{{ domain }}"
         - "{{ document_root }}"
@@ -56,8 +64,8 @@
       ansible.builtin.file:
         path: "/home/{{ domain }}/logs/{{ item }}"
         state: touch
-        owner: "{{ user }}"
-        group: "{{ user }}"
+        owner: "{{ vhost_owner }}"
+        group: "{{ vhost_owner }}"
       with_items:
         - "access.log"
         - "error.log"
@@ -65,23 +73,23 @@
     - name: Set proper permissions for logs directory
       ansible.builtin.file:
         path: "/home/{{ domain }}/logs"
-        owner: "{{ user }}"
+        owner: "{{ vhost_owner }}"
         mode: '0644'
-        group: "{{ user }}"
+        group: "{{ vhost_owner }}"
         recurse: true
 
     - name: Set proper permissions for tmp directory
       ansible.builtin.file:
         path: "/home/{{ domain }}/tmp"
-        owner: "{{ user }}"
+        owner: "{{ vhost_owner }}"
         mode: '0644'
-        group: "{{ user }}"
+        group: "{{ vhost_owner }}"
         recurse: true
 
     - name: Configure PHP-FPM pool
       ansible.builtin.template:
         src: "{{ playbook_dir | dirname }}/templates/php/pool.conf.j2"
-        dest: "/etc/php-fpm.d/{{ domain }}.conf"
+        dest: "/etc/php-fpm.d/{{ domain | replace('.', '_') }}.conf"
         owner: root
         group: root
       notify: Restart php-fpm
@@ -122,16 +130,16 @@
       ansible.builtin.copy:
         src: "{{ playbook_dir }}/../templates/website/"
         dest: "{{ document_root }}/"
-        owner: "{{ user }}"
-        group: "{{ user }}"
+        owner: "{{ vhost_owner }}"
+        group: "{{ vhost_owner }}"
         directory_mode: '0755'
 
     - name: Create index.html from template
       ansible.builtin.template:
         src: "{{ playbook_dir | dirname }}/templates/website/index.html.j2"
         dest: "{{ document_root }}/index.html"
-        owner: "{{ user }}"
-        group: "{{ user }}"
+        owner: "{{ vhost_owner }}"
+        group: "{{ vhost_owner }}"
         force: true
 
     - name: Set SELinux context for document root
@@ -222,11 +230,11 @@
 
         - name: Create mail subdomain directories
           ansible.builtin.file:
-            path: "/home/{{ domain }}/mail"
+            path: "/var/vmail/{{ domain }}"
             state: directory
-            owner: "{{ user }}"
-            group: "{{ user }}"
-            group: "{{ user }}"
+            owner: "{{ mail_user | default('vmail') }}"
+            group: "{{ mail_group | default('vmail') }}"
+            recurse: true
       when: domain == master_domain
 
     - name: Configure Postfix for regular domain

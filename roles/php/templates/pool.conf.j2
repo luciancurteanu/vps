@@ -1,7 +1,7 @@
 [{{ domain }}]
 user = {{ domain }}
 group = {{ domain }}
-listen = {{ php_fpm_listen | default('/var/run/php-fpm/php-fpm.sock') | dirname }}/{{ domain }}.sock
+listen = {{ php_fpm_listen | default('/var/run/php-fpm/php-fpm.sock') | dirname }}/{{ domain | replace('.', '_') }}.sock
 listen.backlog = -1
 listen.owner = {{ nginx_user }}
 listen.group = {{ nginx_group }}

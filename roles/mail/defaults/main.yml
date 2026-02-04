@@ -35,6 +35,8 @@ mail_gid: 5000
 mail_enable_opendkim: false  # Disabled: dependencies not available on AlmaLinux 9
 mail_enable_roundcube: true   # Enabled: Roundcube webmail installation
 mail_enable_nginx: true
+# Use /var/vmail for virtual mail storage by default
+mail_use_var_vmail: true
 mail_enable_ssl: false  # Disabled: SSL certificates not generated yet
 mail_ssl_enabled: true
 mail_ssl_cert: /etc/pki/dovecot/certs/dovecot.pem

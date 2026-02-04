@@ -13,6 +13,12 @@ php_fpm_user: nginx
 php_fpm_group: nginx
 php_fpm_listen: /var/run/php-fpm/php-fpm.sock
 
+# Optional list of per-domain pools to deploy (each item should be the domain name)
+php_fpm_pools: []
+
+# Whether to deploy a managed shared www pool from templates/www.conf.j2
+php_fpm_create_www: true
+
 # PHP OPcache settings
 php_opcache_enable: 1
 php_opcache_memory_consumption: 128

@@ -2,7 +2,7 @@
 [{{ domain }}]
 user = {{ user }}
 group = {{ user }}
-listen = /var/run/php-fpm/{{ domain }}.sock
+listen = /var/run/php-fpm/{{ domain | replace('.', '_') }}.sock
 listen.backlog = -1
 listen.owner = nginx
 listen.group = nginx

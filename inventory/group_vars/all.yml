@@ -88,6 +88,15 @@ domain_user: "{{ master_domain }}"  # User account for domain/vhost ownership
 #########################
 
 php_version: "8.4"  # PHP version from Remi repository
+# Managed PHP-FPM pools to create during setup (list of domain names)
+# Add any domains for which you want a dedicated php-fpm pool created
+# Example: goapi.cloud and common subdomains
+php_fpm_pools:
+  - goapi.cloud
+  - cpanel.goapi.cloud
+  - mail.goapi.cloud
+# Deploy a managed shared www pool (true/false)
+php_fpm_create_www: true
 
 #########################
 # 6. MARIADB ROLE       #
