@@ -8,8 +8,8 @@ default_pass_scheme = SHA512-CRYPT
 # User query
 user_query = SELECT CONCAT('/home/{{ domain }}/mail/virtual/', SUBSTRING_INDEX(email,'@',-1), '/', SUBSTRING_INDEX(email,'@',1)) as home, 5000 as uid, 5000 as gid FROM users WHERE email='%u'
 
-# Password query
-password_query = SELECT email as user, password FROM users WHERE email='%u'
+# Password query - returns full email as username
+password_query = SELECT email as username, password FROM users WHERE email='%u'
 
 # Iterate query for listing users
-iterate_query = SELECT email as user FROM users
+iterate_query = SELECT email as username FROM users
