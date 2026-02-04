@@ -279,21 +279,27 @@ main() {
     echo -e "  ✓ Git:     $(git --version 2>/dev/null || echo 'Not found')"
     echo -e "  ✓ Python:  $(python3 --version 2>/dev/null || echo 'Not found')"
     echo -e "  ✓ Ansible: $(ansible --version 2>/dev/null | head -n1 || echo 'Not found')"
-    echo -e "  ✓ nano:    $(nano --version 2>/dev/null | head -n1 || echo 'Not found')"
+    echo -e "  ✓ Nano:    $(nano --version 2>/dev/null | head -n1 || echo 'Not found')"
     echo
     echo -e "${BOLD}Next Steps:${RESET}"
     echo -e "  1. Change to the repository directory:"
-    echo -e "     ${GREEN}cd ${REPO_DIR}${RESET}"
+    echo -e "     ${GREEN}cd ~/vps${RESET}"
     echo
     echo -e "  2. Configure inventory and secrets:"
+    echo -e "     ${GREEN}cp inventory/group_vars/all.yml.example inventory/group_vars/all.yml${RESET}"
     echo -e "     ${GREEN}cp inventory/hosts.yml.example inventory/hosts.yml${RESET}"
     echo -e "     ${GREEN}cp vars/secrets.yml.example vars/secrets.yml${RESET}"
+    echo
+    echo -e "     Edit the following files to set your domain, SSH user, and other settings:"
+    echo -e "     ${GREEN}nano inventory/group_vars/all.yml${RESET}"
     echo -e "     ${GREEN}nano inventory/hosts.yml${RESET}"
     echo -e "     ${GREEN}nano vars/secrets.yml${RESET}"
+    echo
+    echo -e "     Encrypt the secrets file using Ansible Vault:"
     echo -e "     ${GREEN}ansible-vault encrypt vars/secrets.yml${RESET}"
     echo
     echo -e "  3. Run the setup playbook:"
-    echo -e "     ${GREEN}./vps.sh install core --domain=yourdomain.com --ask-vault-pass${RESET}"
+    echo -e "     ${GREEN}./vps.sh install core --domain=yourdomain.com --ask-pass --ask-vault-pass${RESET}"
     echo
     echo -e "  4. Re-run bootstrap (will force by default when piped):"
     echo -e "     ${GREEN}curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | bash${RESET}"
