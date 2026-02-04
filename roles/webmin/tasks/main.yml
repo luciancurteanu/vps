@@ -108,6 +108,20 @@
   when: webmin_nginx_proxy | default(false)
   notify: Restart webmin
 
+- name: Configure Webmin to not redirect when behind proxy
+  ansible.builtin.lineinfile:
+    path: /etc/webmin/miniserv.conf
+    regexp: "^{{ item.key }}="
+    line: "{{ item.key }}={{ item.value }}"
+  loop:
+    - { key: 'webprefix', value: '' }
+    - { key: 'webprefixnoredir', value: '1' }
+    - { key: 'redirect_ssl', value: '0' }
+    - { key: 'redirect_port', value: '0' }
+    - { key: 'referer', value: '{{ webmin_subdomain }}' }
+  when: webmin_nginx_proxy | default(false)
+  notify: Restart webmin
+
 - name: Configure Webmin theme to Authentic Theme
   ansible.builtin.lineinfile:
     path: /etc/webmin/config

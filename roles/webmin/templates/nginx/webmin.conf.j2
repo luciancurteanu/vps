@@ -29,9 +29,6 @@ server {
     # HTTP only (SSL not enabled)
 {% endif %}
 
-    # Security headers
-    add_header Content-Security-Policy "upgrade-insecure-requests;";
-
     # Logging
     access_log /home/{{ domain }}/logs/{{ webmin_subdomain }}-access.log;
     error_log /home/{{ domain }}/logs/{{ webmin_subdomain }}-error.log;
@@ -46,12 +43,21 @@ server {
 
     # Proxy settings
     location / {
+        # Proxy buffer and timeout settings
+        proxy_buffering on;
+        proxy_buffer_size 16k;
+        proxy_buffers 16 16k;
+        proxy_busy_buffers_size 32k;
+        proxy_connect_timeout 90s;
+        proxy_send_timeout 90s;
+        proxy_read_timeout 90s;
+        
         # Set headers and proxy
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Host $host;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header Host $http_host;
+        proxy_set_header Host localhost:{{ webmin_port }};
         
         # Proxy request to webmin server (HTTP when SSL disabled, HTTPS when enabled)
         {% if webmin_ssl_enabled | default(false) %}
@@ -60,14 +66,29 @@ server {
         proxy_redirect https://localhost:{{ webmin_port }}/ $scheme://$http_host/;
         proxy_redirect https://$host:{{ webmin_port }}/ $scheme://$http_host/;
         {% else %}
-        proxy_pass http://webmin-upstream/;
+        proxy_pass https://webmin-upstream/;
+        proxy_ssl_verify off;
+        proxy_ssl_server_name on;
+        proxy_ssl_name localhost;
+        proxy_ssl_session_reuse on;
         # Rewrite all redirects from localhost to external URL
+        proxy_redirect https://localhost:{{ webmin_port }}/ $scheme://$http_host/;
+        proxy_redirect https://127.0.0.1:{{ webmin_port }}/ $scheme://$http_host/;
+        proxy_redirect https://$host:{{ webmin_port }}/ $scheme://$http_host/;
+        proxy_redirect https://{{ webmin_subdomain }}:{{ webmin_port }}/ $scheme://$http_host/;
         proxy_redirect http://localhost:{{ webmin_port }}/ $scheme://$http_host/;
         proxy_redirect http://127.0.0.1:{{ webmin_port }}/ $scheme://$http_host/;
         proxy_redirect http://$host:{{ webmin_port }}/ $scheme://$http_host/;
         proxy_redirect http://{{ webmin_subdomain }}:{{ webmin_port }}/ $scheme://$http_host/;
         proxy_redirect / /;
         {% endif %}
+        
+        # Cookie handling - rewrite cookies to work with proxy
+        proxy_cookie_path / /;
+        proxy_cookie_domain localhost {{ webmin_subdomain }};
+        proxy_cookie_domain 127.0.0.1 {{ webmin_subdomain }};
+        proxy_cookie_domain {{ webmin_subdomain }}:{{ webmin_port }} {{ webmin_subdomain }};
+        proxy_cookie_flags ~ nosecure samesite=lax;
         
         # WebSocket support
         proxy_http_version 1.1;
