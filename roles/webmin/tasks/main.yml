@@ -41,6 +41,32 @@
   when: not webmin_installed.stat.exists or (webmin_current_version is defined and webmin_version is defined and webmin_version and webmin_current_version != webmin_version)
   notify: Restart webmin
 
+- name: Create systemd override directory for Webmin
+  ansible.builtin.file:
+    path: /etc/systemd/system/webmin.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Configure Webmin memory limits
+  ansible.builtin.copy:
+    content: |
+      [Service]
+      MemoryMax=512M
+      MemoryHigh=384M
+      Restart=always
+      RestartSec=5
+    dest: /etc/systemd/system/webmin.service.d/memory-limit.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart webmin
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+
 - name: Ensure Webmin service is enabled and started
   ansible.builtin.systemd:
     name: webmin

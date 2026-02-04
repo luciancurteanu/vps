@@ -64,6 +64,44 @@
     - packages
     - optional
 
+- name: Check if swap exists
+  ansible.builtin.command: swapon --show
+  register: swap_check
+  changed_when: false
+  failed_when: false
+
+- name: Create swap file if not exists
+  block:
+    - name: Allocate swap file
+      ansible.builtin.command: dd if=/dev/zero of=/swapfile bs=1M count={{ swap_size_mb | default(2048) }}
+      args:
+        creates: /swapfile
+
+    - name: Set swap file permissions
+      ansible.builtin.file:
+        path: /swapfile
+        mode: '0600'
+        owner: root
+        group: root
+
+    - name: Format swap file
+      ansible.builtin.command: mkswap /swapfile
+      when: swap_check.stdout == ""
+
+    - name: Enable swap file
+      ansible.builtin.command: swapon /swapfile
+      when: swap_check.stdout == ""
+
+    - name: Add swap to fstab
+      ansible.builtin.lineinfile:
+        path: /etc/fstab
+        line: '/swapfile none swap sw 0 0'
+        state: present
+        create: false
+  when: swap_check.stdout == "" and common_enable_swap | default(true)
+  tags:
+    - swap
+
 - name: Include SSH hardening tasks
   ansible.builtin.include_tasks: ssh.yml
 
