@@ -30,12 +30,35 @@ fi
 
 REPO_DIR="${USER_HOME}/vps"
 
-# Parse arguments
+# Parse arguments and determine force mode
 FORCE_CLONE=false
+
+# Check for environment variables first (FORCE=1, F=1, or any truthy value)
+if [ -n "${FORCE:-}${F:-}" ]; then
+    case "${FORCE:-${F:-}}" in
+        1|true|yes|on)
+            FORCE_CLONE=true
+            ;;
+    esac
+fi
+
+# When piped (non-interactive stdin), default to force mode unless explicitly disabled
+if [ ! -t 0 ] && [ "${FORCE_CLONE}" != true ]; then
+    # Allow opt-out with FORCE=0 or F=0
+    if [ "${FORCE:-}" != "0" ] && [ "${F:-}" != "0" ]; then
+        FORCE_CLONE=true
+    fi
+fi
+
+# Command line arguments can override
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -f|--force|force)
             FORCE_CLONE=true
+            shift
+            ;;
+        --no-force)
+            FORCE_CLONE=false
             shift
             ;;
         *)
@@ -43,16 +66,6 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
-
-# Also allow forcing via environment variable (useful when piping to sudo):
-#   BOOTSTRAP_FORCE=1 curl ... | sudo bash -s
-if [ -n "${BOOTSTRAP_FORCE:-}${FORCE:-}" ]; then
-    case "${BOOTSTRAP_FORCE:-${FORCE:-}}" in
-        1|true|yes|on)
-            FORCE_CLONE=true
-            ;;
-    esac
-fi
 
 echo -e "${BOLD}VPS Setup Bootstrap${RESET}"
 echo "This script will prepare your server for VPS setup."
@@ -282,35 +295,22 @@ main() {
     echo -e "  ✓ nano:    $(nano --version 2>/dev/null | head -n1 || echo 'Not found')"
     echo
     echo -e "${BOLD}Next Steps:${RESET}"
-    echo -e "  1. Preferred: run as your regular user so the repo is cloned into /home/<you> and the script will open a shell there:" 
-    echo -e "     ${GREEN}curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | bash -s -- force${RESET}"
-    echo -e "     Or use a flag (note: must use -- before the flag):${RESET}"
-    echo -e "     ${GREEN}curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | bash -s -- -f${RESET}"
+    echo -e "  1. Change to the repository directory:"
+    echo -e "     ${GREEN}cd ${REPO_DIR}${RESET}"
     echo
-    echo -e "  2. If you must pipe through sudo, the script will try to detect the invoking user."
-    echo -e "     Using force with sudo will delete+reclone and set ownership to admin:admin:" 
-    echo -e "     ${GREEN}curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | sudo bash -s -- force${RESET}"
-    echo -e "     Or use env var (no -- needed):${RESET}"
-    echo -e "     ${GREEN}curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | BOOTSTRAP_FORCE=1 sudo bash -s${RESET}"
-    echo
-    echo -e "  3. If the repo already exists and you prefer updating in-place (no delete), run on the server:" 
-    echo -e "     ${GREEN}ssh admin@yourserver 'cd /home/admin/vps && git pull && sudo chown -R admin:admin /home/admin/vps'${RESET}"
-    echo
-    echo -e "  4. Configure inventory and secrets (examples):"
-    echo -e "     Note: a simplified defaults file is included at ${GREEN}inventory/group_vars/all.yml${RESET} — review and edit it to set site-wide defaults."
-    echo -e "     If you prefer to start from the example, copy:${RESET}"
-    echo -e "     ${GREEN}cp inventory/group_vars/all.yml.example inventory/group_vars/all.yml${RESET}"
+    echo -e "  2. Configure inventory and secrets:"
     echo -e "     ${GREEN}cp inventory/hosts.yml.example inventory/hosts.yml${RESET}"
     echo -e "     ${GREEN}cp vars/secrets.yml.example vars/secrets.yml${RESET}"
-    echo -e "     Edit: ${GREEN}nano inventory/hosts.yml${RESET} and ${GREEN}nano vars/secrets.yml${RESET}"
-    echo -e "     Encrypt secrets: ${GREEN}ansible-vault encrypt vars/secrets.yml${RESET}"
+    echo -e "     ${GREEN}nano inventory/hosts.yml${RESET}"
+    echo -e "     ${GREEN}nano vars/secrets.yml${RESET}"
+    echo -e "     ${GREEN}ansible-vault encrypt vars/secrets.yml${RESET}"
     echo
-    echo -e "  5. Run the setup playbook (example):"
-    echo -e "     ${GREEN}./vps.sh install core --domain=yourdomain.com --ask-pass --ask-vault-pass${RESET}"
+    echo -e "  3. Run the setup playbook:"
+    echo -e "     ${GREEN}./vps.sh install core --domain=yourdomain.com --ask-vault-pass${RESET}"
     echo
-    echo -e "  6. Re-run bootstrap (force) — this will delete and re-clone, and when run with force will chown to admin:admin:" 
-    echo -e "     ${GREEN}curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | bash -s -- force${RESET}"
-    echo -e "     ${GREEN}curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | bash -s -- -f${RESET}"
+    echo -e "  4. Re-run bootstrap (will force by default when piped):"
+    echo -e "     ${GREEN}curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | bash${RESET}"
+    echo -e "     To disable force: ${GREEN}curl ... | FORCE=0 bash${RESET}"
     echo
     echo -e "${YELLOW}Tip: For testing in a VM, use scripts/vm-launcher/run-vm.ps1${RESET}"
     echo
