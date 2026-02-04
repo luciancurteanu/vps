@@ -302,6 +302,9 @@ main() {
     echo -e "     ${GREEN}ssh admin@yourserver 'cd /home/admin/vps && git pull && sudo chown -R admin:admin /home/admin/vps'${RESET}"
     echo
     echo -e "  4. Configure inventory and secrets (examples):"
+    echo -e "     Note: a simplified defaults file is included at ${GREEN}inventory/group_vars/all.yml${RESET} — review and edit it to set site-wide defaults."
+    echo -e "     If you prefer to start from the example, copy:${RESET}"
+    echo -e "     ${GREEN}cp inventory/group_vars/all.yml.example inventory/group_vars/all.yml${RESET}"
     echo -e "     ${GREEN}cp inventory/hosts.yml.example inventory/hosts.yml${RESET}"
     echo -e "     ${GREEN}cp vars/secrets.yml.example vars/secrets.yml${RESET}"
     echo -e "     Edit: ${GREEN}nano inventory/hosts.yml${RESET} and ${GREEN}nano vars/secrets.yml${RESET}"
