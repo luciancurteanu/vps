@@ -51,14 +51,18 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Host $host;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header Host localhost;
+        proxy_set_header Host $http_host;
         
-        # Proxy request to webmin server (HTTPS)
+        # Proxy request to webmin server (HTTP when SSL disabled, HTTPS when enabled)
+        {% if webmin_ssl_enabled | default(false) %}
         proxy_pass https://webmin-upstream/;
         proxy_ssl_verify off;
-        
-        # Fixes initial redirect after login
         proxy_redirect https://localhost:{{ webmin_port }}/ $scheme://$http_host/;
         proxy_redirect https://$host:{{ webmin_port }}/ $scheme://$http_host/;
+        {% else %}
+        proxy_pass http://webmin-upstream/;
+        proxy_redirect http://localhost:{{ webmin_port }}/ $scheme://$http_host/;
+        proxy_redirect http://$host:{{ webmin_port }}/ $scheme://$http_host/;
+        {% endif %}
     }
 }
