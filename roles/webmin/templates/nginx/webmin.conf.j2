@@ -10,7 +10,7 @@ server {
     listen [::]:80;
     server_name {{ webmin_subdomain }};
 
-{% if webmin_ssl_enabled | default(true) %}
+{% if webmin_ssl_enabled | default(false) %}
     # Redirect to HTTPS
     return 301 https://$host$request_uri;
 }

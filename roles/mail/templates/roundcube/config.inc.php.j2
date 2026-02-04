@@ -40,8 +40,8 @@ $config['smtp_helo_host'] = '{{ mail_subdomain }}';
 // Security settings
 $config['login_autocomplete'] = 2;
 $config['check_all_folders'] = true;
-$config['use_https'] = true;
-$config['force_https'] = true;
+$config['use_https'] = {{ 'true' if mail_enable_ssl | default(false) else 'false' }};
+$config['force_https'] = {{ 'true' if mail_enable_ssl | default(false) else 'false' }};
 $config['session_lifetime'] = 30;
 
 // Mail settings
