@@ -274,6 +274,20 @@ run_ansible() {
         TAGS_OPTS="--tags setup"
     fi
 
+    # For a fresh control host -> target SSH bootstrap, run the bootstrap playbook first
+    if [[ "$ACTION" == "install" && "$MODULE" == "core" ]]; then
+        bootstrap_playbook_path="$PROJECT_ROOT/playbooks/bootstrap_ssh.yml"
+        log "Running SSH bootstrap playbook to ensure admin public key is present on targets"
+        ansible-playbook "$bootstrap_playbook_path" -e "$extra_vars" $ASK_SSH_PASS $VAULT_OPTS 2>&1 | tee -a "$log_file"
+        bootstrap_rc=${PIPESTATUS[0]}
+        if [ $bootstrap_rc -ne 0 ]; then
+            log "${YELLOW}Bootstrap playbook failed with exit code $bootstrap_rc. Aborting main install to avoid partial state.${RESET}"
+            exit $bootstrap_rc
+        else
+            log "${GREEN}SSH bootstrap completed successfully.${RESET}"
+        fi
+    fi
+
     # Log the full command being executed
     {
         echo "========================================"
