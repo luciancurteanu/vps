@@ -20,6 +20,14 @@
     state: present
   when: mail_gid is not defined or mail_gid == None or mail_gid == ''
 
+- name: Check if mail user already exists
+  ansible.builtin.getent:
+    database: passwd
+    key: "{{ mail_user }}"
+  register: mail_user_check
+  failed_when: false
+  changed_when: false
+
 - name: Ensure mail system user exists
   ansible.builtin.user:
     name: "{{ mail_user }}"
@@ -29,7 +37,9 @@
     home: "{{ mail_home | default('/var/vmail') }}"
     create_home: false
     shell: /sbin/nologin
-  when: mail_uid is defined and mail_uid != None and mail_uid != ''
+  when:
+    - mail_user_check.failed or mail_user not in mail_user_check.ansible_facts.getent_passwd
+    - mail_uid is defined and mail_uid != None and mail_uid != ''
 
 - name: Ensure mail system user exists (no UID specified)
   ansible.builtin.user:
@@ -39,7 +49,9 @@
     home: "{{ mail_home | default('/var/vmail') }}"
     create_home: false
     shell: /sbin/nologin
-  when: mail_uid is not defined or mail_uid == None or mail_uid == ''
+  when:
+    - mail_user_check.failed or mail_user not in mail_user_check.ansible_facts.getent_passwd
+    - mail_uid is not defined or mail_uid == None or mail_uid == ''
 
 - name: Ensure /var/vmail exists for virtual mail storage
   ansible.builtin.file:
