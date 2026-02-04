@@ -132,3 +132,17 @@
     create: false
   when: webmin_nginx_proxy | default(false)
   notify: Restart webmin
+
+- name: Disable Authentic Theme (uses 800MB+ RAM) and use lightweight theme
+  ansible.builtin.lineinfile:
+    path: /etc/webmin/config
+    regexp: '^theme='
+    line: 'theme=gray-theme'
+    create: false
+  notify: Restart webmin
+
+- name: Remove Authentic Theme module to prevent accidental activation
+  ansible.builtin.command: rm -rf /usr/libexec/webmin/authentic-theme /usr/share/webmin/authentic-theme
+  args:
+    removes: /usr/libexec/webmin/authentic-theme
+  failed_when: false
