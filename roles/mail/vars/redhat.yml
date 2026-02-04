@@ -12,5 +12,5 @@ domain: yourdomain.com
 db_root_user: root
 db_root_password: ''
 # Service users
-user: nginx
-user: nginx
+mail_user: nginx
+mail_group: nginx

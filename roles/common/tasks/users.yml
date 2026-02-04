@@ -19,7 +19,7 @@
     system: no  # Regular user, not system user (needed for SSH login)
     home: "/home/{{ common_admin_user }}"
     createhome: true
-    password: "{{ common_admin_password | password_hash('sha512') if common_admin_password is defined else omit }}"
+    password: "{{ common_admin_password | password_hash('bcrypt') if common_admin_password is defined else omit }}"
     update_password: on_create
 
 - name: Set up authorized keys for admin user

@@ -8,7 +8,7 @@
 - name: Ensure mail system group exists
   ansible.builtin.group:
     name: "{{ mail_group }}"
-    gid: "{{ mail_gid | default(omit) }}"
+    gid: "{{ mail_gid if mail_group not in ['nginx', 'apache'] else omit }}"
     system: true
     state: present
 
