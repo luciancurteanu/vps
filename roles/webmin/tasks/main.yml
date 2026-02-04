@@ -133,16 +133,77 @@
   when: webmin_nginx_proxy | default(false)
   notify: Restart webmin
 
-- name: Disable Authentic Theme (uses 800MB+ RAM) and use lightweight theme
+- name: Configure Webmin theme to Authentic Theme with low-resource settings
   ansible.builtin.lineinfile:
     path: /etc/webmin/config
     regexp: '^theme='
-    line: 'theme=gray-theme'
+    line: "theme={{ webmin_theme }}"
     create: false
   notify: Restart webmin
 
-- name: Remove Authentic Theme module to prevent accidental activation
-  ansible.builtin.command: rm -rf /usr/libexec/webmin/authentic-theme /usr/share/webmin/authentic-theme
-  args:
-    removes: /usr/libexec/webmin/authentic-theme
-  failed_when: false
+- name: Ensure Authentic Theme is installed
+  ansible.builtin.command: 
+    cmd: dnf install -y webmin-authentic-theme
+    creates: /usr/share/webmin/authentic-theme
+  when: webmin_theme == 'authentic-theme'
+
+- name: Create Authentic Theme config directory
+  ansible.builtin.file:
+    path: /etc/webmin/authentic-theme
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  when: webmin_theme == 'authentic-theme'
+
+- name: Configure Authentic Theme low-resource settings
+  ansible.builtin.lineinfile:
+    path: /etc/webmin/authentic-theme/config
+    regexp: '^live_stats='
+    line: "live_stats={{ '0' if not webmin_authentic_live_stats else '1' }}"
+    create: true
+    owner: root
+    group: root
+    mode: '0644'
+  when: webmin_theme == 'authentic-theme'
+  notify: Restart webmin
+
+- name: Configure Authentic Theme stats interval
+  ansible.builtin.lineinfile:
+    path: /etc/webmin/authentic-theme/config
+    regexp: '^stats_interval='
+    line: "stats_interval={{ webmin_authentic_stats_interval }}"
+    create: true
+    owner: root
+    group: root
+    mode: '0644'
+  when: webmin_theme == 'authentic-theme'
+  notify: Restart webmin
+
+- name: Configure Authentic Theme stats history duration
+  ansible.builtin.lineinfile:
+    path: /etc/webmin/authentic-theme/config
+    regexp: '^stats_history_duration='
+    line: "stats_history_duration={{ webmin_authentic_stats_history_duration }}"
+    create: true
+    owner: root
+    group: root
+    mode: '0644'
+  when: webmin_theme == 'authentic-theme'
+  notify: Restart webmin
+
+- name: Configure Authentic Theme monitoring modules
+  ansible.builtin.blockinfile:
+    path: /etc/webmin/authentic-theme/config
+    block: |
+      monitor_cpu={{ '1' if webmin_authentic_monitor_cpu else '0' }}
+      monitor_memory={{ '1' if webmin_authentic_monitor_memory else '0' }}
+      monitor_disk={{ '1' if webmin_authentic_monitor_disk else '0' }}
+      monitor_network={{ '1' if webmin_authentic_monitor_network else '0' }}
+      monitor_services={{ '1' if webmin_authentic_monitor_services else '0' }}
+    create: true
+    owner: root
+    group: root
+    mode: '0644'
+  when: webmin_theme == 'authentic-theme'
+  notify: Restart webmin

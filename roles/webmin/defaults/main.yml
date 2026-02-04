@@ -18,3 +18,14 @@ webmin_nginx_proxy: true  # Nginx reverse proxy enabled for subdomain access
 
 # SSL configuration (Webmin runs on HTTP by default)
 webmin_ssl_enabled: false
+
+# Theme configuration - Use Authentic Theme with low-resource optimizations
+webmin_theme: "authentic-theme"
+webmin_authentic_live_stats: false  # Disable live stats to prevent memory leaks
+webmin_authentic_stats_interval: 5000  # Polling interval in ms (default 1000)
+webmin_authentic_stats_history_duration: 1800  # Stored duration in seconds (30 min)
+webmin_authentic_monitor_cpu: true  # Enable CPU monitoring
+webmin_authentic_monitor_memory: true  # Enable memory monitoring
+webmin_authentic_monitor_disk: false  # Disable disk monitoring
+webmin_authentic_monitor_network: false  # Disable network monitoring
+webmin_authentic_monitor_services: false  # Disable services monitoring
