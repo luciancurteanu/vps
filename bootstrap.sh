@@ -9,7 +9,16 @@ RESET="\e[0m"
 
 # Repository URL
 REPO_URL="https://github.com/luciancurteanu/vps.git"
-REPO_DIR="${HOME}/vps"
+
+# Determine the correct home directory to use for cloning. When running with sudo,
+# prefer the original user's home so we clone into /home/<user>/vps rather than /root/vps.
+if [ -n "${SUDO_USER:-}" ] && [ "${SUDO_USER}" != "root" ]; then
+    USER_HOME=$(getent passwd "${SUDO_USER}" | cut -d: -f6 || echo "/home/${SUDO_USER}")
+else
+    USER_HOME="${HOME}"
+fi
+
+REPO_DIR="${USER_HOME}/vps"
 
 # Parse arguments
 FORCE_CLONE=false
@@ -179,6 +188,21 @@ clone_repo() {
     target_user="${SUDO_USER:-$USER}"
     chown -R "$target_user":"$target_user" "$REPO_DIR" 2>/dev/null || true
 }
+
+# If interactive, offer to drop into a shell inside the repo directory.
+# If running as root with SUDO_USER set, switch to that user before opening the shell.
+if [ -t 1 ]; then
+    if [ -d "$REPO_DIR" ]; then
+        echo -e "${GREEN}Entering repository directory: ${REPO_DIR}${RESET}"
+        if [ "$EUID" -eq 0 ] && [ -n "${SUDO_USER:-}" ]; then
+            echo -e "${YELLOW}Opening an interactive shell as ${SUDO_USER} inside ${REPO_DIR}${RESET}"
+            sudo -H -u "${SUDO_USER}" bash -lic "cd '${REPO_DIR}' && exec \$SHELL"
+        else
+            cd "$REPO_DIR" || true
+            exec "$SHELL"
+        fi
+    fi
+fi
 
 # Make scripts executable
 make_executable() {
