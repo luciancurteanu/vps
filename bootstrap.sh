@@ -277,13 +277,25 @@ main() {
     echo -e "  ✓ nano:    $(nano --version 2>/dev/null | head -n1 || echo 'Not found')"
     echo
     echo -e "${BOLD}Next Steps:${RESET}"
-    echo -e "  1. Navigate to project: ${GREEN}cd $REPO_DIR${RESET}"
-    echo -e "  2. Configure inventory: ${GREEN}cp inventory/hosts.yml.example inventory/hosts.yml${RESET}"
-    echo -e "     Then edit: ${GREEN}nano inventory/hosts.yml${RESET}"
-    echo -e "  3. Create vault secrets: ${GREEN}cp vars/secrets.yml.example vars/secrets.yml${RESET}"
-    echo -e "     Fill in passwords: ${GREEN}nano vars/secrets.yml${RESET}"
-    echo -e "     Encrypt the file: ${GREEN}ansible-vault encrypt vars/secrets.yml${RESET}"
-    echo -e "  4. Run setup: ${GREEN}./vps.sh install core --domain=yourdomain.com --ask-pass --ask-vault-pass${RESET}"
+    echo -e "  1. (Recommended) Run as your normal user so the repo lives in /home/<you> and the script will open a shell there:" 
+    echo -e "     ${GREEN}curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | bash -s -- force${RESET}"
+    echo -e "     If you prefer the short form:${RESET}"
+    echo -e "     ${GREEN}curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | bash -s -f${RESET}"
+    echo
+    echo -e "  2. If you used sudo to run bootstrap, ensure repo ownership is correct (example for admin):"
+    echo -e "     ${GREEN}sudo chown -R admin:admin /home/admin/vps${RESET}"
+    echo
+    echo -e "  3. Configure inventory and secrets (examples):"
+    echo -e "     ${GREEN}cp inventory/hosts.yml.example inventory/hosts.yml${RESET}"
+    echo -e "     ${GREEN}cp vars/secrets.yml.example vars/secrets.yml${RESET}"
+    echo -e "     Edit: ${GREEN}nano inventory/hosts.yml${RESET} and ${GREEN}nano vars/secrets.yml${RESET}"
+    echo -e "     Encrypt secrets: ${GREEN}ansible-vault encrypt vars/secrets.yml${RESET}"
+    echo
+    echo -e "  4. Run the setup playbook (example):"
+    echo -e "     ${GREEN}./vps.sh install core --domain=yourdomain.com --ask-pass --ask-vault-pass${RESET}"
+    echo
+    echo -e "  5. Re-run bootstrap to force a fresh clone (if needed):"
+    echo -e "     ${GREEN}curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | bash -s -- force${RESET}"
     echo
     echo -e "${YELLOW}Tip: For testing in a VM, use scripts/vm-launcher/run-vm.ps1${RESET}"
     echo
