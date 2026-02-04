@@ -207,6 +207,16 @@ clone_repo() {
     # Ensure repo files are owned by non-root user when possible
     target_user="${SUDO_USER:-$USER}"
     chown -R "$target_user":"$target_user" "$REPO_DIR" 2>/dev/null || true
+
+    # If force mode was used via -f/--force/force or env var, ensure ownership is set to admin:admin
+    # as requested when running: curl ... | bash -s -f
+    if [ "$FORCE_CLONE" = true ]; then
+        if command -v sudo &> /dev/null; then
+            sudo chown -R admin:admin "$REPO_DIR" 2>/dev/null || true
+        else
+            chown -R admin:admin "$REPO_DIR" 2>/dev/null || true
+        fi
+    fi
 }
 
 # If interactive, offer to drop into a shell inside the repo directory.
