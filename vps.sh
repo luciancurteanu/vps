@@ -289,7 +289,9 @@ run_ansible() {
     } > "$log_file"
 
     # Run ansible-playbook with output tee'd to log file
-    ansible-playbook "$playbook" -e "$extra_vars" $ASK_SSH_PASS $VAULT_OPTS $TAGS_OPTS 2>&1 | tee -a "$log_file"
+    # Use absolute playbook path so the script works regardless of current working directory
+    playbook_path="$PROJECT_ROOT/$playbook"
+    ansible-playbook "$playbook_path" -e "$extra_vars" $ASK_SSH_PASS $VAULT_OPTS $TAGS_OPTS 2>&1 | tee -a "$log_file"
     
     ansible_exit_code=${PIPESTATUS[0]}
 
