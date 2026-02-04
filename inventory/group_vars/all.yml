@@ -64,7 +64,7 @@ ssh_service_name: sshd  # SSH service name for systemd management
 #########################
 
 install_webmin: true  # Install Webmin control panel
-webmin_port: 1986     # Webmin port (default is 10000)
+webmin_port: 10000     # Webmin port (default is 10000)
 webmin_subdomain: "cpanel.{{ domain }}" # Change to "admin" or "panel" etc
 webmin_nginx_proxy: true  # Enable nginx reverse proxy
 webmin_ssl_enabled: false  # SSL termination at nginx (requires SSL certificates)
