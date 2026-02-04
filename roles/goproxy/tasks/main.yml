@@ -277,6 +277,22 @@
   when: goproxy_build_required | bool
   changed_when: false
 
+- name: Fix SELinux context for GoProxy binary after installation
+  community.general.sefcontext:
+    target: "{{ goproxy_home }}/goproxy"
+    setype: bin_t
+    state: present
+  when:
+    - ansible_selinux.status == "enabled"
+    - goproxy_build_required | bool
+
+- name: Apply SELinux context to GoProxy binary after installation
+  ansible.builtin.command: restorecon -v {{ goproxy_home }}/goproxy
+  when:
+    - ansible_selinux.status == "enabled"
+    - goproxy_build_required | bool
+  changed_when: true
+
 - name: Backup GoProxy configuration
   ansible.builtin.copy:
     src: "{{ goproxy_home }}/config.json"

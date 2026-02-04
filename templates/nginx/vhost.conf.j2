@@ -177,60 +177,10 @@ server {
         fastcgi_read_timeout 300;
     }
 
-    # Security headers
-    add_header Referrer-Policy strict-origin-when-cross-origin;
-
-    # Favicon handling
-    location = /favicon.ico {
-        log_not_found off;
-        access_log off;
-    }
-
-    # Robots.txt handling
-    location = /robots.txt {
-        allow all;
-        log_not_found off;
-        access_log off;
-    }
-
     # Let's Encrypt ACME challenge
     location ^~ /.well-known/acme-challenge/ {
         allow all;
         default_type "text/plain";
-    }
-
-    # Deny access to hidden files
-    location ~ /\. {
-        deny all;
-        access_log off;
-        log_not_found off;
-    }
-
-    # Default location block
-    location / {
-        try_files $uri $uri/ /index.php?$args;
-    }
-
-    # Static files handling with cache
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        expires {{ nginx_static_expires | default('30d') }};
-        add_header Cache-Control "public, no-transform";
-    }
-
-    # PHP handler
-    location ~ \.php$ {
-        try_files $uri =404;
-        fastcgi_split_path_info ^(.+\.php)(/.+)$;
-        fastcgi_pass unix:/run/php-fpm/www.sock;
-        fastcgi_index index.php;
-        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-        include fastcgi_params;
-        fastcgi_intercept_errors on;
-        fastcgi_buffer_size 16k;
-        fastcgi_buffers 4 16k;
-        fastcgi_connect_timeout 300;
-        fastcgi_send_timeout 300;
-        fastcgi_read_timeout 300;
     }
 
     # Limits
