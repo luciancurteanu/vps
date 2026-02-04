@@ -53,8 +53,8 @@
   ansible.builtin.copy:
     content: |
       [Service]
-      MemoryMax=512M
-      MemoryHigh=384M
+      MemoryMax=1G
+      MemoryHigh=768M
       Restart=always
       RestartSec=5
     dest: /etc/systemd/system/webmin.service.d/memory-limit.conf
