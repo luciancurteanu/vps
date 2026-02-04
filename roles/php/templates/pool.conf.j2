@@ -1,6 +1,8 @@
 [{{ domain }}]
-user = {{ domain }}
-group = {{ domain }}
+# Run pools under a sanitized unix user (dots replaced by underscores)
+# This prevents invalid usernames like 'example.com' and matches created system users
+user = {{ domain | replace('.', '_') }}
+group = {{ domain | replace('.', '_') }}
 listen = {{ php_fpm_listen | default('/var/run/php-fpm/php-fpm.sock') | dirname }}/{{ domain | replace('.', '_') }}.sock
 listen.backlog = -1
 listen.owner = {{ nginx_user }}
@@ -28,16 +30,17 @@ php_admin_value[session.cookie_lifetime] = 604800; 1 year
 php_admin_value[session.gc_maxlifetime] = 604800
 php_admin_value[session.gc_divisor] = 100
 php_admin_value[session.gc_probability] = 1
-php_admin_value[session.save_path] = /home/{{ domain }}/tmp
-php_admin_value[sys_temp_dir] = /home/{{ domain }}/tmp
-php_admin_value[upload_tmp_dir] = /home/{{ domain }}/tmp
-php_admin_value[open_basedir] = /home/{{ domain }}
+{# Use sanitized home dirs to match system users created by the role #}
+php_admin_value[session.save_path] = /home/{{ domain | replace('.', '_') }}/tmp
+php_admin_value[sys_temp_dir] = /home/{{ domain | replace('.', '_') }}/tmp
+php_admin_value[upload_tmp_dir] = /home/{{ domain | replace('.', '_') }}/tmp
+php_admin_value[open_basedir] = /home/{{ domain | replace('.', '_') }}
 php_admin_value[cgi.fix_pathinfo] = 0
 php_admin_value[memory_limit] = 1024M
 php_admin_value[post_max_size] = 512M
 php_admin_value[upload_max_filesize] = 512M
-php_admin_value[mail.log] = /home/{{ domain }}/logs/php_mail.log
-php_admin_value[error_log] = /home/{{ domain }}/logs/php_error.log
+php_admin_value[mail.log] = /home/{{ domain | replace('.', '_') }}/logs/php_mail.log
+php_admin_value[error_log] = /home/{{ domain | replace('.', '_') }}/logs/php_error.log
 
 php_admin_value[opcache.enable] = 1
 php_admin_value[opcache.memory_consumption] = 256

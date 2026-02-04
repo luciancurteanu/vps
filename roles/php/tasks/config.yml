@@ -116,6 +116,52 @@
   when: ansible_selinux.status == "enabled"
   changed_when: false
 
+- name: Create sanitized domain system users for PHP-FPM pools
+  ansible.builtin.user:
+    name: "{{ item | replace('.', '_') }}"
+    comment: "Domain account for {{ item }}"
+    system: true
+    create_home: false
+    shell: /sbin/nologin
+  loop: "{{ php_fpm_pools | default([]) }}"
+  when: php_fpm_pools | length > 0 and ansible_os_family == 'RedHat'
+
+- name: Ensure domain home, tmp and logs directories exist with correct ownership
+  ansible.builtin.file:
+    path: "{{ item_path }}"
+    state: directory
+    owner: "{{ item_user }}"
+    group: "{{ item_user }}"
+    mode: "{{ item_mode }}"
+  loop: "{{ php_fpm_pools | default([]) }}"
+  loop_control:
+    label: "{{ item }}"
+  vars:
+    item_user: "{{ item | replace('.', '_') }}"
+    item_path: "/home/{{ item | replace('.', '_') }}"
+    item_mode: '0755'
+  when: php_fpm_pools | length > 0 and ansible_os_family == 'RedHat'
+
+- name: Ensure domain tmp directory (secure) exists
+  ansible.builtin.file:
+    path: "/home/{{ item | replace('.', '_') }}/tmp"
+    state: directory
+    owner: "{{ item | replace('.', '_') }}"
+    group: "{{ item | replace('.', '_') }}"
+    mode: '1770'
+  loop: "{{ php_fpm_pools | default([]) }}"
+  when: php_fpm_pools | length > 0 and ansible_os_family == 'RedHat'
+
+- name: Ensure domain logs directory exists
+  ansible.builtin.file:
+    path: "/home/{{ item | replace('.', '_') }}/logs"
+    state: directory
+    owner: "{{ item | replace('.', '_') }}"
+    group: "{{ item | replace('.', '_') }}"
+    mode: '0755'
+  loop: "{{ php_fpm_pools | default([]) }}"
+  when: php_fpm_pools | length > 0 and ansible_os_family == 'RedHat'
+
 - name: Deploy per-domain PHP-FPM pool templates
   ansible.builtin.template:
     src: pool.conf.j2

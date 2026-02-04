@@ -1,0 +1,8 @@
+---
+# DEPRECATED: This temporary playbook was used interactively to deploy per-domain
+# PHP-FPM pools during troubleshooting. The proper location for pool deployment
+# is the `roles/php/tasks/config.yml` template task which is idempotent and
+# included in `playbooks/setup.yml` (tagged 'php').
+#
+# You can safely remove this file. It's retained temporarily for audit/history.
+
