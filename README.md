@@ -69,14 +69,20 @@ ansible-vault encrypt vars/secrets.yml --ask-vault-pass
 git clone https://github.com/luciancurteanu/vps.git
 cd vps
 
-# Configure inventory
+# 1) Configure inventory and site defaults (copy examples)
+cp inventory/group_vars/all.yml.example inventory/group_vars/all.yml
 cp inventory/hosts.yml.example inventory/hosts.yml
-nano inventory/hosts.yml  # Edit with your server details
 
-# Create vault for secrets (copy example, edit, then encrypt)
+# 2) Create vault for secrets (copy example, edit, then encrypt)
 cp vars/secrets.yml.example vars/secrets.yml
-nano vars/secrets.yml  # Fill in your actual passwords
-ansible-vault encrypt vars/secrets.yml  # Encrypt the file
+
+# Edit the following files to set your domain, SSH user, and other settings:
+nano inventory/group_vars/all.yml
+nano inventory/hosts.yml
+nano vars/secrets.yml
+
+# Encrypt the secrets file (interactive vault prompt)
+ansible-vault encrypt vars/secrets.yml --ask-vault-pass
 
 # Run full setup
 ./vps.sh install core --domain=yourdomain.com --ask-pass --ask-vault-pass
