@@ -19,7 +19,7 @@ db_root_password: ''
 db_login_unix_socket: /var/lib/mysql/mysql.sock
 
 # Webmail settings
-webmail_path: "/var/www/{{ domain }}/roundcube"
+webmail_path: "/home/{{ domain }}/roundcube"
 webmail_version: "1.6.10"
 
 # Roundcube database settings
