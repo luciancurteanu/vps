@@ -90,6 +90,7 @@
         vhost_domain: "{{ domain }}"
         vhost_root: "/home/{{ domain }}/public_html"
         vhost_user: "{{ domain_user | default(domain.split('.')[0]) }}"
+        nginx_ssl_enabled: false
       when: domain is defined
       notify: Restart Nginx
 
