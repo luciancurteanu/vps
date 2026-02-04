@@ -188,13 +188,20 @@ main() {
     echo -e "  ✓ nano:    $(nano --version 2>/dev/null | head -n1 || echo 'Not found')"
     echo
     echo -e "${BOLD}Next Steps:${RESET}"
-    echo -e "  1. Navigate to project: ${GREEN}cd $REPO_DIR${RESET}"
+    echo -e "  1. Navigate to the project: ${GREEN}cd $REPO_DIR${RESET}"
+    echo -e "     (If you ran this script with sudo and files are root-owned, run: ${GREEN}sudo chown -R \${SUDO_USER:-$USER}:\${SUDO_USER:-$USER} $REPO_DIR${RESET})"
     echo -e "  2. Configure inventory: ${GREEN}cp inventory/hosts.yml.example inventory/hosts.yml${RESET}"
     echo -e "     Then edit: ${GREEN}nano inventory/hosts.yml${RESET}"
     echo -e "  3. Create vault secrets: ${GREEN}cp vars/secrets.yml.example vars/secrets.yml${RESET}"
     echo -e "     Fill in passwords: ${GREEN}nano vars/secrets.yml${RESET}"
     echo -e "     Encrypt the file: ${GREEN}ansible-vault encrypt vars/secrets.yml${RESET}"
-    echo -e "  4. Run setup: ${GREEN}./vps.sh install core --domain=yourdomain.com --ask-pass --ask-vault-pass${RESET}"
+    echo -e "  4. Run the full setup playbook: ${GREEN}./vps.sh install core --domain=yourdomain.com --ask-pass --ask-vault-pass${RESET}"
+    echo -e "     (To re-run the bootstrap and install missing system packages via sudo: ${GREEN}curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | sudo bash -s --${RESET})"
+    echo
+    echo -e "${YELLOW}Notes:${RESET}"
+    echo -e "  - If you ran the script interactively (no sudo), the script may have already opened a shell in ${GREEN}$REPO_DIR${RESET}."
+    echo -e "  - If you ran the script with sudo, use the command below to open a shell as the original user inside the repo:${RESET}"
+    echo -e "    ${GREEN}sudo -u \${SUDO_USER:-$USER} -i bash -c 'cd $REPO_DIR; exec \$SHELL'${RESET}"
     echo
     echo -e "${YELLOW}Tip: For testing in a VM, use scripts/vm-launcher/run-vm.ps1${RESET}"
     echo
