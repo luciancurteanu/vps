@@ -150,14 +150,14 @@
 
 - name: Ensure mail log directory exists (preserve nginx ownership)
   ansible.builtin.file:
-    path: "/var/www/{{ domain }}/logs"
+    path: "/home/{{ domain }}/logs"
     state: directory
     owner: nginx
     group: nginx
 
 - name: Create mail log files with nginx ownership
   ansible.builtin.file:
-    path: "/var/www/{{ domain }}/logs/{{ item }}"
+    path: "/home/{{ domain }}/logs/{{ item }}"
     state: touch
     owner: nginx
     group: nginx

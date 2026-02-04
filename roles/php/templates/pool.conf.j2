@@ -30,17 +30,17 @@ php_admin_value[session.cookie_lifetime] = 604800
 php_admin_value[session.gc_maxlifetime] = 604800
 php_admin_value[session.gc_divisor] = 100
 php_admin_value[session.gc_probability] = 1
-{# Use sanitized home dirs to match system users created by the role #}
-php_admin_value[session.save_path] = /home/{{ domain | replace('.', '_') }}/tmp
-php_admin_value[sys_temp_dir] = /home/{{ domain | replace('.', '_') }}/tmp
-php_admin_value[upload_tmp_dir] = /home/{{ domain | replace('.', '_') }}/tmp
-php_admin_value[open_basedir] = /home/{{ domain | replace('.', '_') }}
+{# Use /home per-domain paths (domain name kept intact) while pools run as sanitized users #}
+php_admin_value[session.save_path] = /home/{{ domain }}/tmp
+php_admin_value[sys_temp_dir] = /home/{{ domain }}/tmp
+php_admin_value[upload_tmp_dir] = /home/{{ domain }}/tmp
+php_admin_value[open_basedir] = /home/{{ domain }}
 php_admin_value[cgi.fix_pathinfo] = 0
 php_admin_value[memory_limit] = 1024M
 php_admin_value[post_max_size] = 512M
 php_admin_value[upload_max_filesize] = 512M
-php_admin_value[mail.log] = /home/{{ domain | replace('.', '_') }}/logs/php_mail.log
-php_admin_value[error_log] = /home/{{ domain | replace('.', '_') }}/logs/php_error.log
+php_admin_value[mail.log] = /home/{{ domain }}/logs/php_mail.log
+php_admin_value[error_log] = /home/{{ domain }}/logs/php_error.log
 
 php_admin_value[opcache.enable] = 1
 php_admin_value[opcache.memory_consumption] = 256

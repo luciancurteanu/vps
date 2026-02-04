@@ -134,7 +134,7 @@ server {
     # PHP handler
     location ~ \.php$ {
         try_files $uri =404;
-        fastcgi_pass unix:{{ fastcgi_socket | default('/run/php-fpm/' ~ (domain | replace('.', '_')) ~ '.sock') }};
+        fastcgi_pass unix:{{ fastcgi_socket | default(php_fpm_listen | default('/run/php-fpm/' ~ (domain | replace('.', '_')) ~ '.sock')) }};
         fastcgi_index index.php;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         include fastcgi_params;
@@ -223,7 +223,7 @@ server {
     # PHP handler
     location ~ \.php$ {
         try_files $uri =404;
-        fastcgi_pass unix:{{ fastcgi_socket | default('/run/php-fpm/' ~ (domain | replace('.', '_')) ~ '.sock') }};
+        fastcgi_pass unix:{{ fastcgi_socket | default(php_fpm_listen | default('/run/php-fpm/' ~ (domain | replace('.', '_')) ~ '.sock')) }};
         fastcgi_index index.php;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         include fastcgi_params;

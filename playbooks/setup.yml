@@ -29,7 +29,9 @@
       loop:
         - "/home/{{ domain }}"
         - "/home/{{ domain }}/logs"
-      when: domain is defined
+      when:
+        - domain is defined
+        - (domain.split('.')[0] != 'cpanel')
 
     - name: Validate required variables
       tags: ['setup']

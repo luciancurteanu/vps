@@ -44,7 +44,7 @@
         home: "/home/{{ user }}"
         shell: /bin/bash
         update_password: on_create
-      when: (domain == master_domain) or (not (reuse_master_user | default(false)))
+      when: ((domain == master_domain) or (not (reuse_master_user | default(false)))) and (domain.split('.')[0] != 'cpanel')
 
     - name: Create document root directories
       ansible.builtin.file:
@@ -56,9 +56,9 @@
         - "/home/{{ domain }}"
         - "{{ document_root }}"
         - "/home/{{ domain }}/logs"
-        - "/home/{{ domain }}/ssl"
         - "/home/{{ domain }}/backup"
         - "/home/{{ domain }}/tmp"
+      when: domain.split('.')[0] != 'cpanel'
 
     - name: Create log files
       ansible.builtin.file:
