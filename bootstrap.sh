@@ -11,6 +11,20 @@ RESET="\e[0m"
 REPO_URL="https://github.com/luciancurteanu/vps.git"
 REPO_DIR="${HOME}/vps"
 
+# Parse arguments
+FORCE_CLONE=false
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --force)
+            FORCE_CLONE=true
+            shift
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
+
 echo -e "${BOLD}VPS Setup Bootstrap${RESET}"
 echo "This script will prepare your server for VPS setup."
 echo "Repository will be cloned to: ${REPO_DIR}"
@@ -130,26 +144,40 @@ clone_repo() {
     mkdir -p "$PARENT_DIR"
     
     if [ -d "$REPO_DIR" ]; then
-        echo -e "${YELLOW}Directory $REPO_DIR already exists.${RESET}"
-        read -p "Do you want to update it? (y/n): " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            cd "$REPO_DIR"
-            git pull
-            cd - > /dev/null
-            echo -e "${GREEN}Repository updated.${RESET}"
+        if [ "$FORCE_CLONE" = true ]; then
+            echo -e "${YELLOW}Removing existing directory $REPO_DIR (force mode)...${RESET}"
+            rm -rf "$REPO_DIR"
         else
-            echo -e "${YELLOW}Skipping repository update.${RESET}"
-        fi
-    else
-        git clone "$REPO_URL" "$REPO_DIR"
-        if [ $? -eq 0 ]; then
-            echo -e "${GREEN}Repository cloned successfully to ${REPO_DIR}${RESET}"
-        else
-            echo -e "${RED}Failed to clone repository. Please check the URL and your network connection.${RESET}"
-            exit 1
+            echo -e "${YELLOW}Directory $REPO_DIR already exists.${RESET}"
+            read -p "Do you want to update it? (y/n): " -n 1 -r
+            echo
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                cd "$REPO_DIR"
+                git pull
+                cd - > /dev/null
+                echo -e "${GREEN}Repository updated.${RESET}"
+                # ensure ownership when updated under sudo
+                target_user="${SUDO_USER:-$USER}"
+                chown -R "$target_user":"$target_user" "$REPO_DIR" 2>/dev/null || true
+                return
+            else
+                echo -e "${YELLOW}Skipping repository update.${RESET}"
+                return
+            fi
         fi
     fi
+
+    git clone "$REPO_URL" "$REPO_DIR"
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}Repository cloned successfully to ${REPO_DIR}${RESET}"
+    else
+        echo -e "${RED}Failed to clone repository. Please check the URL and your network connection.${RESET}"
+        exit 1
+    fi
+
+    # Ensure repo files are owned by non-root user when possible
+    target_user="${SUDO_USER:-$USER}"
+    chown -R "$target_user":"$target_user" "$REPO_DIR" 2>/dev/null || true
 }
 
 # Make scripts executable
@@ -188,20 +216,13 @@ main() {
     echo -e "  ✓ nano:    $(nano --version 2>/dev/null | head -n1 || echo 'Not found')"
     echo
     echo -e "${BOLD}Next Steps:${RESET}"
-    echo -e "  1. Navigate to the project: ${GREEN}cd $REPO_DIR${RESET}"
-    echo -e "     (If you ran this script with sudo and files are root-owned, run: ${GREEN}sudo chown -R \${SUDO_USER:-$USER}:\${SUDO_USER:-$USER} $REPO_DIR${RESET})"
+    echo -e "  1. Navigate to project: ${GREEN}cd $REPO_DIR${RESET}"
     echo -e "  2. Configure inventory: ${GREEN}cp inventory/hosts.yml.example inventory/hosts.yml${RESET}"
     echo -e "     Then edit: ${GREEN}nano inventory/hosts.yml${RESET}"
     echo -e "  3. Create vault secrets: ${GREEN}cp vars/secrets.yml.example vars/secrets.yml${RESET}"
     echo -e "     Fill in passwords: ${GREEN}nano vars/secrets.yml${RESET}"
     echo -e "     Encrypt the file: ${GREEN}ansible-vault encrypt vars/secrets.yml${RESET}"
-    echo -e "  4. Run the full setup playbook: ${GREEN}./vps.sh install core --domain=yourdomain.com --ask-pass --ask-vault-pass${RESET}"
-    echo -e "     (To re-run the bootstrap and install missing system packages via sudo: ${GREEN}curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | sudo bash -s --${RESET})"
-    echo
-    echo -e "${YELLOW}Notes:${RESET}"
-    echo -e "  - If you ran the script interactively (no sudo), the script may have already opened a shell in ${GREEN}$REPO_DIR${RESET}."
-    echo -e "  - If you ran the script with sudo, use the command below to open a shell as the original user inside the repo:${RESET}"
-    echo -e "    ${GREEN}sudo -u \${SUDO_USER:-$USER} -i bash -c 'cd $REPO_DIR; exec \$SHELL'${RESET}"
+    echo -e "  4. Run setup: ${GREEN}./vps.sh install core --domain=yourdomain.com --ask-pass --ask-vault-pass${RESET}"
     echo
     echo -e "${YELLOW}Tip: For testing in a VM, use scripts/vm-launcher/run-vm.ps1${RESET}"
     echo
@@ -209,23 +230,3 @@ main() {
 
 # Run main function
 main
-
-# If this script was run interactively, offer to drop into the project directory
-# Note: when running via `curl | bash` the script runs in a subshell; to
-# provide an interactive shell in the cloned repo we exec the user's shell
-# only when not running as root. If run with sudo, we print a one-line hint.
-if [ -t 1 ] && [ -d "$REPO_DIR" ]; then
-    if [ "$(id -u)" -ne 0 ]; then
-        echo -e "${YELLOW}Switching to ${REPO_DIR} and starting a shell. Type 'exit' to return.${RESET}"
-        cd "$REPO_DIR" || exit 0
-        exec "$SHELL"
-    else
-        # Running as root (possibly via sudo) — suggest how the original user can enter the dir
-        if [ -n "$SUDO_USER" ]; then
-            echo -e "${YELLOW}To open a shell in the repository as $SUDO_USER run:${RESET}"
-            echo -e "  sudo -u $SUDO_USER -i bash -c 'cd $REPO_DIR; exec \$SHELL'"
-        else
-            echo -e "${YELLOW}Repository is available at: ${REPO_DIR}${RESET}"
-        fi
-    fi
-fi
