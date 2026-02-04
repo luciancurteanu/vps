@@ -1,8 +1,8 @@
 # Github
-.github/*
+.github/
 
 # VSCode
-.vscode/*
+.vscode/
 
 # Ansible inventory variables
 /inventory/group_vars/all.yml
@@ -19,4 +19,4 @@
 logs/
 *.log
 !/logs/*.md
-temp/*
+temp/
