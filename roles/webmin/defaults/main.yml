@@ -11,5 +11,5 @@ webmin_version: ""  # Empty = latest version; specify version like "2.520" to pi
 
 # Theme configuration
 webmin_theme: "authentic-theme"
-webmin_authentic_version: "26.22"  # Latest stable release
+webmin_authentic_version: ""  # Empty = auto-resolve latest stable release from GitHub
 

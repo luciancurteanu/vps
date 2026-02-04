@@ -145,6 +145,22 @@
   when: webmin_theme == 'authentic-theme'
   notify: Restart webmin
 
+# Resolve latest Authentic Theme release if not specified
+- name: Resolve latest Authentic Theme release via GitHub redirects
+  ansible.builtin.uri:
+    url: https://github.com/webmin/authentic-theme/releases/latest
+    method: HEAD
+    return_headers: yes
+    timeout: 20
+  register: authentic_redirect
+  changed_when: false
+  failed_when: false
+
+- name: Set `webmin_authentic_version` from redirect when empty
+  ansible.builtin.set_fact:
+    webmin_authentic_version: "{{ authentic_redirect.headers.Location.split('/')[-1] | regex_replace('^v','') }}"
+  when: webmin_theme == 'authentic-theme' and (webmin_authentic_version | default('')) == ''
+
 - name: Ensure Authentic Theme is installed
   when: webmin_theme == 'authentic-theme'
   block:
