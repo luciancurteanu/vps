@@ -202,3 +202,23 @@ main() {
 
 # Run main function
 main
+
+# If this script was run interactively, offer to drop into the project directory
+# Note: when running via `curl | bash` the script runs in a subshell; to
+# provide an interactive shell in the cloned repo we exec the user's shell
+# only when not running as root. If run with sudo, we print a one-line hint.
+if [ -t 1 ] && [ -d "$REPO_DIR" ]; then
+    if [ "$(id -u)" -ne 0 ]; then
+        echo -e "${YELLOW}Switching to ${REPO_DIR} and starting a shell. Type 'exit' to return.${RESET}"
+        cd "$REPO_DIR" || exit 0
+        exec "$SHELL"
+    else
+        # Running as root (possibly via sudo) — suggest how the original user can enter the dir
+        if [ -n "$SUDO_USER" ]; then
+            echo -e "${YELLOW}To open a shell in the repository as $SUDO_USER run:${RESET}"
+            echo -e "  sudo -u $SUDO_USER -i bash -c 'cd $REPO_DIR; exec \$SHELL'"
+        else
+            echo -e "${YELLOW}Repository is available at: ${REPO_DIR}${RESET}"
+        fi
+    fi
+fi
