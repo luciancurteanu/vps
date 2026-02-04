@@ -8,6 +8,7 @@ Copilot should remember and recall frequently used file paths:
   - When i ask to read the log or check this log, read the log from beginning for any issues, including errors and warnings.
   - When you ask for a specific file, ensure that you autoscan the file to find the right file path.
   - When you ask to provide the content of files do a auto scan to find them.
+  - Add test or temp files into temp folder.
 
 ### 2. Automated File Updates
 When generating code:
