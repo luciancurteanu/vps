@@ -12,6 +12,16 @@ REPO_URL="https://github.com/luciancurteanu/vps.git"
 
 # Determine the correct home directory to use for cloning. When running with sudo,
 # prefer the original user's home so we clone into /home/<user>/vps rather than /root/vps.
+# If SUDO_USER is not set (can happen when piping through sudo), attempt to find
+# the first non-system user from /etc/passwd as a fallback.
+if [ "$EUID" -eq 0 ] && [ -z "${SUDO_USER:-}" ]; then
+    # pick a likely human user (uid >= 1000)
+    fallback_user=$(awk -F: '($3>=1000)&&($1!="nfsnobody"){print $1; exit}' /etc/passwd 2>/dev/null || true)
+    if [ -n "$fallback_user" ]; then
+        SUDO_USER="$fallback_user"
+    fi
+fi
+
 if [ -n "${SUDO_USER:-}" ] && [ "${SUDO_USER}" != "root" ]; then
     USER_HOME=$(getent passwd "${SUDO_USER}" | cut -d: -f6 || echo "/home/${SUDO_USER}")
 else
