@@ -1,6 +1,6 @@
-# Example Ansible inventory file for VPS (YAML format)
+# Ansible inventory file for VPS (YAML format)
 # Replace the example hostnames and IPs with your actual server details.
-# For more info, see inventory/README.md and group_vars/all.yml.example for configuration.
+# For more info, see inventory/README.md and group_vars/all.yml for configuration.
 
 all:
   vars:
@@ -10,26 +10,26 @@ all:
     ansible_user: "{{ admin_user }}"
     # SSH port - uses ssh_port from group_vars/all.yml (defaults to 22)
     ansible_port: "{{ ssh_port }}"
-  
+
   children:
     primary:
       hosts:
-        yourdomain.com:
-          ansible_host: 192.168.88.8
-    
+        example.com:
+          ansible_host: 203.0.113.11
+
     # Use group inheritance for servers on the same host
     webservers:
       children:
         primary:
-    
+
     database:
       children:
         primary:
-    
+
     mail:
       children:
         primary:
-    
+
     # For multi-server setups, you can specify different hosts directly in functional groups:
     # webservers:
     #   hosts:
@@ -37,7 +37,7 @@ all:
     #       ansible_host: 203.0.113.11
     #     web2.yourdomain.com:
     #       ansible_host: 203.0.113.12
-    
+
     # mailservers:
     #   hosts:
     #     mail1.yourdomain.com:
