@@ -219,20 +219,7 @@ clone_repo() {
     fi
 }
 
-# If interactive, offer to drop into a shell inside the repo directory.
-# If running as root with SUDO_USER set, switch to that user before opening the shell.
-if [ -t 1 ]; then
-    if [ -d "$REPO_DIR" ]; then
-        echo -e "${GREEN}Entering repository directory: ${REPO_DIR}${RESET}"
-        if [ "$EUID" -eq 0 ] && [ -n "${SUDO_USER:-}" ]; then
-            echo -e "${YELLOW}Opening an interactive shell as ${SUDO_USER} inside ${REPO_DIR}${RESET}"
-            sudo -H -u "${SUDO_USER}" bash -lic "cd '${REPO_DIR}' && exec \$SHELL"
-        else
-            cd "$REPO_DIR" || true
-            exec "$SHELL"
-        fi
-    fi
-fi
+## (auto-cd behavior moved to the end of the script inside main -> auto_cd)
 
 # Make scripts executable
 make_executable() {
