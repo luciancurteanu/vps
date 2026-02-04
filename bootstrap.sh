@@ -57,6 +57,9 @@ fi
 echo -e "${BOLD}VPS Setup Bootstrap${RESET}"
 echo "This script will prepare your server for VPS setup."
 echo "Repository will be cloned to: ${REPO_DIR}"
+if [ "$FORCE_CLONE" = true ]; then
+    echo -e "${YELLOW}Force mode: ENABLED${RESET}"
+fi
 echo
 
 # Detect OS
@@ -281,14 +284,14 @@ main() {
     echo -e "${BOLD}Next Steps:${RESET}"
     echo -e "  1. Preferred: run as your regular user so the repo is cloned into /home/<you> and the script will open a shell there:" 
     echo -e "     ${GREEN}curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | bash -s -- force${RESET}"
-    echo -e "     Short form (equivalent):${RESET}"
-    echo -e "     ${GREEN}curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | bash -s -f${RESET}"
+    echo -e "     Or use a flag (note: must use -- before the flag):${RESET}"
+    echo -e "     ${GREEN}curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | bash -s -- -f${RESET}"
     echo
     echo -e "  2. If you must pipe through sudo, the script will try to detect the invoking user."
-    echo -e "     Using the short flag with sudo will also force delete+reclone and (automatically) set ownership to admin:admin:" 
-    echo -e "     ${GREEN}curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | sudo bash -s -f${RESET}"
-    echo -e "     Or set env var before piping (works with sudo and shells that preserve env):${RESET}"
-    echo -e "     ${GREEN}BOOTSTRAP_FORCE=1 curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | sudo bash -s${RESET}"
+    echo -e "     Using force with sudo will delete+reclone and set ownership to admin:admin:" 
+    echo -e "     ${GREEN}curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | sudo bash -s -- force${RESET}"
+    echo -e "     Or use env var (no -- needed):${RESET}"
+    echo -e "     ${GREEN}curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | BOOTSTRAP_FORCE=1 sudo bash -s${RESET}"
     echo
     echo -e "  3. If the repo already exists and you prefer updating in-place (no delete), run on the server:" 
     echo -e "     ${GREEN}ssh admin@yourserver 'cd /home/admin/vps && git pull && sudo chown -R admin:admin /home/admin/vps'${RESET}"
@@ -305,8 +308,9 @@ main() {
     echo -e "  5. Run the setup playbook (example):"
     echo -e "     ${GREEN}./vps.sh install core --domain=yourdomain.com --ask-pass --ask-vault-pass${RESET}"
     echo
-    echo -e "  6. Re-run bootstrap (force) — this will delete and re-clone, and when run with -f will chown to admin:admin:" 
-    echo -e "     ${GREEN}curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | bash -s -f${RESET}"
+    echo -e "  6. Re-run bootstrap (force) — this will delete and re-clone, and when run with force will chown to admin:admin:" 
+    echo -e "     ${GREEN}curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | bash -s -- force${RESET}"
+    echo -e "     ${GREEN}curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | bash -s -- -f${RESET}"
     echo
     echo -e "${YELLOW}Tip: For testing in a VM, use scripts/vm-launcher/run-vm.ps1${RESET}"
     echo
