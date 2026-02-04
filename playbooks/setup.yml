@@ -40,12 +40,32 @@
         - "domain"
         # Add other essential variables
   roles:
+    # 1. Base system configuration
     - role: common
       tags: ['common', 'setup']
     
+    # 2. Security hardening (depends on: common)
     - role: security
       tags: ['security', 'setup']
     
+    # 3. Web server (needed by: php, mail/roundcube, webmin proxy)
+    - role: nginx
+      tags: ['nginx', 'web', 'setup']
+
+    # 4. PHP processor (depends on: nginx; needed by: mail/roundcube)
+    - role: php
+      tags: ['php', 'web', 'setup']
+
+    # 5. Database server (needed by: mail/roundcube)
+    - role: mariadb
+      tags: ['mariadb', 'database', 'setup']
+
+    # 6. Mail server with Roundcube (depends on: nginx, php, mariadb)
+    - role: mail
+      tags: ['mail', 'setup']
+      when: install_mail | default(true)
+
+    # 7. Control panels (depend on: nginx for proxy)
     - role: webmin
       tags: ['webmin', 'control_panel', 'setup']
       when: install_webmin | default(true)
@@ -54,19 +74,7 @@
       tags: ['cockpit', 'control_panel', 'setup']
       when: install_cockpit | default(false)  # Disabled by default (webmin is primary control panel)
 
-    - role: nginx
-      tags: ['nginx', 'web', 'setup']
-
-    - role: php
-      tags: ['php', 'web', 'setup']
-
-    - role: mariadb
-      tags: ['mariadb', 'database', 'setup']
-
-    - role: mail
-      tags: ['mail', 'setup']
-      when: install_mail | default(true)
-
+    # 8. Additional services (no critical dependencies)
     - role: python
       tags: ['python', 'scraping', 'setup']
 
@@ -74,6 +82,7 @@
       tags: ['goproxy', 'proxy', 'setup']
       when: install_goproxy | default(true)
 
+    # 9. Development tools (optional, last)
     - role: development
       tags: ['development', 'setup']
       when: install_development_tools | default(false)
