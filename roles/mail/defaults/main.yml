@@ -32,6 +32,8 @@ mail_user: "vmail"
 mail_group: "vmail"
 mail_uid: 5000
 mail_gid: 5000
+# Home directory for the mail system user. Use /var/vmail to avoid creating homes under /home
+mail_home: "/var/vmail"
 mail_enable_opendkim: false  # Disabled: dependencies not available on AlmaLinux 9
 mail_enable_roundcube: true   # Enabled: Roundcube webmail installation
 mail_enable_nginx: true
