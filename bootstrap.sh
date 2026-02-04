@@ -176,21 +176,29 @@ clone_repo() {
         if [ "$FORCE_CLONE" = true ]; then
             echo -e "${YELLOW}Removing existing directory $REPO_DIR (force mode)...${RESET}"
             rm -rf "$REPO_DIR"
+            # Continue to clone below after removal
         else
             echo -e "${YELLOW}Directory $REPO_DIR already exists.${RESET}"
-            read -p "Do you want to update it? (y/n): " -n 1 -r
-            echo
-            if [[ $REPLY =~ ^[Yy]$ ]]; then
-                cd "$REPO_DIR"
-                git pull
-                cd - > /dev/null
-                echo -e "${GREEN}Repository updated.${RESET}"
-                # ensure ownership when updated under sudo
-                target_user="${SUDO_USER:-$USER}"
-                chown -R "$target_user":"$target_user" "$REPO_DIR" 2>/dev/null || true
-                return
+            if [ -t 0 ]; then
+                # Only prompt if stdin is a terminal (interactive)
+                read -p "Do you want to update it? (y/n): " -n 1 -r
+                echo
+                if [[ $REPLY =~ ^[Yy]$ ]]; then
+                    cd "$REPO_DIR"
+                    git pull
+                    cd - > /dev/null
+                    echo -e "${GREEN}Repository updated.${RESET}"
+                    # ensure ownership when updated under sudo
+                    target_user="${SUDO_USER:-$USER}"
+                    chown -R "$target_user":"$target_user" "$REPO_DIR" 2>/dev/null || true
+                    return
+                else
+                    echo -e "${YELLOW}Skipping repository update.${RESET}"
+                    return
+                fi
             else
-                echo -e "${YELLOW}Skipping repository update.${RESET}"
+                # Non-interactive (piped), skip update
+                echo -e "${YELLOW}Skipping repository update (non-interactive mode).${RESET}"
                 return
             fi
         fi
