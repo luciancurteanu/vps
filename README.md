@@ -56,7 +56,7 @@ nano inventory/hosts.yml
 nano vars/secrets.yml
 
 # Encrypt the secrets file (interactive vault prompt)
-ansible-vault encrypt vars/secrets.yml --ask-vault-pass
+ansible-vault encrypt vars/secrets.yml
 
 # 4) Run the setup playbook
 ./vps.sh install core --domain=yourdomain.com --ask-pass --ask-vault-pass
@@ -82,7 +82,7 @@ nano inventory/hosts.yml
 nano vars/secrets.yml
 
 # Encrypt the secrets file (interactive vault prompt)
-ansible-vault encrypt vars/secrets.yml --ask-vault-pass
+ansible-vault encrypt vars/secrets.yml
 
 # Run full setup
 ./vps.sh install core --domain=yourdomain.com --ask-pass --ask-vault-pass
