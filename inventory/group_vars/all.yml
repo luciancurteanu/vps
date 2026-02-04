@@ -121,6 +121,97 @@ php_version: "8.4"  # PHP version from Remi repository
 #########################
 # 6. MARIADB ROLE       #
 #########################
+---
+# Global variables for VPS
+# This file contains all default configuration values used across playbooks.
+# Override these values in host_vars files for host-specific configuration.
+# For sensitive data like passwords, use Ansible Vault instead.
+
+########################
+# SYSTEM CONFIGURATION #
+########################
+
+# Timezone and locale settings
+timezone: Europe/London
+use_local_rtc: false
+locale: en_US.UTF-8
+
+# Firewall settings
+firewall_enabled: true
+firewall_service: iptables
+
+#########################
+# DOMAIN CONFIGURATION  #
+#########################
+
+# Master domain configuration
+# If `--domain` is provided by the wrapper (`vps.sh`) it will be used;
+# otherwise fall back to the inventory hostname so `domain == master_domain`
+# will still match when running without extra-vars.
+master_domain: "{{ domain | default(inventory_hostname) }}"
+
+###################################
+#+ ROLE VARIABLES (setup.yml order)
+###################################
+
+#########################
+#+ 1. COMMON ROLE        #
+#########################
+
+# Admin user configuration
+admin_user: admin  # Username for sudo-enabled admin account
+admin_group: admin  # Primary group for admin user
+admin_shell: /bin/bash  # Default shell for admin user
+admin_password: "{{ vault_admin_password | default(lookup('env', 'ADMIN_PASSWORD'), true) }}"  # Admin password (from vault)
+admin_ssh_public_key: "{{ vault_admin_ssh_public_key | default(omit) }}"  # SSH public key for admin (from vault)
+create_admin_user: true  # Whether to create admin user during provisioning
+
+# SSH configuration (common role)
+ssh_port: 22  # SSH listening port
+ssh_permit_root_login: "no"  # Allow root login (no = more secure)
+ssh_password_authentication: "yes"  # Allow password authentication (set to 'no' after key setup)
+ssh_pubkey_authentication: "yes"  # Allow public key authentication
+ssh_allow_agent_forwarding: "no"  # Allow SSH agent forwarding
+ssh_allow_tcp_forwarding: "no"  # Allow TCP port forwarding
+ssh_x11_forwarding: "no"  # Allow X11 GUI forwarding
+ssh_max_auth_tries: 3  # Maximum authentication attempts per connection
+ssh_max_sessions: 10  # Maximum concurrent SSH sessions per connection
+ssh_client_alive_interval: 300  # Seconds before server sends keepalive (5 min)
+ssh_client_alive_count_max: 3  # Keepalive messages before disconnecting inactive client
+
+#########################
+#+ 2. WEBMIN ROLE        #
+#########################
+
+install_webmin: true  # Install Webmin control panel
+webmin_port: 1986     # Webmin port (default is 10000)
+webmin_subdomain: "cpanel.{{ domain }}" # Change to "admin" or "panel" etc
+webmin_nginx_proxy: true  # Enable nginx reverse proxy
+webmin_ssl_enabled: false  # SSL termination at nginx (requires SSL certificates)
+
+#########################
+#+ 3. COCKPIT ROLE       #
+#########################
+
+install_cockpit: false  # Disabled by default (webmin is primary control panel)
+cockpit_port: 9090  # Cockpit port (default is 9090)
+cockpit_subdomain: "cpanel.{{ domain }}" # Change to "admin" or "panel" etc
+
+#########################
+#+ 4. NGINX ROLE         #
+#########################
+
+# Nginx configuration handled by role defaults
+
+#########################
+#+ 5. PHP ROLE           #
+#########################
+
+php_version: "8.4"  # PHP version from Remi repository
+
+#########################
+#+ 6. MARIADB ROLE       #
+#########################
 
 mariadb_version: "11.4"  # MariaDB version
 
@@ -139,7 +230,7 @@ db_character_set: "utf8mb4"
 db_collation: "utf8mb4_unicode_ci"
 
 #########################
-# 7. MAIL ROLE          #
+#+ 7. MAIL ROLE          #
 #########################
 
 install_mail: true  # Install mail server (Postfix + Dovecot)
@@ -163,25 +254,25 @@ roundcube_db_user: "roundcube"
 roundcube_db_password: "{{ vault_roundcube_db_password }}"  # Reference to vault variable
 
 #########################
-# 8. PYTHON ROLE        #
+#+ 8. PYTHON ROLE        #
 #########################
 
 # Python configuration handled by role defaults
 
 #########################
-# 9. GOPROXY ROLE       #
+#+ 9. GOPROXY ROLE       #
 #########################
 
 install_goproxy: true  # Install GoProxy + Tor
 
 #########################
-# 10. DEVELOPMENT ROLE  #
+#+ 10. DEVELOPMENT ROLE  #
 #########################
 
 install_development_tools: false  # Install development tools (disabled by default)
 
 #########################
-# 11. SECURITY ROLE     #
+#+ 11. SECURITY ROLE     #
 #########################
 
 # Security hardening handled by role defaults
