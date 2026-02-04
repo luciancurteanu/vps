@@ -138,13 +138,13 @@
     label: "{{ item }}"
   vars:
     item_user: "{{ item | replace('.', '_') }}"
-    item_path: "/home/{{ item | replace('.', '_') }}"
+    item_path: "/var/www/{{ item | replace('.', '_') }}"
     item_mode: '0755'
   when: php_fpm_pools | length > 0 and ansible_os_family == 'RedHat'
 
 - name: Ensure domain tmp directory (secure) exists
   ansible.builtin.file:
-    path: "/home/{{ item | replace('.', '_') }}/tmp"
+    path: "/var/www/{{ item | replace('.', '_') }}/tmp"
     state: directory
     owner: "{{ item | replace('.', '_') }}"
     group: "{{ item | replace('.', '_') }}"
@@ -154,7 +154,7 @@
 
 - name: Ensure domain logs directory exists
   ansible.builtin.file:
-    path: "/home/{{ item | replace('.', '_') }}/logs"
+    path: "/var/www/{{ item | replace('.', '_') }}/logs"
     state: directory
     owner: "{{ item | replace('.', '_') }}"
     group: "{{ item | replace('.', '_') }}"
