@@ -94,8 +94,28 @@ Install complete server stack (run once):
 - ✅ MariaDB database server
 - ✅ Mail server (Postfix, Dovecot, OpenDKIM, Roundcube)
 - ✅ Webmin control panel (with memory optimizations)
-- ✅ SSL certificates via Let's Encrypt
 - ✅ 2GB Swap file (prevents OOM issues)
+
+**Initial setup runs on HTTP only.** All subdomains will be accessible via:
+- `http://yourdomain.com` - Main website
+- `http://mail.yourdomain.com` - Roundcube webmail
+- `http://cpanel.yourdomain.com` - Webmin control panel
+
+**To enable HTTPS:**
+```bash
+./vps.sh install ssl --domain=yourdomain.com --ask-vault-pass
+```
+
+This automatically:
+- ✅ Obtains Let's Encrypt SSL certificates for all subdomains
+- ✅ Configures HTTPS redirects
+- ✅ Enables secure cookies
+- ✅ Updates all services to use SSL
+
+After SSL installation, all sites automatically switch to:
+- `https://yourdomain.com`
+- `https://mail.yourdomain.com`
+- `https://cpanel.yourdomain.com`
 
 **Vault password options:**
 - Interactive: `--ask-vault-pass` (prompts for password)
@@ -115,9 +135,22 @@ Install complete server stack (run once):
 
 ### SSL Certificates
 
-**Install SSL for a domain:**
+**Install SSL for all subdomains (run after core setup):**
 ```bash
 ./vps.sh install ssl --domain=yourdomain.com --ask-vault-pass
+```
+
+**This command:**
+- Obtains Let's Encrypt certificates for: `yourdomain.com`, `mail.yourdomain.com`, `cpanel.yourdomain.com`
+- Configures nginx to redirect HTTP → HTTPS for all sites
+- Enables HTTPS in Roundcube webmail
+- Enables SSL enforcement in Webmin
+- Sets up auto-renewal via cron job
+
+**SSL Renewal:**
+Certificates auto-renew via cron job (runs every Monday at 3 AM). Manual renewal:
+```bash
+sudo certbot renew
 ```
 
 ### Database Operations
