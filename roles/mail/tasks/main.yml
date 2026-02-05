@@ -53,6 +53,18 @@
     - mail_user_check.failed or mail_user not in mail_user_check.ansible_facts.getent_passwd
     - mail_uid is not defined or mail_uid == None or mail_uid == ''
 
+# Fallback: Ensure mail system user exists (idempotent) — some environments
+# may not have created the user due to getent edge-cases; this unconditionally
+# ensures the user is present before later chown operations.
+- name: Ensure mail system user exists (fallback)
+  ansible.builtin.user:
+    name: "{{ mail_user }}"
+    group: "{{ mail_group }}"
+    system: true
+    home: "{{ mail_home | default('/var/vmail') }}"
+    create_home: false
+    shell: /sbin/nologin
+
 - name: Ensure /var/vmail exists for virtual mail storage
   ansible.builtin.file:
     path: /var/vmail
