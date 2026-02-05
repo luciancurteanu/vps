@@ -65,7 +65,7 @@
     # 6. Mail server with Roundcube (depends on: nginx, php, mariadb)
     - role: mail
       tags: ['mail', 'setup']
-      when: install_mail | default(true)
+      when: install_mail | default(false)
 
     # 7. Control panels (depend on: nginx for proxy)
     - role: webmin
