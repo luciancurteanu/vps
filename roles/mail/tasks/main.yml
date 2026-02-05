@@ -64,6 +64,10 @@
     home: "{{ mail_home | default('/var/vmail') }}"
     create_home: false
     shell: /sbin/nologin
+  when: >-
+    mail_user_check is not defined or
+    mail_user_check.failed or
+    mail_user not in (mail_user_check.ansible_facts.getent_passwd | default({}))
 
 - name: Ensure /var/vmail exists for virtual mail storage
   ansible.builtin.file:
