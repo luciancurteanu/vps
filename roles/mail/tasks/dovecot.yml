@@ -175,9 +175,9 @@
 - name: Set permissions on mail directories
   ansible.builtin.file:
     path: /home/{{ domain }}/mail
-    owner: vmail
+    owner: "{{ mail_user }}"
     mode: '0755'
-    group: vmail
+    group: "{{ mail_group }}"
     recurse: true
   when: domain is defined
 
