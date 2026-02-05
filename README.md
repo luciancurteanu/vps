@@ -28,7 +28,7 @@ Ansible-based automation for deploying and managing LEMP stack servers (Linux, N
 
 ## 🚀 Quick Start
 
-### Option 1: Fresh Server Bootstrap
+### Fresh Server Bootstrap
 
 For a completely fresh OS installation:
 
@@ -54,51 +54,63 @@ cp vars/secrets.yml.example vars/secrets.yml
 nano inventory/group_vars/all.yml
 nano inventory/hosts.yml
 nano vars/secrets.yml
-
-# Encrypt the secrets file (interactive vault prompt)
-ansible-vault encrypt vars/secrets.yml
-
-# 4) Run the setup playbook
-./vps.sh install core --domain=yourdomain.com --ask-pass --ask-vault-pass
 ```
+---
+### Vault encryption - choose one (follow steps in order)
 
-### Option 2: Manual Installation
+Pick one option below and follow the steps exactly.
+
+Option 1 - Interactive (recommended for manual use)
+```bash
+# No password file is written to disk; Ansible prompts for the vault password.
+# Create/encrypt and run:
+ansible-vault encrypt vars/secrets.yml
+./vps.sh install core --domain=yourdomain.com --ask-vault-pass --ask-pass
+```
+---
+Option 2 - Password file (plain text, convenient)
 
 ```bash
-# Clone repository
-git clone https://github.com/luciancurteanu/vps.git
-cd vps
-
-# 1) Configure inventory and site defaults (copy examples)
-cp inventory/group_vars/all.yml.example inventory/group_vars/all.yml
-cp inventory/hosts.yml.example inventory/hosts.yml
-
-# 2) Create vault for secrets (copy example, edit, then encrypt)
-cp vars/secrets.yml.example vars/secrets.yml
-
-# Edit the following files to set your domain, SSH user, and other settings:
-nano inventory/group_vars/all.yml
-nano inventory/hosts.yml
-nano vars/secrets.yml
-
-# Encrypt the secrets file (interactive vault prompt)
-ansible-vault encrypt vars/secrets.yml
-
-# Run full setup
-./vps.sh install core --domain=yourdomain.com --ask-pass --ask-vault-pass
+# Create a protected password file on the target server (use absolute path). 
+# Restrict access (chmod 600) and never commit.
+echo "your-vault-password" > ~/.vault_pass
+chmod 600 ~/.vault_pass
+chown admin:admin ~/.vault_pass   # optional
+ansible-vault encrypt vars/secrets.yml --vault-password-file=~/.vault_pass
+./vps.sh install core --domain=yourdomain.com --vault-password-file=~/.vault_pass --ask-pass
 ```
+---
+Option 3 - encrypt-vault.sh helper (recommended for scripted use / automation)
+- The repository includes a helper script at ./encrypt-vault.sh (run from repo root).
+- Modes:
+    - ephemeral (default):
+    ```bash
+    #  Prompts for the vault password, uses a temporary password file that is removed after encrypting.
+    ./encrypt-vault.sh
+    ./vps.sh install core --domain=yourdomain.com --ask-vault-pass --ask-pass
+    ```
+    This encrypts vars/secrets.yml and does not leave a persistent plaintext password on disk. If a previous ~/.vault_pass exists the script will remove it.
+  - persistent: 
+    ```bash
+    # Prompts for the vault password and saves it to ~/.vault_pass (mode 600).
+    ./encrypt-vault.sh persistent
+    ./vps.sh install core --domain=yourdomain.com --vault-password-file=~/.vault_pass --ask-pass
+    ```
+    This creates/overwrites ~/.vault_pass with restrictive permissions; subsequent automation can use --vault-password-file=~/.vault_pass.
 
+- Behavior notes:
+  - If vars/secrets.yml is already encrypted, the script will attempt a silent rekey using the provided password (persistent mode writes ~/.vault_pass; ephemeral mode uses a temp file and removes it).
+  - The script requires ansible-vault in PATH and must be run from the repository root so vars/secrets.yml is found.
+
+**Password options:**
+- SSH User Password: `--ask-pass` (prompts for SSH password)
+- Interactive: `--ask-vault-pass` (prompts for password)
+- File-based: `--vault-password-file=~/.vault_pass` (reads from file)
 ---
 
 ## 📖 Usage Guide
 
 ### Core Setup
-
-Install complete server stack (run once):
-
-```bash
-./vps.sh install core --domain=primary.com --ask-pass --ask-vault-pass
-```
 
 **This installs:**
 - ✅ Base system + security hardening
@@ -129,10 +141,6 @@ After SSL installation, all sites automatically switch to:
 - `https://yourdomain.com`
 - `https://mail.yourdomain.com`
 - `https://cpanel.yourdomain.com`
-
-**Vault password options:**
-- Interactive: `--ask-vault-pass` (prompts for password)
-- File-based: `--vault-password-file=~/.vault_pass` (reads from file)
 
 ### Domain Management
 
