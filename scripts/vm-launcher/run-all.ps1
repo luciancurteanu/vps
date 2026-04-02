@@ -74,6 +74,31 @@ if ($FullSetup) { $runParams.FullSetup = $true }
 if ($SSHPassword) { $runParams.SSHPassword = $SSHPassword }
 
 Write-Host "==> Creating VM (this may take a few minutes)..." -ForegroundColor Cyan
+# If key-based auth is requested, ensure a shared keypair exists so the VM launcher
+# and SSHManager can use it non-interactively. We generate keys here non-interactively
+if ($UseLocalSSHKey) {
+    $sshDir = Join-Path $env:USERPROFILE '.ssh'
+    if (-not (Test-Path $sshDir)) { New-Item -ItemType Directory -Path $sshDir -Force | Out-Null }
+    $sharedPriv = Join-Path $sshDir 'vps'
+    $sharedPub = "$sharedPriv.pub"
+    if (-not (Test-Path $sharedPriv -PathType Leaf -ErrorAction SilentlyContinue) -or -not (Test-Path $sharedPub -PathType Leaf -ErrorAction SilentlyContinue)) {
+        Write-Host "Generating non-interactive SSH keypair at $sharedPriv" -ForegroundColor Cyan
+        $sshKeygen = Get-Command ssh-keygen -ErrorAction SilentlyContinue
+        if ($sshKeygen) {
+            try {
+                & $sshKeygen -t ed25519 -N "" -f $sharedPriv 2>&1 | Write-Host
+            } catch {
+                Write-Host "ed25519 keygen failed, falling back to rsa" -ForegroundColor Yellow
+                try { & $sshKeygen -t rsa -b 4096 -N "" -f $sharedPriv 2>&1 | Write-Host } catch { Write-Host "SSH key generation failed: $_" -ForegroundColor Red }
+            }
+        } else {
+            Write-Host "ssh-keygen not found; proceeding without key generation" -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "Shared SSH keypair already exists: $sharedPriv" -ForegroundColor Green
+    }
+}
+
 & $RunVm @runParams
 if ($LASTEXITCODE -ne 0) { Write-Error "VM creation failed (exit $LASTEXITCODE)"; exit $LASTEXITCODE }
 
@@ -121,6 +146,48 @@ echo "Bootstrap completed. Repository available at ~/vps"
 
 $bootstrap = Get-BootstrapScript
 
+# Ensure we have the target host key pre-seeded for OpenSSH and clear any PuTTY/Plink cached hostkey to avoid batch-mode rejections
+function Ensure-HostKey([string]$hostname, [int]$port=22) {
+    $sshDir = Join-Path $env:USERPROFILE '.ssh'
+    if (-not (Test-Path $sshDir)) { New-Item -ItemType Directory -Path $sshDir -Force | Out-Null }
+    $known = Join-Path $sshDir 'known_hosts'
+    try {
+        # Remove existing known_hosts entries for host
+        $sshKeygen = Get-Command ssh-keygen -ErrorAction SilentlyContinue
+        if ($sshKeygen) {
+            & $sshKeygen -R $hostname 2>$null | Out-Null
+        }
+    } catch { }
+    try {
+        # Fetch host key and append to known_hosts
+        $raw = & ssh-keyscan -p $port $hostname 2>$null
+        if ($raw) {
+            $clean = ($raw -split "`n" | Where-Object { $_ -and ($_ -notmatch "^#") }) -join "`n"
+            if ($clean) {
+                Add-Content -Path $known -Value $clean
+            }
+        }
+    } catch { }
+
+    # Clear PuTTY/Plink cached host keys that mention this host (HKCU) to avoid mismatches
+        try {
+            $regPath = 'HKCU\\Software\\SimonTatham\\PuTTY\\SshHostKeys'
+            $out = & reg query $regPath 2>$null
+            if ($out) {
+                foreach ($line in $out) {
+                    if ($line -match $hostname) {
+                        # Extract the value name (first non-empty token)
+                        $parts = $line -split "\\s{2,}" | Where-Object { $_ -and ($_ -notmatch '^\s+$') }
+                        if ($parts.Count -gt 0) {
+                            $val = $parts[-1].Trim()
+                            try { & reg delete $regPath /v $val /f 2>$null | Out-Null } catch { }
+                        }
+                    }
+                }
+            }
+        } catch { }
+}
+
 # Helper: invoke remote script via plink or ssh
 function Invoke-Remote($scriptText) {
     $plink = Get-Command plink -ErrorAction SilentlyContinue
@@ -130,7 +197,17 @@ function Invoke-Remote($scriptText) {
     if ($UseLocalSSHKey -and (Test-Path $localKeyPath)) {
         Write-Host "Using OpenSSH with key $localKeyPath to run script on admin@$RemoteHost..." -ForegroundColor Cyan
         try {
-            $out = $scriptText | & ssh -i $localKeyPath -o StrictHostKeyChecking=accept-new -o LogLevel=ERROR -p 22 $userAtHost bash -s 2>&1
+            # Clean CRs and base64-encode to avoid CRLF and quoting issues when piping
+            $cleanScript = $scriptText -replace "`r",""
+            $bytes = [System.Text.Encoding]::UTF8.GetBytes($cleanScript)
+            $b64 = [Convert]::ToBase64String($bytes)
+            $remoteCmd = "echo $b64 | base64 -d | bash -s"
+            $sshCmd = Get-Command ssh -ErrorAction SilentlyContinue
+            if (-not $sshCmd) { throw "ssh client not found" }
+            $sshArgs = @()
+            if (Test-Path $localKeyPath) { $sshArgs += @('-i',$localKeyPath) }
+            $sshArgs += @('-o','StrictHostKeyChecking=accept-new','-o','LogLevel=ERROR','-p','22',"$userAtHost",$remoteCmd)
+            $out = & $sshCmd @sshArgs 2>&1
             $exit = $LASTEXITCODE
             Write-Host $out
             if ($exit -ne 0) { throw "Remote command failed (ssh) with exit $exit`n$out" }
@@ -162,8 +239,12 @@ function Invoke-Remote($scriptText) {
         if ($SSHPassword) { $args = @('-ssh',$userAtHost,'-batch','-pw',$SSHPassword) } else { $args = @('-ssh',$userAtHost,'-batch') }
         if ($hostkey) { $args += @('-hostkey',$hostkey) }
         try {
-            # Pipe the script text into plink's stdin (more compatible across PS versions)
-            $out = $scriptText | & $plink @args 2>&1
+            # Use base64 transfer to avoid CRLF/quoting issues. Pass the remote command as a single string to plink.
+            $cleanScript = $scriptText -replace "`r",""
+            $bytes = [System.Text.Encoding]::UTF8.GetBytes($cleanScript)
+            $b64 = [Convert]::ToBase64String($bytes)
+            $remoteCmd = "echo $b64 | base64 -d | bash -s"
+            $out = & $plink @args $remoteCmd 2>&1
             $exit = $LASTEXITCODE
             Write-Host $out
             if ($exit -ne 0) { throw "Remote command failed (plink) with exit $exit`n$out" }
@@ -173,58 +254,26 @@ function Invoke-Remote($scriptText) {
     } else {
         Write-Host "Plink not found; falling back to OpenSSH client (ssh)." -ForegroundColor Yellow
         if ($SSHPassword) { Write-Warning "Password provided but plink is not installed; OpenSSH will likely prompt for a password interactively." }
-        $psi = New-Object System.Diagnostics.ProcessStartInfo
-        $psi.FileName = 'ssh'
-        $psi.Arguments = "admin@$RemoteHost bash -s"
-        $psi.RedirectStandardInput = $true
-        $psi.RedirectStandardOutput = $true
-        $psi.RedirectStandardError = $true
-        $psi.UseShellExecute = $false
-        $p = [System.Diagnostics.Process]::Start($psi)
-        $p.StandardInput.Write($scriptText)
-        $p.StandardInput.Close()
-        $out = $p.StandardOutput.ReadToEnd()
-        $err = $p.StandardError.ReadToEnd()
-        $p.WaitForExit()
+        # Clean carriage returns to avoid bash/CRLF issues on remote shell
+        $cleanScript = $scriptText -replace "`r",""
+        $sshCmd = Get-Command ssh -ErrorAction SilentlyContinue
+        if (-not $sshCmd) { throw "ssh client not found" }
+        # base64-encode the cleaned script to avoid CRLF / shell quoting issues
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($cleanScript)
+        $b64 = [Convert]::ToBase64String($bytes)
+        $remoteCmd = "echo $b64 | base64 -d | bash -s"
+        $sshArgs = @()
+        if ($UseLocalSSHKey) { $sharedPriv = Join-Path $env:USERPROFILE '.ssh\vps'; if (Test-Path $sharedPriv) { $sshArgs += @('-i',$sharedPriv) } }
+        $sshArgs += @('-o','StrictHostKeyChecking=accept-new','-o','LogLevel=ERROR','-p','22',"admin@$RemoteHost",$remoteCmd)
+        $out = & $sshCmd @sshArgs 2>&1
+        $exit = $LASTEXITCODE
         Write-Host $out
-        if ($p.ExitCode -ne 0) { Write-Error $err; throw "Remote command failed (ssh) with exit $($p.ExitCode)" }
+        if ($exit -ne 0) { throw "Remote command failed (ssh) with exit $exit`n$out" }
     }
-}
 
-Write-Host "==> Running bootstrap on VM..." -ForegroundColor Cyan
-Invoke-Remote -scriptText $bootstrap
+    }
 
-# Populate inventory and vault secrets on the VM so installer can run non-interactively
-Write-Host "==> Populating inventory and secrets on VM..." -ForegroundColor Cyan
-$populateCmd = @'
-mkdir -p ~/vps/inventory ~/vps/vars ~/vps/inventory/group_vars
-cat > ~/vps/inventory/hosts.yml <<'YML'
-all:
-    vars:
-        ansible_connection: ssh
-        ansible_user: "{{ admin_user }}"
-        ansible_port: "{{ ssh_port }}"
 
-    children:
-        primary:
-            hosts:
-                __DOMAIN__:
-                    ansible_host: __REMOTE__
-YML
-
-cat > ~/vps/vars/secrets.yml <<'YML'
-vault_admin_password: "__VAULT__"
-vault_db_webclient_password: "__VAULT__"
-vault_db_remote_password: "__VAULT__"
-vault_mail_db_password: "__VAULT__"
-vault_roundcube_db_password: "__VAULT__"
-vault_admin_ssh_public_key: ""
-YML
-'@
-
-# Replace placeholders with actual values (safe from parser-time interpolation)
-$populateCmd = $populateCmd -replace '__DOMAIN__', $Domain -replace '__REMOTE__', $RemoteHost -replace '__VAULT__', ($DefaultVaultPassword -replace '"','\"')
-Invoke-Remote -scriptText $populateCmd
 
 # Optional: write vault password and encrypt secrets on VM
 if ($VaultPassword) {
@@ -237,6 +286,7 @@ if [ -f vars/secrets.yml ]; then
 fi
 "@
     Write-Host "==> Writing vault password and encrypting vars/secrets.yml on VM..." -ForegroundColor Cyan
+    Ensure-HostKey $RemoteHost 22
     Invoke-Remote -scriptText $vaultCmd
 }
 

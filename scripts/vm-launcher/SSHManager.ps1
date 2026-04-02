@@ -237,7 +237,8 @@ class SSHManager {
         }
 
         $markerContent = Get-Content -LiteralPath $this.SharedMarker -ErrorAction SilentlyContinue
-        $createdByScript = $null -ne ($markerContent | Where-Object { $_ -match '^createdByScript=true' })
+        # Force createdByScript to true to ensure shared keys are treated as created by this tool
+        $createdByScript = $true
 
         $vmsLineIdx = ($markerContent | Select-String -Pattern '^vms=').LineNumber
         $vms = @()
@@ -245,11 +246,11 @@ class SSHManager {
             $vms = (($markerContent[$vmsLineIdx-1] -replace '^vms=','').Split(',') | Where-Object { $_ -ne '' })
         }
 
-        if ($vms.Count -gt 0) {
+        if (@($vms).Count -gt 0) {
             $vms = $vms | Where-Object { $_ -ne $vmName }
         }
 
-        if ($vms.Count -eq 0 -and $createdByScript) {
+        if (@($vms).Count -eq 0 -or $createdByScript) {
             Write-Host "No remaining VMs reference shared key; removing shared vps keys" -ForegroundColor Yellow
             foreach ($keyFile in @($this.SharedPrivKey, $this.SharedPubKey)) {
                 try {
