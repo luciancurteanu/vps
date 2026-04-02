@@ -21,7 +21,7 @@ param(
     [string]$SSHUser = 'admin',
     
     [Parameter(Mandatory = $false)]
-    [string]$SSHPassword = 'Changeme123!',
+    [string]$SSHPassword = 'Password@',
     
     [switch]$UseLocalSSHKey,
     

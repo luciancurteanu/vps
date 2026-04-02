@@ -83,7 +83,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\run-vm.ps1 -Delete:$true
 
 ```powershell
 ssh -p 2222 admin@localhost
-# default password if key wasn't injected: ChangeMe123!
+# default password if key wasn't injected: Password@
 ```
 
 Notes about the launcher:

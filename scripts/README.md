@@ -8,7 +8,7 @@ This folder contains helper scripts for automation, testing, and environment set
 
 ### VM Launcher (`vm-launcher/` subdirectory)
 - `vm-launcher/run-vm.ps1` — Main VM launcher script. Minimal, dependable AlmaLinux 9 VirtualBox provisioner (recommended). Reuses qcow2, builds NoCloud ISO, creates/updates VM, ensures NAT port forwarding, waits for SSH.
-    - Default login: `admin / Changeme123!`
+    - Default login: `admin / Password@`
     - If a local public key exists, it will be injected and password SSH will be disabled
 - `vm-launcher/VMConfig.ps1` — Configuration class for VM settings (paths, credentials, network)
 - `vm-launcher/VMBootstrap.ps1` — VM bootstrap operations (cloud-init, SSH setup)
@@ -44,7 +44,7 @@ This folder contains helper scripts for automation, testing, and environment set
 powershell -ExecutionPolicy Bypass -File .\scripts\vm-launcher\run-vm.ps1
 
 # Then connect:
-ssh admin@localhost   # password: Changeme123! (or use your SSH key)
+ssh admin@localhost   # password: Password@ (or use your SSH key)
 ```
 
 Requirements (lite):

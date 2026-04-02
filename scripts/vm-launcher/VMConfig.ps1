@@ -91,7 +91,7 @@ class VMConfig {
         if ($this.HostSSHPort -eq 0) { $this.HostSSHPort = 22 }
         if ($this.WaitSSHSeconds -eq 0) { $this.WaitSSHSeconds = 180 }
         if (-not $this.SSHUser) { $this.SSHUser = 'admin' }
-        if (-not $this.SSHPassword) { $this.SSHPassword = 'ChangeMe123!' }
+        if (-not $this.SSHPassword) { $this.SSHPassword = 'Password@' }
         if (-not $this.AutoSSH) { $this.AutoSSH = $false }
         if (-not $this.FullSetup) { $this.FullSetup = $false }
         if (-not $this.CloudImageUrl) { $this.CloudImageUrl = "https://repo.almalinux.org/almalinux/9/cloud/x86_64/images/AlmaLinux-9-GenericCloud-latest.x86_64.qcow2" }

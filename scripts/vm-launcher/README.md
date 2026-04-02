@@ -97,9 +97,9 @@ Then run:
 # -AutoSSH opens SSH session in new window and script exits 
 .\scripts\vm-launcher\run-vm.ps1 -VMName "AlmaLinux-9" -AutoSSH
 # Create VM with custom SSH user and password
-.\scripts\vm-launcher\run-vm.ps1 -VMName "AlmaLinux-9" -SSHUser "admin" -SSHPassword "Changeme123!"
+.\scripts\vm-launcher\run-vm.ps1 -VMName "AlmaLinux-9" -SSHUser "admin" -SSHPassword "Password@"
 # Create VM with custom SSH user, password, and custom  SSH port
-.\scripts\vm-launcher\run-vm.ps1 -VMName "AlmaLinux-9" -SSHUser "admin" -SSHPassword "Changeme123!" -HostSSHPort 2223
+.\scripts\vm-launcher\run-vm.ps1 -VMName "AlmaLinux-9" -SSHUser "admin" -SSHPassword "Password@" -HostSSHPort 2223
 
 # FULL AUTOMATED SETUP - One command does everything:
 # Recreates VM (cleanup existing), installs Docker, sets up Molecule, clones project, runs first test
@@ -120,7 +120,7 @@ Then run:
 | `HostSSHPort`      | 22                           | Host port for SSH forwarding                                                |
 | `WaitSSHSeconds`   | 180                          | Seconds to wait for SSH availability                                        |
 | `SSHUser`          | "admin"                      | SSH username                                                                |
-| `SSHPassword`      | "Changeme123!"               | SSH password                                                                |
+| `SSHPassword`      | "Password@"               | SSH password                                                                |
 | `UseLocalSSHKey`   | false                        | Inject local SSH public key (only when `-UseLocalSSHKey` is provided)       |
 | `AutoSSH`          | false                        | Auto-open SSH session (only when `-AutoSSH` is provided)                    |
 | `FullSetup`        | false                        | Complete automated setup: Docker, Molecule, project clone. Best used with `-Recreate` for cleanup before setup. Tests run separately on demand. Venv NOT auto-activated on SSH (use test scripts). |
