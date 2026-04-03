@@ -61,6 +61,7 @@ findtime = 86400
 
 [badbot]
 enabled = {{ have_access_logs | default(false) | ternary('true','false') }}
+backend = polling
 port = http,https
 filter = badbot
 logpath = /home/*/logs/access.log
@@ -70,6 +71,7 @@ findtime = 86400
 
 [badurl]
 enabled = {{ have_access_logs | default(false) | ternary('true','false') }}
+backend = polling
 port = http,https
 filter = badurl
 logpath = /home/*/logs/access.log
