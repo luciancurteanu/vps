@@ -33,6 +33,39 @@
         - domain is defined
         - (domain.split('.')[0] != 'cpanel')
 
+    - name: Create system user for master domain
+      tags: ['setup']
+      ansible.builtin.user:
+        name: "{{ user }}"
+        comment: "Owner of {{ domain }}"
+        create_home: true
+        home: "/home/{{ user }}"
+        shell: /bin/bash
+        password: "{{ vault_domain_user_password | default(omit) | password_hash('sha512') }}"
+        update_password: on_create
+      when:
+        - user is defined
+        - user != ''
+        - domain.split('.')[0] != 'cpanel'
+
+    - name: Create domain directory structure with correct ownership
+      tags: ['setup']
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ user }}"
+        group: "{{ user }}"
+      loop:
+        - "/home/{{ domain }}"
+        - "/home/{{ domain }}/public_html"
+        - "/home/{{ domain }}/logs"
+        - "/home/{{ domain }}/backup"
+        - "/home/{{ domain }}/tmp"
+      when:
+        - domain is defined
+        - user is defined
+        - domain.split('.')[0] != 'cpanel'
+
     - name: Validate required variables
       tags: ['setup']
       ansible.builtin.fail:
@@ -120,8 +153,8 @@
       ansible.builtin.file:
         path: "/home/{{ domain }}/public_html"
         state: directory
-        owner: root
-        group: root
+        owner: "{{ user | default(domain.split('.')[-2]) }}"
+        group: "{{ user | default(domain.split('.')[-2]) }}"
       when: domain is defined
 
     - name: Create default index.html for main domain
@@ -129,8 +162,8 @@
       ansible.builtin.template:
         src: "{{ playbook_dir }}/../templates/website/index.html.j2"
         dest: "/home/{{ domain }}/public_html/index.html"
-        owner: root
-        group: root
+        owner: "{{ user | default(domain.split('.')[-2]) }}"
+        group: "{{ user | default(domain.split('.')[-2]) }}"
         force: true
       when: domain is defined
 
