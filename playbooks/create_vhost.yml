@@ -197,15 +197,15 @@
         state: present
       with_items:
         - "127.0.0.1 localhost.localdomain localhost"
-        - "127.0.0.1 {{ domain }} www.{{ domain }}"
-        - "127.0.0.1 mail.{{ domain }}"
-        - "127.0.0.1 cpanel.{{ domain }}"
+        - "{{ ansible_default_ipv4.address }} {{ domain }} www.{{ domain }}"
+        - "{{ ansible_default_ipv4.address }} mail.{{ domain }}"
+        - "{{ ansible_default_ipv4.address }} cpanel.{{ domain }}"
       when: domain == master_domain
 
     - name: Configure hosts file for regular domain
       ansible.builtin.lineinfile:
         path: /etc/hosts
-        line: "127.0.0.1 {{ domain }} www.{{ domain }}"
+        line: "{{ ansible_default_ipv4.address }} {{ domain }} www.{{ domain }}"
         state: present
       when: domain != master_domain
 

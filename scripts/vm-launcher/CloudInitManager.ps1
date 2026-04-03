@@ -141,10 +141,10 @@ disable_root: false
       # Bring up the static profile
       $rc += "  - [ nmcli, con, up, ${nmConnName} ]"
       # Add /etc/hosts entries for domain if provided
-      if (-not [string]::IsNullOrWhiteSpace($domain)) {
-        $rc += "  - echo '127.0.0.1 ${domain} www.${domain}' >> /etc/hosts"
-        $rc += "  - echo '127.0.0.1 mail.${domain}' >> /etc/hosts"
-        $rc += "  - echo '127.0.0.1 cpanel.${domain}' >> /etc/hosts"
+      if (-not [string]::IsNullOrWhiteSpace($domain) -and -not [string]::IsNullOrWhiteSpace($lanIpAddress)) {
+        $rc += "  - echo '${lanIpAddress} ${domain} www.${domain}' >> /etc/hosts"
+        $rc += "  - echo '${lanIpAddress} mail.${domain}' >> /etc/hosts"
+        $rc += "  - echo '${lanIpAddress} cpanel.${domain}' >> /etc/hosts"
       }
 
       $userData += ($wf -join "`n") + "`n" + ($rc -join "`n") + "`n"
@@ -162,9 +162,9 @@ disable_root: false
       $rc += "  - systemctl restart sshd"
       # Add /etc/hosts entries for domain if provided
       if (-not [string]::IsNullOrWhiteSpace($domain) -and -not [string]::IsNullOrWhiteSpace($lanIpAddress)) {
-        $rc += "  - echo '127.0.0.1 ${domain} www.${domain}' >> /etc/hosts"
-        $rc += "  - echo '127.0.0.1 mail.${domain}' >> /etc/hosts"
-        $rc += "  - echo '127.0.0.1 cpanel.${domain}' >> /etc/hosts"
+        $rc += "  - echo '${lanIpAddress} ${domain} www.${domain}' >> /etc/hosts"
+        $rc += "  - echo '${lanIpAddress} mail.${domain}' >> /etc/hosts"
+        $rc += "  - echo '${lanIpAddress} cpanel.${domain}' >> /etc/hosts"
       }
       $userData += "`n" + ($rc -join "`n") + "`n"
     }
