@@ -39,7 +39,7 @@
         name: "{{ user }}"
         comment: "Owner of {{ domain }}"
         create_home: true
-        home: "/home/{{ user }}"
+        home: "/home/{{ domain }}"
         shell: /bin/bash
         password: "{{ vault_domain_user_password | default(omit) | password_hash('sha512') }}"
         update_password: on_create
