@@ -2,10 +2,6 @@
 
 # Text formatting
 BOLD="\e[1m"
-    # If running piped (curl | bash), auto-clean generated helper files by default
-    if [ -z "${CLEAN_GENERATED:-}" ]; then
-        CLEAN_GENERATED=1
-    fi
 RED="\e[31m"
 GREEN="\e[32m"
 YELLOW="\e[33m"
@@ -52,7 +48,6 @@ if [ ! -t 0 ] && [ "${FORCE_CLONE}" != true ]; then
     if [ "${FORCE:-}" != "0" ] && [ "${F:-}" != "0" ]; then
         FORCE_CLONE=true
     fi
-    # (non-interactive/piped) default behavior remains unchanged here
 fi
 
 # Command line arguments can override
@@ -248,141 +243,6 @@ clone_repo() {
     fi
 }
 
-# Generate an SSH key (ed25519) for this control host and update
-# the repository secrets file with the public key so playbooks can
-# provision servers with the generated key as the admin user's pubkey.
-generate_and_register_ssh_key() {
-    # Where to place the generated key
-    KEY_DIR="$USER_HOME/.ssh"
-    KEY_NAME="vps_id_ed25519"
-    KEY_PATH="$KEY_DIR/$KEY_NAME"
-
-    # Ensure .ssh exists
-    mkdir -p "$KEY_DIR"
-    chmod 700 "$KEY_DIR" 2>/dev/null || true
-
-    # If a key already exists at that path, reuse it
-    if [ -f "$KEY_PATH" ]; then
-        echo -e "${YELLOW}Found existing key at $KEY_PATH, reusing it.${RESET}"
-    else
-        echo -e "${YELLOW}Generating SSH key pair at $KEY_PATH (no passphrase)...${RESET}"
-        # Quietly generate an ed25519 key with an identifiable comment
-        ssh-keygen -q -t ed25519 -f "$KEY_PATH" -N "" -C "vps-bootstrap@$(hostname)" || {
-            echo -e "${RED}Failed to generate SSH key. Skipping key registration.${RESET}"
-            return 1
-        }
-        chmod 600 "$KEY_PATH" 2>/dev/null || true
-        chmod 644 "$KEY_PATH.pub" 2>/dev/null || true
-        echo -e "${GREEN}SSH key generated: $KEY_PATH${RESET}"
-    fi
-
-    # Read the public key
-    if [ -f "$KEY_PATH.pub" ]; then
-        PUBKEY=$(cat "$KEY_PATH.pub")
-    else
-        echo -e "${RED}Public key not found at ${KEY_PATH}.pub. Aborting registration.${RESET}"
-        return 1
-    fi
-
-    # Path to secrets file inside the cloned repo
-    SECRETS_FILE="$REPO_DIR/vars/secrets.yml"
-    SECRETS_EXAMPLE="$REPO_DIR/vars/secrets.yml.example"
-
-    # Helper to safely write the pubkey into the secrets file
-    if [ -f "$SECRETS_FILE" ]; then
-        # Detect ansible-vault encrypted file header
-        if head -n1 "$SECRETS_FILE" | grep -q '^\$ANSIBLE_VAULT'; then
-            echo -e "${YELLOW}Detected encrypted vars/secrets.yml.${RESET}"
-            # Prompt the user for the vault password (use /dev/tty for piped execution)
-            VAULT_PASS=""
-            if [ -t 0 ]; then
-                read -s -p "Enter Ansible Vault password to update vars/secrets.yml (leave empty to skip): " VAULT_PASS
-                echo
-            elif [ -e /dev/tty ]; then
-                read -s -p "Enter Ansible Vault password to update vars/secrets.yml (leave empty to skip): " VAULT_PASS </dev/tty
-                echo
-            fi
-
-            if [ -n "$VAULT_PASS" ]; then
-                TMP_VAULT_FILE=$(mktemp)
-                printf "%s" "$VAULT_PASS" > "$TMP_VAULT_FILE"
-                chmod 600 "$TMP_VAULT_FILE"
-                TMP_DECRYPT=$(mktemp)
-                # Try to view (decrypt) using the provided password
-                if command -v ansible-vault &> /dev/null && ansible-vault view "$SECRETS_FILE" --vault-password-file "$TMP_VAULT_FILE" > "$TMP_DECRYPT" 2>/dev/null; then
-                    # Replace existing variable if present, otherwise append
-                    if grep -q '^vault_admin_ssh_public_key:' "$TMP_DECRYPT"; then
-                        awk -v key="$PUBKEY" 'BEGIN{q="\""} /^vault_admin_ssh_public_key:/{print "vault_admin_ssh_public_key: " q key q; next} {print}' "$TMP_DECRYPT" > "$TMP_DECRYPT.tmp" && mv "$TMP_DECRYPT.tmp" "$TMP_DECRYPT"
-                    else
-                        echo "vault_admin_ssh_public_key: \"$PUBKEY\"" >> "$TMP_DECRYPT"
-                    fi
-                    # Encrypt the modified file and replace the original
-                    ansible-vault encrypt "$TMP_DECRYPT" --vault-password-file "$TMP_VAULT_FILE" 2>/dev/null && mv "$TMP_DECRYPT" "$SECRETS_FILE"
-                    rm -f "$TMP_VAULT_FILE" 2>/dev/null || true
-                    echo -e "${GREEN}Inserted public key into encrypted $SECRETS_FILE and re-encrypted it.${RESET}"
-                    # Ensure ownership
-                    chown "${SUDO_USER:-$USER}":"${SUDO_USER:-$USER}" "$SECRETS_FILE" 2>/dev/null || true
-                    # Remove any helper file if present
-                    if [ -f "$REPO_DIR/vars/secrets.generated.yml" ]; then
-                        rm -f "$REPO_DIR/vars/secrets.generated.yml" 2>/dev/null || true
-                    fi
-                    return 0
-                else
-                    echo -e "${YELLOW}Vault password incorrect or ansible-vault not available; will create helper file instead.${RESET}"
-                    rm -f "$TMP_VAULT_FILE" 2>/dev/null || true
-                    rm -f "$TMP_DECRYPT" 2>/dev/null || true
-                fi
-            else
-                echo -e "${YELLOW}No vault password provided; will create helper file for manual merge.${RESET}"
-            fi
-            echo -e "${YELLOW}Creating vars/secrets.generated.yml containing only the public key for you to merge with your encrypted file.${RESET}"
-            mkdir -p "$(dirname "$SECRETS_FILE")"
-            # Remove any previous generated file to avoid accumulation
-            if [ -f "$REPO_DIR/vars/secrets.generated.yml" ]; then
-                rm -f "$REPO_DIR/vars/secrets.generated.yml" 2>/dev/null || true
-            fi
-            cat > "$REPO_DIR/vars/secrets.generated.yml" <<EOF
-vault_admin_ssh_public_key: "$PUBKEY"
-EOF
-            chown "${SUDO_USER:-$USER}":"${SUDO_USER:-$USER}" "$REPO_DIR/vars/secrets.generated.yml" 2>/dev/null || true
-            return 0
-        fi
-
-        # Replace existing variable if present, otherwise append
-        if grep -q '^vault_admin_ssh_public_key:' "$SECRETS_FILE"; then
-            # Use awk to safely replace the line
-            awk -v key="$PUBKEY" 'BEGIN{q="\""} /^vault_admin_ssh_public_key:/{print "vault_admin_ssh_public_key: " q key q; next} {print}' "$SECRETS_FILE" > "$SECRETS_FILE.tmp" && mv "$SECRETS_FILE.tmp" "$SECRETS_FILE"
-            echo -e "${GREEN}Updated vault_admin_ssh_public_key in $SECRETS_FILE${RESET}"
-        else
-            echo -e "${YELLOW}No vault_admin_ssh_public_key variable found in $SECRETS_FILE; appending it.${RESET}"
-            echo "vault_admin_ssh_public_key: \"$PUBKEY\"" >> "$SECRETS_FILE"
-        fi
-    else
-        # If secrets file doesn't exist but an example exists, copy it first
-        if [ -f "$SECRETS_EXAMPLE" ]; then
-            cp "$SECRETS_EXAMPLE" "$SECRETS_FILE"
-            echo -e "${YELLOW}Created $SECRETS_FILE from example.${RESET}"
-            # Then replace/append as above
-            awk -v key="$PUBKEY" 'BEGIN{q="\""} /^vault_admin_ssh_public_key:/{print "vault_admin_ssh_public_key: " q key q; next} {print}' "$SECRETS_FILE" > "$SECRETS_FILE.tmp" && mv "$SECRETS_FILE.tmp" "$SECRETS_FILE"
-            if ! grep -q '^vault_admin_ssh_public_key:' "$SECRETS_FILE"; then
-                echo "vault_admin_ssh_public_key: \"$PUBKEY\"" >> "$SECRETS_FILE"
-            fi
-            echo -e "${GREEN}Wrote vault_admin_ssh_public_key to $SECRETS_FILE${RESET}"
-        else
-            # Create a minimal secrets file with the public key
-            mkdir -p "$(dirname "$SECRETS_FILE")"
-            cat > "$SECRETS_FILE" <<EOF
-vault_admin_ssh_public_key: "$PUBKEY"
-EOF
-            echo -e "${GREEN}Created $SECRETS_FILE with new public key.${RESET}"
-        fi
-    fi
-
-    # Ensure ownership of the updated file matches the non-root user when possible
-    chown "${SUDO_USER:-$USER}":"${SUDO_USER:-$USER}" "$SECRETS_FILE" 2>/dev/null || true
-}
-
-
 ## (auto-cd behavior moved to the end of the script inside main -> auto_cd)
 
 # Make scripts executable
@@ -408,19 +268,7 @@ main() {
     echo
     clone_repo
     echo
-    # Generate SSH key for control host and register its public key in vars/secrets.yml
-    generate_and_register_ssh_key || true
-    echo
     make_executable
-        echo
-        # Optional cleanup of generated secrets helper file if requested
-        if [ "${CLEAN_GENERATED:-}" = "1" ]; then
-            GENERATED_FILE="$REPO_DIR/vars/secrets.generated.yml"
-            if [ -f "$GENERATED_FILE" ]; then
-                rm -f "$GENERATED_FILE" 2>/dev/null || true
-                echo -e "${YELLOW}Removed generated secrets file: $GENERATED_FILE${RESET}"
-            fi
-        fi
     echo
     
     echo -e "${GREEN}${BOLD}═══════════════════════════════════════════════${RESET}"
