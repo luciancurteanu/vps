@@ -31,12 +31,14 @@ show_help() {
     echo "  install      Install components or configurations"
     echo "  create       Create new configurations (like virtual hosts)"
     echo "  remove       Remove configurations or components"
+    echo "  sync         Sync local state into config files"
     echo
     echo -e "${BOLD}Modules:${RESET}"
     echo "  core         Full server setup (base system, web server, database, etc.)"
     echo "  host         Virtual host management"
     echo "  ssl          SSL certificate management"
     echo "  mariadb      Database server management"
+    echo "  keys         SSH public keys (reads ~/.ssh/*.pub → secrets.yml)"
     echo
     echo -e "${BOLD}Options:${RESET}"
     echo "  --domain, -d                 Domain name (required for most operations)"
@@ -51,6 +53,7 @@ show_help() {
     echo "  $0 install core --domain=yourdomain.com --ask-pass --ask-vault-pass"
     echo "  $0 create host --domain=yourdomain.com --ask-vault-pass"
     echo "  $0 install ssl --domain=yourdomain.com --vault-password-file=~/.vault_pass"
+    echo "  $0 sync keys"
 }
 
 # Check for Git installation and install if necessary
@@ -166,11 +169,11 @@ parse_args() {
 
     while [[ $# -gt 0 ]]; do
         case $1 in
-        install | create | remove)
+        install | create | remove | sync)
             ACTION="$1"
             shift
             ;;
-        core | host | ssl | mariadb)
+        core | host | ssl | mariadb | keys)
             MODULE="$1"
             shift
             ;;
@@ -216,7 +219,7 @@ parse_args() {
         exit 1
     fi
 
-    if [[ "$MODULE" != "core" && -z "$DOMAIN" ]]; then
+    if [[ "$MODULE" != "core" && "$MODULE" != "keys" && -z "$DOMAIN" ]]; then
         echo -e "${RED}Error: Domain is required for '$MODULE' operations.${RESET}"
         show_help
         exit 1
@@ -224,6 +227,83 @@ parse_args() {
 
     if [[ -z "$USER" && -n "$DOMAIN" ]]; then
         USER=$(echo "$DOMAIN" | awk -F. '{print $(NF-1)}')
+    fi
+}
+
+# Sync SSH public keys from ~/.ssh/*.pub into vault_admin_ssh_public_key in secrets.yml
+sync_keys() {
+    local secrets_file="$PROJECT_ROOT/vars/secrets.yml"
+
+    if [ ! -f "$secrets_file" ]; then
+        echo -e "${RED}Error: $secrets_file not found.${RESET}"
+        exit 1
+    fi
+
+    if head -1 "$secrets_file" | grep -q '^\$ANSIBLE_VAULT'; then
+        echo -e "${RED}secrets.yml is encrypted. Decrypt it first:${RESET}"
+        echo -e "  ansible-vault decrypt vars/secrets.yml"
+        exit 1
+    fi
+
+    local tmp_keys
+    tmp_keys=$(mktemp)
+
+    for pub_file in "$HOME"/.ssh/*.pub; do
+        [ -f "$pub_file" ] || continue
+        while IFS= read -r line; do
+            [[ "$line" =~ ^(ssh-|ecdsa-|sk-) ]] || continue
+            echo "$line" >> "$tmp_keys"
+        done < "$pub_file"
+    done
+
+    if [ ! -s "$tmp_keys" ]; then
+        echo -e "${RED}No public keys found in ~/.ssh/*.pub${RESET}"
+        rm -f "$tmp_keys"
+        exit 1
+    fi
+
+    python3 << PYEOF
+import re
+
+secrets_file = "$secrets_file"
+tmp_keys = "$tmp_keys"
+
+with open(tmp_keys) as f:
+    keys = [line.strip() for line in f if line.strip()]
+
+with open(secrets_file) as f:
+    content = f.read()
+
+if len(keys) == 1:
+    new_val = 'vault_admin_ssh_public_key: "{}"  # auto-synced from ~/.ssh'.format(keys[0])
+else:
+    key_lines = '\n'.join('  - "{}"'.format(k) for k in keys)
+    new_val = 'vault_admin_ssh_public_key:\n' + key_lines
+
+content = re.sub(
+    r'^vault_admin_ssh_public_key:[^\n]*(?:\n  - [^\n]+)*',
+    new_val,
+    content,
+    flags=re.MULTILINE
+)
+
+with open(secrets_file, 'w') as f:
+    f.write(content)
+
+print('Updated vault_admin_ssh_public_key with {} key(s):'.format(len(keys)))
+for k in keys:
+    print('  ' + k[:72] + ('...' if len(k) > 72 else ''))
+PYEOF
+
+    local exit_code=$?
+    rm -f "$tmp_keys"
+
+    if [ $exit_code -eq 0 ]; then
+        echo -e "${GREEN}secrets.yml updated. Run the playbook to sync keys to the server:${RESET}"
+        echo -e "  ${BOLD}./vps.sh install core --domain=\$DOMAIN --ask-vault-pass${RESET}"
+    else
+        echo -e "${RED}Failed to update secrets.yml${RESET}"
+        exit 1
     fi
 }
 
@@ -327,6 +407,10 @@ run_ansible() {
 main() {
     check_git
     parse_args "$@"
+    if [[ "$ACTION" == "sync" && "$MODULE" == "keys" ]]; then
+        sync_keys
+        exit 0
+    fi
     check_ansible
     run_ansible
 }

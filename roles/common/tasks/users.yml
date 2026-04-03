@@ -27,8 +27,9 @@
 - name: Set up authorized keys for admin user
   ansible.builtin.authorized_key:
     user: "{{ common_admin_user }}"
-    key: "{{ common_admin_ssh_key }}"
+    key: "{{ item }}"
     state: present
+  loop: "{{ [common_admin_ssh_key] if common_admin_ssh_key is string else common_admin_ssh_key }}"
   when:
     - common_admin_ssh_key is defined
     - common_admin_ssh_key not in [omit, '', None]
