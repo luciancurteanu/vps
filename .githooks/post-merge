@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Automatically restore executable permissions on shell scripts after git pull / merge.
+# Install: git config core.hooksPath .githooks
+find "$(git rev-parse --show-toplevel)" \
+    -name "*.sh" \
+    -not -path "*/.git/*" \
+    -exec chmod +x {} \;

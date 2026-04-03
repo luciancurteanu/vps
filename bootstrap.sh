@@ -248,9 +248,12 @@ clone_repo() {
 # Make scripts executable
 make_executable() {
     echo -e "${YELLOW}Making scripts executable...${RESET}"
-    chmod +x "$REPO_DIR/vps.sh"
-    chmod +x "$REPO_DIR/bootstrap.sh"
-    chmod +x "$REPO_DIR/encrypt-vault.sh"
+    find "$REPO_DIR" -name "*.sh" -not -path "*/.git/*" -exec chmod +x {} \;
+    # Activate the shared git hooks so post-merge/post-checkout auto-fix permissions on every pull
+    if [ -d "$REPO_DIR/.githooks" ]; then
+        git -C "$REPO_DIR" config core.hooksPath .githooks
+        chmod +x "$REPO_DIR/.githooks/"* 2>/dev/null || true
+    fi
     echo -e "${GREEN}Scripts are now executable.${RESET}"
 }
 
