@@ -11,6 +11,13 @@ maxretry = 3
 destemail = {{ mail_admin_email | default('no-reply@' + (domain | default('example.com'))) }}
 sender = {{ mail_admin_email | default('no-reply@' + (domain | default('example.com'))) }}
 mta = sendmail
+{% if security_firewall_service | default('iptables') == 'iptables' %}
+banaction = iptables-multiport
+banaction_allports = iptables-allports
+{% else %}
+banaction = firewallcmd-rich-rules
+banaction_allports = firewallcmd-allports
+{% endif %}
 action = %(action_)s
          %(mta)s-lc[sender="%(sender)s", dest="%(destemail)s", logpath="%(logpath)s", chain="%(chain)s"]
 
@@ -45,7 +52,7 @@ findtime = 86400
 
 [mariadb]
 enabled = {{ stat_mariadb_log.stat.exists | default(false) | ternary('true','false') }}
-port = 3306
+port = {{ db_port | default(3306) }}
 filter = mariadb
 logpath = /var/log/mariadb/error.log
 maxretry = 1
