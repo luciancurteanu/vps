@@ -266,6 +266,13 @@ run_ansible() {
         VAULT_OPTS="$ASK_VAULT_PASS"
     elif [[ -n "$VAULT_PASSWORD_FILE" ]]; then
         VAULT_OPTS="$VAULT_PASSWORD_FILE"
+    elif [[ -n "$VAULT_PASS" ]]; then
+        # Support providing the vault password via VAULT_PASS env var for automation
+        TMP_VAULT_PASS_FILE=$(mktemp)
+        printf "%s" "$VAULT_PASS" > "$TMP_VAULT_PASS_FILE"
+        chmod 600 "$TMP_VAULT_PASS_FILE"
+        VAULT_OPTS="--vault-password-file=$TMP_VAULT_PASS_FILE"
+        CLEAN_VAULT_PASS_FILE=1
     fi
 
     # Tags: run only setup-tagged tasks for full `install core` operations
@@ -287,10 +294,91 @@ run_ansible() {
         echo ""
     } > "$log_file"
 
+    # Auto-detect a generated control SSH key and offer to auto-deploy the public key
+    DEFAULT_KEY="$HOME/.ssh/vps_id_ed25519"
+    if [[ -f "$DEFAULT_KEY" ]]; then
+        PRIVATE_KEY_OPT="--private-key=$DEFAULT_KEY"
+    fi
+
+    # If vault options are available, try to read admin password and public key from the vault
+    vault_admin_password=""
+    vault_admin_pubkey=""
+    if [[ -n "$VAULT_OPTS" ]]; then
+        vault_content=$(ansible-vault view "$VAULT_FILE" $VAULT_OPTS 2>/dev/null || true)
+        if [[ -n "$vault_content" ]]; then
+            vault_admin_password=$(printf "%s\n" "$vault_content" | sed -n 's/^vault_admin_password:[[:space:]]*"\?\(.*\)"\?$/\1/p')
+            vault_admin_pubkey=$(printf "%s\n" "$vault_content" | sed -n 's/^vault_admin_ssh_public_key:[[:space:]]*"\?\(.*\)"\?$/\1/p')
+        fi
+    fi
+
+    # Determine admin password and public key to use for initial key deployment
+    admin_pass="${ADMIN_PASSWORD:-$vault_admin_password}"
+    pubkey="${vault_admin_pubkey:-}"
+    if [[ -z "$pubkey" && -f "$HOME/.ssh/vps_id_ed25519.pub" ]]; then
+        pubkey=$(cat "$HOME/.ssh/vps_id_ed25519.pub")
+    fi
+
+    # If we have credentials and a public key, attempt to upload it to inventory hosts via sshpass
+    if [[ -n "$admin_pass" && -n "$pubkey" ]]; then
+        # Build list of host addresses from inventory (use ansible-inventory if available)
+        if command -v ansible-inventory &> /dev/null; then
+            host_list=$(ansible-inventory -i "$PROJECT_ROOT/inventory/hosts.yml" --list 2>/dev/null || true)
+            host_ips=$(printf "%s\n" "$host_list" | python3 - <<'PY'
+import sys, json
+try:
+    j=json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+hostvars=j.get('_meta',{}).get('hostvars',{})
+for hostname,vars in hostvars.items():
+    ip=vars.get('ansible_host') or hostname
+    print(ip)
+PY
+)
+        else
+            host_ips=$(grep -E 'ansible_host:' "$PROJECT_ROOT/inventory/hosts.yml" | awk '{print $2}' | sort -u)
+        fi
+
+        # Ensure sshpass is installed on the control host
+        if ! command -v sshpass &> /dev/null; then
+            echo "sshpass not found; attempting to install..."
+            if command -v apt &> /dev/null; then
+                sudo apt update && sudo apt install -y sshpass || true
+            elif command -v dnf &> /dev/null; then
+                sudo dnf install -y sshpass || true
+            elif command -v yum &> /dev/null; then
+                sudo yum install -y sshpass || true
+            fi
+        fi
+
+        # Use a temporary pubkey file for scp if needed
+        for h in $host_ips; do
+            if [[ -z "$h" ]]; then
+                continue
+            fi
+            echo "Uploading public key to $h ..."
+            TMP_PUB=$(mktemp)
+            printf "%s\n" "$pubkey" > "$TMP_PUB"
+            # Try to copy and append the key
+            if command -v sshpass &> /dev/null; then
+                sshpass -p "$admin_pass" scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$TMP_PUB" admin@"$h":/tmp/vps_pubkey.$$ 2>/dev/null || { echo "Failed to SCP pubkey to $h; skipping"; rm -f "$TMP_PUB"; continue; }
+                sshpass -p "$admin_pass" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null admin@"$h" "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat /tmp/vps_pubkey.$$ >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && chown -R admin:admin ~/.ssh && rm -f /tmp/vps_pubkey.$$" && echo "Pubkey installed on $h"
+            else
+                echo "sshpass not available; cannot auto-upload pubkey to $h"
+            fi
+            rm -f "$TMP_PUB"
+        done
+    fi
+
     # Run ansible-playbook with output tee'd to log file
     # Use absolute playbook path so the script works regardless of current working directory
     playbook_path="$PROJECT_ROOT/$playbook"
-    ansible-playbook "$playbook_path" -e "$extra_vars" $ASK_SSH_PASS $VAULT_OPTS $TAGS_OPTS 2>&1 | tee -a "$log_file"
+    ansible-playbook "$playbook_path" -e "$extra_vars" $ASK_SSH_PASS $VAULT_OPTS ${PRIVATE_KEY_OPT:-} $TAGS_OPTS 2>&1 | tee -a "$log_file"
+
+    # Clean up any temporary vault password file
+    if [[ -n "$CLEAN_VAULT_PASS_FILE" && -n "$TMP_VAULT_PASS_FILE" ]]; then
+        rm -f "$TMP_VAULT_PASS_FILE" 2>/dev/null || true
+    fi
     
     ansible_exit_code=${PIPESTATUS[0]}
 
