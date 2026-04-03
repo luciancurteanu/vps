@@ -391,7 +391,7 @@ function PerformFullSetup([VMConfig]$config, [SSHManager]$sshManager) {
         "$($config.SSHUser)@localhost"
     )
     # Verify SSH is truly stable by running a simple test command
-    Write-Host "\nVerifying SSH connection stability..." -ForegroundColor Cyan
+    Write-Host "Verifying SSH connection stability..." -ForegroundColor Cyan
     $testCmd = "echo 'SSH OK'"
     $sshArgsWithTest = $sshArgs + @($testCmd)
     $testAttempts = 0
