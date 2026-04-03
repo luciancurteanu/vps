@@ -107,8 +107,6 @@ Then run:
 
 # Or for first-time setup (no existing VM to cleanup):
 .\scripts\vm-launcher\run-vm.ps1 -VMName "AlmaLinux-9" -UseLocalSSHKey -FullSetup
-# For re-running setup on existing VM:
-.\scripts\vm-launcher\run-all.ps1 -Recreate -UseLocalSSHKey -Domain 'goapi.cloud' -VaultPassword 'Password@' -RunInstaller
 ```
 
 ## Configuration Options
