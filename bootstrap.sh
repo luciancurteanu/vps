@@ -245,6 +245,47 @@ clone_repo() {
 
 ## (auto-cd behavior moved to the end of the script inside main -> auto_cd)
 
+# Generate a server-side Ansible SSH key and register any injected control key.
+# SSH_PUBLIC_KEY env var: optional public key from the control host (e.g. Windows vps.pub).
+# This key is written to ~/.ssh/<label>.pub so 'sync keys' picks it up automatically.
+setup_ssh_keys() {
+    local ssh_dir="$USER_HOME/.ssh"
+    mkdir -p "$ssh_dir"
+    chmod 700 "$ssh_dir"
+
+    # 1) Generate Ansible self-connect key if missing
+    if [ ! -f "$ssh_dir/ansible_id" ]; then
+        echo -e "${YELLOW}Generating Ansible SSH key...${RESET}"
+        ssh-keygen -t ed25519 -f "$ssh_dir/ansible_id" -N "" -C "ansible-control" > /dev/null 2>&1
+        cat "$ssh_dir/ansible_id.pub" >> "$ssh_dir/authorized_keys"
+        chmod 600 "$ssh_dir/authorized_keys"
+        echo -e "${GREEN}Ansible key generated and added to authorized_keys.${RESET}"
+    else
+        echo -e "${GREEN}Ansible key already exists.${RESET}"
+    fi
+
+    # 2) Register injected control-host public key (e.g. from Windows vps.pub)
+    #    Pass it via: SSH_PUBLIC_KEY="ssh-ed25519 AAAA... label" bash bootstrap.sh
+    if [ -n "${SSH_PUBLIC_KEY:-}" ]; then
+        local label
+        label=$(echo "$SSH_PUBLIC_KEY" | awk '{print $NF}' | tr -dc '[:alnum:]-_')
+        [ -z "$label" ] && label="control-host"
+        local pub_file="$ssh_dir/${label}.pub"
+        echo "$SSH_PUBLIC_KEY" > "$pub_file"
+        chmod 644 "$pub_file"
+        # add to authorized_keys if not already present
+        if ! grep -qF "$SSH_PUBLIC_KEY" "$ssh_dir/authorized_keys" 2>/dev/null; then
+            echo "$SSH_PUBLIC_KEY" >> "$ssh_dir/authorized_keys"
+            chmod 600 "$ssh_dir/authorized_keys"
+        fi
+        echo -e "${GREEN}Control-host key registered: $pub_file${RESET}"
+    fi
+
+    # Fix ownership when running as root on behalf of a user
+    local target_user="${SUDO_USER:-$USER}"
+    chown -R "$target_user":"$target_user" "$ssh_dir" 2>/dev/null || true
+}
+
 # Make scripts executable
 make_executable() {
     echo -e "${YELLOW}Making scripts executable...${RESET}"
@@ -272,6 +313,8 @@ main() {
     clone_repo
     echo
     make_executable
+    echo
+    setup_ssh_keys
     echo
     
     echo -e "${GREEN}${BOLD}═══════════════════════════════════════════════${RESET}"
