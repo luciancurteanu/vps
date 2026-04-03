@@ -122,7 +122,7 @@ install_git() {
 # Install Ansible
 install_ansible() {
     echo -e "${YELLOW}Checking for Ansible...${RESET}"
-    if ! command -v ansible-playbook &> /dev/null; then
+    if ! command -v ansible-playbook &> /dev/null || ! command -v ansible-vault &> /dev/null; then
         echo -e "Ansible is not installed. Installing Ansible..."
         
         if [ "$OS_TYPE" = "debian" ]; then
@@ -138,7 +138,7 @@ install_ansible() {
         fi
         
         # Verify installation
-        if ! command -v ansible-playbook &> /dev/null; then
+        if ! command -v ansible-playbook &> /dev/null || ! command -v ansible-vault &> /dev/null; then
             echo -e "${RED}Ansible installation failed. Please install manually.${RESET}"
             exit 1
         else
@@ -279,6 +279,7 @@ main() {
     echo -e "  ✓ Git:     $(git --version 2>/dev/null || echo 'Not found')"
     echo -e "  ✓ Python:  $(python3 --version 2>/dev/null || echo 'Not found')"
     echo -e "  ✓ Ansible: $(ansible --version 2>/dev/null | head -n1 || echo 'Not found')"
+    echo -e "  ✓ Ansible Vault: $(ansible-vault --version 2>/dev/null | head -n1 || echo 'Not found')"
     echo -e "  ✓ Nano:    $(nano --version 2>/dev/null | head -n1 || echo 'Not found')"
     echo
     echo -e "${BOLD}Next Steps:${RESET}"
