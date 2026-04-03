@@ -42,8 +42,10 @@
 {% endfor %}
 {% endif %}
 
-# Allow Cockpit web interface
--A INPUT -p tcp --dport 9090 -m comment --comment "Allow Cockpit web interface" -j ACCEPT
+# Allow Cockpit web interface (only if installed)
+{% if security_install_cockpit | default(false) %}
+-A INPUT -p tcp --dport {{ security_cockpit_port | default(9090) }} -m comment --comment "Allow Cockpit web interface" -j ACCEPT
+{% endif %}
 
 # Allow Webmin (if installed)
 {% if security_install_webmin | default(true) %}

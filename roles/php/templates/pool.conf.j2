@@ -1,8 +1,8 @@
 [{{ domain }}]
-# Run pools under a sanitized unix user (dots replaced by underscores)
-# This prevents invalid usernames like 'example.com' and matches created system users
-user = {{ domain | replace('.', '_') }}
-group = {{ domain | replace('.', '_') }}
+# Run pools under the domain owner user (derived as the second-to-last label of the domain)
+# e.g. 'goapi.cloud' → 'goapi', 'cpanel.goapi.cloud' → 'goapi'
+user = {{ pool_user | default(domain.split('.')[-2]) }}
+group = {{ pool_user | default(domain.split('.')[-2]) }}
 listen = {{ php_fpm_listen | default('/var/run/php-fpm/php-fpm.sock') | dirname }}/{{ domain | replace('.', '_') }}.sock
 listen.backlog = -1
 listen.owner = {{ nginx_user }}

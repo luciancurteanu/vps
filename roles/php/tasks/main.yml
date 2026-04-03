@@ -79,6 +79,31 @@
     - { regexp: '^listen\.acl_users.*', replace: ';listen.acl_users' }
   notify: Restart php-fpm
 
+- name: Ensure per-domain directories exist for PHP-FPM pools
+  ansible.builtin.file:
+    path: "/home/{{ item.0 }}/{{ item.1 }}"
+    state: directory
+    owner: "{{ item.0.split('.')[-2] }}"
+    group: "{{ item.0.split('.')[-2] }}"
+    mode: '0755'
+  loop: "{{ (php_fpm_pools | default([])) | product(['tmp', 'logs']) | list }}"
+  when: php_fpm_pools | default([]) | length > 0
+  failed_when: false
+
+- name: Create per-domain PHP-FPM pool configs
+  ansible.builtin.template:
+    src: pool.conf.j2
+    dest: "/etc/php-fpm.d/{{ item | replace('.', '_') }}.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  vars:
+    domain: "{{ item }}"
+    pool_user: "{{ item.split('.')[-2] }}"
+  loop: "{{ php_fpm_pools | default([]) }}"
+  when: php_fpm_pools | default([]) | length > 0
+  notify: Restart php-fpm
+
 - name: Configure PHP OPcache
   ansible.builtin.blockinfile:
     path: /etc/php.ini

@@ -3,7 +3,7 @@
 
 # MariaDB version and repository settings
 mariadb_version: "11.4"
-mariadb_repo_url: "https://yum.mariadb.org/{{ mariadb_version }}/centos9-amd64"
+mariadb_repo_url: "https://yum.mariadb.org/{{ mariadb_version }}/rhel9-amd64"
 mariadb_repo_key: "https://yum.mariadb.org/RPM-GPG-KEY-MariaDB"
 
 # Database root user settings (should be in vault)

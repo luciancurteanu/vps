@@ -1,11 +1,43 @@
 ---
 # MariaDB installation and configuration tasks
 
-- name: Install MariaDB server and client packages from AppStream
+- name: Add MariaDB official repository
+  ansible.builtin.yum_repository:
+    name: MariaDB
+    description: "MariaDB {{ mariadb_version }} repository"
+    baseurl: "{{ mariadb_repo_url }}"
+    gpgkey: "{{ mariadb_repo_key }}"
+    gpgcheck: true
+    enabled: true
+  when: ansible_os_family == "RedHat"
+
+- name: Disable AppStream MariaDB module to avoid conflicts
+  ansible.builtin.command: dnf module disable mariadb -y
+  when: ansible_os_family == "RedHat"
+  changed_when: false
+  failed_when: false
+
+- name: Check if AppStream mariadb-server is installed
+  ansible.builtin.command: rpm -q mariadb-server
+  register: appstream_mariadb_installed
+  changed_when: false
+  failed_when: false
+
+- name: Remove AppStream MariaDB packages before installing official version
   ansible.builtin.dnf:
     name:
       - mariadb-server
       - mariadb
+    state: absent
+  when:
+    - ansible_os_family == "RedHat"
+    - appstream_mariadb_installed.rc == 0
+
+- name: Install MariaDB server and client packages from official repository
+  ansible.builtin.dnf:
+    name:
+      - MariaDB-server
+      - MariaDB-client
       - python3-PyMySQL
     state: present
   when: ansible_os_family == "RedHat"
@@ -84,6 +116,14 @@
     name: mariadb
     state: started
     enabled: true
+
+- name: Run mariadb-upgrade after version change
+  ansible.builtin.command: mariadb-upgrade --skip-version-check
+  when:
+    - ansible_os_family == "RedHat"
+    - appstream_mariadb_installed.rc == 0
+  failed_when: false
+  changed_when: false
 
 - name: Check if MariaDB is already secured
   ansible.builtin.stat:
