@@ -74,6 +74,14 @@
     - driver_download is not skipped
     - driver_download is succeeded
 
+- name: Check ChromeDriver zip was actually downloaded
+  ansible.builtin.stat:
+    path: /tmp/chromedriver-linux64.zip
+  register: chromedriver_zip_stat
+  when:
+    - driver_download is defined
+    - driver_download is not skipped
+
 - name: Extract ChromeDriver
   ansible.builtin.unarchive:
     src: /tmp/chromedriver-linux64.zip
@@ -83,6 +91,9 @@
     - driver_download is defined
     - driver_download is not skipped
     - driver_download is succeeded
+    - chromedriver_zip_stat is defined
+    - chromedriver_zip_stat.stat is defined
+    - chromedriver_zip_stat.stat.exists
 
 - name: Install ChromeDriver
   ansible.builtin.copy:
