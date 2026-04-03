@@ -101,10 +101,14 @@
     dest: /usr/local/bin/chromedriver
     mode: '0755'
     remote_src: true
+  failed_when: false
   when:
     - driver_download is defined
     - driver_download is not skipped
     - driver_download is succeeded
+    - chromedriver_zip_stat is defined
+    - chromedriver_zip_stat.stat is defined
+    - chromedriver_zip_stat.stat.exists
 
 - name: Clean up temporary files
   ansible.builtin.file:
