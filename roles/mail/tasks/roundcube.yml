@@ -79,6 +79,15 @@
     login_password: "{{ db_root_password }}"
     login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
 
+- name: Check if Roundcube session table exists
+  community.mysql.mysql_query:
+    login_db: "{{ roundcube_db_name | default('roundcube') }}"
+    login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
+    query: "SELECT COUNT(*) AS cnt FROM information_schema.tables WHERE table_schema='{{ roundcube_db_name | default('roundcube') }}' AND table_name='session'"
+  register: roundcube_schema_check
+  failed_when: false
+  changed_when: false
+
 - name: Import Roundcube database schema
   community.mysql.mysql_db:
     name: "{{ roundcube_db_name | default('roundcube') }}"
@@ -87,7 +96,10 @@
     login_user: "{{ db_root_user }}"
     login_password: "{{ db_root_password }}"
     login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
-  when: not roundcube_installed.stat.exists
+  when: >-
+    not roundcube_installed.stat.exists or
+    (roundcube_schema_check.query_result is defined and
+     roundcube_schema_check.query_result[0][0].cnt | int == 0)
 
 - name: Set proper permissions for Roundcube
   ansible.builtin.file:
