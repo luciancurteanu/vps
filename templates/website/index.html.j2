@@ -153,8 +153,10 @@
                 <div class="info-box">
                     <h3>Quick Links</h3>
                     <ul style="list-style-type: none; text-align: left;">
+                        {% if install_webmin | default(false) %}
                         <li><a href="http://cpanel.{{ domain }}/" target="_blank" rel="noopener noreferrer">Control Panel</a></li>
-                        {% if roundcube_installed | default(false) %}
+                        {% endif %}
+                        {% if install_mail | default(false) %}
                         <li><a href="http://mail.{{ domain }}/" target="_blank" rel="noopener noreferrer">Mail</a></li>
                         {% endif %}
                     </ul>
