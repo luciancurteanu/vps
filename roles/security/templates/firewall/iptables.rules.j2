@@ -23,8 +23,7 @@
 -A INPUT -p icmp -j ACCEPT
 
 {% if security_fail2ban_enabled | default(true) %}
-# Fail2ban chain for SSH
--A INPUT -p tcp --dport {{ security_ssh_port | default(22) }} -j f2b-sshd
+# Fail2ban chain for SSH (fail2ban manages the INPUT routing rule dynamically)
 {% endif %}
 
 # Allow SSH
@@ -35,8 +34,8 @@
 -A INPUT -p {{ service.proto | default('tcp') }} --dport {{ service.port }} -j ACCEPT
 {% endfor %}
 
-# Mail service ports (when this is the master domain)
-{% if (domain is defined) and (master_domain is defined) and (domain == master_domain) %}
+# Mail service ports (only when mail is installed and this is the master domain)
+{% if (install_mail | default(false)) and (domain is defined) and (master_domain is defined) and (domain == master_domain) %}
 {% for service in security_mail_service_ports %}
 -A INPUT -p {{ service.proto | default('tcp') }} --dport {{ service.port }} -j ACCEPT
 {% endfor %}
