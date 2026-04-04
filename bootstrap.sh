@@ -228,6 +228,12 @@ clone_repo() {
         exit 1
     fi
 
+    # Disable CRLF conversion so Windows-authored commits don't mark files as modified on Linux
+    git -C "$REPO_DIR" config core.autocrlf false
+    # Re-normalize any already-checked-out files to LF as declared in .gitattributes
+    git -C "$REPO_DIR" rm --cached -r . -q 2>/dev/null || true
+    git -C "$REPO_DIR" reset --hard HEAD -q 2>/dev/null || true
+
     # Ensure repo files are owned by non-root user when possible
     target_user="${SUDO_USER:-$USER}"
     chown -R "$target_user":"$target_user" "$REPO_DIR" 2>/dev/null || true
@@ -286,6 +292,41 @@ setup_ssh_keys() {
     chown -R "$target_user":"$target_user" "$ssh_dir" 2>/dev/null || true
 }
 
+# Create vault password file so ansible-playbook doesn't need --ask-vault-pass
+setup_vault_pass() {
+    local vault_file="$USER_HOME/.vault_pass"
+    if [ -f "$vault_file" ]; then
+        echo -e "${GREEN}Vault password file already exists at $vault_file${RESET}"
+        return
+    fi
+    # Allow passing vault password via env var (useful in CI/automated setups)
+    if [ -n "${VAULT_PASS:-}" ]; then
+        echo "$VAULT_PASS" > "$vault_file"
+        chmod 600 "$vault_file"
+        echo -e "${GREEN}Vault password file created from VAULT_PASS env var.${RESET}"
+        return
+    fi
+    # Interactive prompt
+    if [ -t 0 ]; then
+        echo -e "${YELLOW}Enter your Ansible Vault password (stored in $vault_file):${RESET}"
+        read -rsp "Vault password: " vault_password
+        echo
+        if [ -n "$vault_password" ]; then
+            echo "$vault_password" > "$vault_file"
+            chmod 600 "$vault_file"
+            local target_user="${SUDO_USER:-$USER}"
+            chown "$target_user":"$target_user" "$vault_file" 2>/dev/null || true
+            echo -e "${GREEN}Vault password file created at $vault_file${RESET}"
+        else
+            echo -e "${YELLOW}No password entered — skipping vault file creation.${RESET}"
+            echo -e "${YELLOW}Create it manually: echo 'yourpassword' > ~/.vault_pass && chmod 600 ~/.vault_pass${RESET}"
+        fi
+    else
+        echo -e "${YELLOW}Non-interactive mode — skipping vault file (set VAULT_PASS env var to automate).${RESET}"
+        echo -e "${YELLOW}Create manually: echo 'yourpassword' > ~/.vault_pass && chmod 600 ~/.vault_pass${RESET}"
+    fi
+}
+
 # Make scripts executable
 make_executable() {
     echo -e "${YELLOW}Making scripts executable...${RESET}"
@@ -315,6 +356,8 @@ main() {
     make_executable
     echo
     setup_ssh_keys
+    echo
+    setup_vault_pass
     echo
     
     echo -e "${GREEN}${BOLD}═══════════════════════════════════════════════${RESET}"
@@ -346,7 +389,7 @@ main() {
     echo -e "     ${GREEN}ansible-vault encrypt vars/secrets.yml${RESET}"
     echo
     echo -e "  3. Run the setup playbook:"
-    echo -e "     ${GREEN}./vps.sh install core --domain=yourdomain.com --ask-pass --ask-vault-pass${RESET}"
+    echo -e "     ${GREEN}./vps.sh install core --domain=yourdomain.com${RESET}"
     echo
     echo -e "  4. Re-run bootstrap (will force by default when piped):"
     echo -e "     ${GREEN}curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | bash${RESET}"
