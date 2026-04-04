@@ -72,10 +72,7 @@
 
     - name: Build certbot domain list
       ansible.builtin.set_fact:
-        certbot_domains: >-
-          {{ domain }}
-          {%- if install_mail | default(true) %},{{ mail_subdomain }}{% endif %}
-          {%- if install_webmin | default(true) %},{{ webmin_subdomain }}{% endif %}
+        certbot_domains: "{{ domain }},*.{{ domain }}"
 
     - name: Obtain SSL certificate
       ansible.builtin.command: >
