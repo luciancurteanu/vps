@@ -49,29 +49,24 @@
         path: "/etc/letsencrypt/live/{{ domain }}/fullchain.pem"
       register: cert_file
 
+    - name: Build certbot domain list
+      ansible.builtin.set_fact:
+        certbot_domains: >-
+          {{ domain }}
+          {%- if install_mail | default(true) %},{{ mail_subdomain }}{% endif %}
+          {%- if install_webmin | default(true) %},{{ webmin_subdomain }}{% endif %}
+
     - name: Obtain SSL certificate
       ansible.builtin.command: >
         certbot --nginx
         --non-interactive
         --agree-tos
         --email {{ email }}
-        --domains {{ domain }}
+        --domains {{ certbot_domains }}
         {{ '--force-renewal' if force_renewal else '' }}
       register: certbot_result
       changed_when: "'Congratulations! Your certificate and chain have been saved' in certbot_result.stdout"
       when: not cert_file.stat.exists or force_renewal
-
-    - name: Obtain SSL certificate for domain and subdomains
-      ansible.builtin.command: >
-        certbot --nginx
-        --non-interactive
-        --agree-tos
-        --email {{ email }}
-        --domains {{ domain }},{{ mail_subdomain }},{{ webmin_subdomain }}
-        {{ '--force-renewal' if force_renewal else '' }}
-      register: certbot_result
-      changed_when: "'Congratulations! Your certificate and chain have been saved' in certbot_result.stdout"
-      when: (not cert_file.stat.exists or force_renewal) and install_mail | default(true)
 
     - name: Install cronjob for certificate renewal
       ansible.builtin.cron:
@@ -98,24 +93,6 @@
         group: root
       vars:
         nginx_ssl_enabled: true
-      notify: Restart Nginx
-
-    - name: Update Nginx configuration with SSL optimizations
-      ansible.builtin.blockinfile:
-        path: "/etc/nginx/sites-available/{{ domain }}.conf"
-        marker: "# {mark} ANSIBLE MANAGED SSL OPTIMIZATION BLOCK"
-        block: |
-          # SSL optimization
-          ssl_session_timeout 1d;
-          ssl_session_cache shared:SSL:10m;
-          ssl_session_tickets off;
-
-          # Modern TLS configuration
-          ssl_protocols TLSv1.2 TLSv1.3;
-          ssl_prefer_server_ciphers off;
-
-          # HSTS (uncomment to enable)
-          # add_header Strict-Transport-Security "max-age=63072000" always;
       notify: Restart Nginx
 
     - name: Update mail subdomain nginx configuration with SSL enabled
