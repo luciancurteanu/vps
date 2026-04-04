@@ -80,12 +80,13 @@
     login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
 
 - name: Import Roundcube database schema
-  mysql_db:
+  community.mysql.mysql_db:
     name: "{{ roundcube_db_name | default('roundcube') }}"
     state: import
     target: "{{ webmail_path }}/SQL/mysql.initial.sql"
     login_user: "{{ db_root_user }}"
     login_password: "{{ db_root_password }}"
+    login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
   when: not roundcube_installed.stat.exists
 
 - name: Set proper permissions for Roundcube
