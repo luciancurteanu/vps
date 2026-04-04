@@ -134,11 +134,12 @@
     state: directory
     mode: '0755'
 
-- name: Override Nginx systemd PIDFile location
+- name: Override Nginx systemd service
   ansible.builtin.copy:
     content: |
       [Service]
       PIDFile=/run/nginx.pid
+      ExecStartPre=/bin/rm -f /run/nginx.pid
     dest: /etc/systemd/system/nginx.service.d/override.conf
     mode: '0644'
   notify: Restart Nginx
