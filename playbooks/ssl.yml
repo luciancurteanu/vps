@@ -46,11 +46,16 @@
         state: present
       when: ansible_os_family == "Debian"
 
+    - name: Get certbot Python site-packages path
+      ansible.builtin.command: /usr/bin/python3 -s -c "import site; print(site.getsitepackages()[-1])"
+      register: certbot_site_packages
+      changed_when: false
+
     - name: Install certbot-dns-dynu plugin
       ansible.builtin.pip:
         name: "{{ certbot_dns_plugin }}"
         state: present
-        executable: pip3
+        extra_args: "--target {{ certbot_site_packages.stdout }}"
 
     - name: Create Dynu credentials file
       ansible.builtin.copy:
