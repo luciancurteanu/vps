@@ -24,9 +24,10 @@
   when: admin_auth == 'key'
 
 - name: Set up authorized keys for admin user
-  ansible.posix.authorized_key: # Explicitly using FQCN
+  ansible.posix.authorized_key:
     user: "{{ admin_user }}"
     state: present
+    key: "{{ admin_ssh_public_key if admin_ssh_public_key is string else admin_ssh_public_key | join('\n') }}"
   when: admin_ssh_public_key | default('', true) | length > 0 and admin_auth == 'key'
 
 - name: Add admin user to sudoers
