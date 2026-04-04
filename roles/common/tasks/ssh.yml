@@ -22,6 +22,17 @@
     force: false
   failed_when: false  # TODO: Add proper failure condition
 
+- name: Allow custom SSH port in SELinux
+  community.general.seport:
+    ports: "{{ common_ssh_port }}"
+    proto: tcp
+    setype: ssh_port_t
+    state: present
+  when:
+    - ansible_selinux.status is defined
+    - ansible_selinux.status == "enabled"
+    - common_ssh_port | int != 22
+
 - name: Configure SSH
   ansible.builtin.template:
     src: ssh/sshd_config.j2
