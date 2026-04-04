@@ -38,7 +38,7 @@
     create_home: false
     shell: /sbin/nologin
   when:
-    - mail_user_check.failed or mail_user not in mail_user_check.ansible_facts.getent_passwd
+    - mail_user_check.failed or (mail_user_check.ansible_facts is defined and mail_user not in mail_user_check.ansible_facts.getent_passwd)
     - mail_uid is defined and mail_uid != None and mail_uid != ''
 
 - name: Ensure mail system user exists (no UID specified)
@@ -50,7 +50,7 @@
     create_home: false
     shell: /sbin/nologin
   when:
-    - mail_user_check.failed or mail_user not in mail_user_check.ansible_facts.getent_passwd
+    - mail_user_check.failed or (mail_user_check.ansible_facts is defined and mail_user not in mail_user_check.ansible_facts.getent_passwd)
     - mail_uid is not defined or mail_uid == None or mail_uid == ''
 
 # Fallback: Ensure mail system user exists (idempotent) — some environments
@@ -67,7 +67,8 @@
   when: >-
     mail_user_check is not defined or
     mail_user_check.failed or
-    mail_user not in (mail_user_check.ansible_facts.getent_passwd | default({}))
+    (mail_user_check.ansible_facts is defined and
+     mail_user not in (mail_user_check.ansible_facts.getent_passwd | default({})))
 
 - name: Ensure /var/vmail exists for virtual mail storage
   ansible.builtin.file:
