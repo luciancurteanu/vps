@@ -111,6 +111,16 @@
     owner: root
     group: root
 
+- name: Allow MariaDB port in SELinux
+  community.general.seport:
+    ports: "{{ db_port }}"
+    proto: tcp
+    setype: mysqld_port_t
+    state: present
+  when:
+    - ansible_selinux.status is defined
+    - ansible_selinux.status == "enabled"
+
 - name: Enable and start MariaDB
   ansible.builtin.systemd:
     name: mariadb

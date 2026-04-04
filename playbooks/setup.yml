@@ -28,7 +28,6 @@
         group: root
       loop:
         - "/home/{{ domain }}"
-        - "/home/{{ domain }}/logs"
       when:
         - domain is defined
         - (domain.split('.')[0] != 'cpanel')
@@ -51,16 +50,17 @@
     - name: Create domain directory structure with correct ownership
       tags: ['setup']
       ansible.builtin.file:
-        path: "{{ item }}"
+        path: "{{ item.path }}"
         state: directory
         owner: "{{ user }}"
         group: "{{ user }}"
+        mode: "{{ item.mode }}"
       loop:
-        - "/home/{{ domain }}"
-        - "/home/{{ domain }}/public_html"
-        - "/home/{{ domain }}/logs"
-        - "/home/{{ domain }}/backup"
-        - "/home/{{ domain }}/tmp"
+        - { path: "/home/{{ domain }}",            mode: '0755' }
+        - { path: "/home/{{ domain }}/public_html", mode: '0755' }
+        - { path: "/home/{{ domain }}/logs",        mode: '2775' }
+        - { path: "/home/{{ domain }}/backup",      mode: '0750' }
+        - { path: "/home/{{ domain }}/tmp",         mode: '0700' }
       when:
         - domain is defined
         - user is defined
@@ -123,6 +123,16 @@
       when: install_development_tools | default(false)
 
   post_tasks:
+    - name: Add nginx to domain user group for log access
+      tags: ['setup', 'nginx']
+      ansible.builtin.user:
+        name: nginx
+        groups: "{{ user }}"
+        append: true
+      when:
+        - domain is defined
+        - user is defined
+
     - name: Create main domain vhost configuration
       tags: ['setup', 'nginx']
       ansible.builtin.template:
