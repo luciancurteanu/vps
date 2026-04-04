@@ -306,10 +306,10 @@ setup_vault_pass() {
         echo -e "${GREEN}Vault password file created from VAULT_PASS env var.${RESET}"
         return
     fi
-    # Interactive prompt
-    if [ -t 0 ]; then
+    # Interactive prompt — use /dev/tty so it works even when piped (curl | bash)
+    if [ -e /dev/tty ]; then
         echo -e "${YELLOW}Enter your Ansible Vault password (stored in $vault_file):${RESET}"
-        read -rsp "Vault password: " vault_password
+        read -rsp "Vault password: " vault_password < /dev/tty
         echo
         if [ -n "$vault_password" ]; then
             echo "$vault_password" > "$vault_file"
@@ -322,7 +322,7 @@ setup_vault_pass() {
             echo -e "${YELLOW}Create it manually: echo 'yourpassword' > ~/.vault_pass && chmod 600 ~/.vault_pass${RESET}"
         fi
     else
-        echo -e "${YELLOW}Non-interactive mode — skipping vault file (set VAULT_PASS env var to automate).${RESET}"
+        echo -e "${YELLOW}No terminal available — skipping vault file (set VAULT_PASS env var to automate).${RESET}"
         echo -e "${YELLOW}Create manually: echo 'yourpassword' > ~/.vault_pass && chmod 600 ~/.vault_pass${RESET}"
     fi
 }
