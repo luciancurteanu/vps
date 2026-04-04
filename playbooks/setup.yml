@@ -237,9 +237,14 @@
         mode: '0664'
         access_time: preserve
         modification_time: preserve
-      loop:
-        - access.log
-        - error.log
+      loop: "{{ _nginx_log_files }}"
+      vars:
+        _nginx_log_files: >-
+          {{ ['access.log', 'error.log']
+             + (['cpanel.' + domain + '-access.log', 'cpanel.' + domain + '-error.log']
+                if install_webmin | default(false) else [])
+             + (['mail-access.log', 'mail-error.log']
+                if install_mail | default(false) else []) }}
       when: domain is defined
 
     - name: Ensure firewall is running
