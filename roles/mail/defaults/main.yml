@@ -15,12 +15,12 @@ mail_db_name: "mailserver"
 mail_db_user: "mailuser"
 mail_db_password: "{{ vault_mail_db_password | default(lookup('env', 'MAIL_DB_PASSWORD'), true) }}"
 db_root_user: root
-db_root_password: ''
+db_root_password: "{{ vault_db_root_password | default(lookup('env', 'MARIADB_ROOT_PASSWORD'), true) }}"
 db_login_unix_socket: /var/lib/mysql/mysql.sock
 
 # Webmail settings
+# webmail_version is defined in inventory/group_vars/all.yml
 webmail_path: "/home/{{ master_domain | default(domain) }}/roundcube"
-webmail_version: "1.6.12"
 
 # Roundcube database settings
 roundcube_db_name: "roundcube"
@@ -40,7 +40,7 @@ mail_enable_nginx: true
 # Use /var/vmail for virtual mail storage by default
 mail_use_var_vmail: true
 mail_enable_ssl: false  # Disabled: SSL certificates not generated yet
-mail_ssl_enabled: true
+mail_ssl_enabled: false  # Dovecot SSL — disabled until certificates are provisioned
 mail_ssl_cert: /etc/pki/dovecot/certs/dovecot.pem
 mail_ssl_key: /etc/pki/dovecot/private/dovecot.pem
 mail_ssl_ca: ''

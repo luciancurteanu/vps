@@ -1,12 +1,9 @@
 ---
 # Development role: Default variables
+# nodejs_version and composer_version are defined in inventory/group_vars/all.yml
 
 # Node.js configuration
-nodejs_version: "22"  # Update to latest LTS version as of April 2025
 install_nodejs: true
 
 # Laravel configuration
 install_laravel: true
-
-# Composer configuration
-composer_version: "latest"

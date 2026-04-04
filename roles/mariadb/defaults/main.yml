@@ -1,8 +1,8 @@
 ---
 # MariaDB role: Default variables
 
-# MariaDB version and repository settings
-mariadb_version: "11.4"
+# MariaDB version is defined in inventory/group_vars/all.yml (mariadb_version)
+# Repository URL uses that variable directly
 mariadb_repo_url: "https://yum.mariadb.org/{{ mariadb_version }}/rhel9-amd64"
 mariadb_repo_key: "https://yum.mariadb.org/RPM-GPG-KEY-MariaDB"
 

@@ -62,20 +62,22 @@
     mode: '0644'
 
 - name: Create Roundcube database
-  mysql_db:
+  community.mysql.mysql_db:
     name: "{{ roundcube_db_name | default('roundcube') }}"
     state: present
     login_user: "{{ db_root_user }}"
     login_password: "{{ db_root_password }}"
+    login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
 
 - name: Create Roundcube database user
-  mysql_user:
+  community.mysql.mysql_user:
     name: "{{ roundcube_db_user | default('roundcube') }}"
     password: "{{ roundcube_db_password }}"
     priv: "{{ roundcube_db_name | default('roundcube') }}.*:ALL"
     state: present
     login_user: "{{ db_root_user }}"
     login_password: "{{ db_root_password }}"
+    login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
 
 - name: Import Roundcube database schema
   mysql_db:

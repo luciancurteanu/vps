@@ -1,8 +1,7 @@
 ---
 # Default variables for PHP role
 
-# PHP version to install from Remi repository
-php_version: "8.4"
+# php_version is defined in inventory/group_vars/all.yml
 
 # Nginx user and group for PHP-FPM integration
 nginx_user: nginx

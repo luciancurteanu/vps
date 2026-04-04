@@ -1,6 +1,7 @@
 ---
 # defaults file for goproxy
-go_version: "{{ goproxy_version | default('1.21.0') }}"  # Default version, should match your environment variable
+# goproxy_version is defined in inventory/group_vars/all.yml
+go_version: "{{ goproxy_version }}"
 go_install_dir: "/usr/lib/go"
 go_profile_script: "/etc/profile.d/go.sh"
 go_binary_path: "{{ go_install_dir }}/bin/go"
