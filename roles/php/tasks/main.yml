@@ -98,7 +98,7 @@
     group: root
     mode: '0644'
   vars:
-    domain: "{{ item }}"
+    pool_domain: "{{ item }}"
     pool_user: "{{ item.split('.')[-2] }}"
   loop: "{{ php_fpm_pools | default([]) }}"
   when: php_fpm_pools | default([]) | length > 0
