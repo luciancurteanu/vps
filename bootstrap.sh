@@ -360,6 +360,10 @@ make_executable() {
         git -C "$REPO_DIR" config core.hooksPath .githooks
         chmod +x "$REPO_DIR/.githooks/"* 2>/dev/null || true
     fi
+    # Ensure logs directory exists so ansible.cfg log_path doesn't warn on first run
+    mkdir -p "$REPO_DIR/logs"
+    local target_user="${SUDO_USER:-$USER}"
+    chown "$target_user":"$target_user" "$REPO_DIR/logs" 2>/dev/null || true
     echo -e "${GREEN}Scripts are now executable.${RESET}"
 }
 
