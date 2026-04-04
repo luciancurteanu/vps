@@ -250,6 +250,8 @@ sync_keys() {
 
     for pub_file in "$HOME"/.ssh/*.pub; do
         [ -f "$pub_file" ] || continue
+        # skip the ansible self-connect key (not a login key)
+        [[ "$pub_file" == *ansible_id.pub ]] && continue
         while IFS= read -r line; do
             [[ "$line" =~ ^(ssh-|ecdsa-|sk-) ]] || continue
             echo "$line" >> "$tmp_keys"
@@ -300,7 +302,7 @@ PYEOF
 
     if [ $exit_code -eq 0 ]; then
         echo -e "${GREEN}secrets.yml updated. Run the playbook to sync keys to the server:${RESET}"
-        echo -e "  ${BOLD}./vps.sh install core --domain=\$DOMAIN --ask-vault-pass${RESET}"
+        echo -e "  ${BOLD}./vps.sh install core --domain=\$DOMAIN${RESET}"
     else
         echo -e "${RED}Failed to update secrets.yml${RESET}"
         exit 1
