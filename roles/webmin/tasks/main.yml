@@ -78,6 +78,20 @@
   when: webmin_nginx_proxy | default(false)
   notify: Reload nginx
 
+- name: Pre-create Webmin log files
+  ansible.builtin.file:
+    path: "/home/{{ domain }}/logs/{{ item }}"
+    state: touch
+    owner: nginx
+    group: "{{ user | default(domain.split('.')[-2]) }}"
+    mode: '0664'
+    access_time: preserve
+    modification_time: preserve
+  loop:
+    - "{{ webmin_subdomain }}-access.log"
+    - "{{ webmin_subdomain }}-error.log"
+  when: webmin_nginx_proxy | default(false) and domain is defined
+
 - name: Enable Webmin nginx proxy
   ansible.builtin.file:
     src: "/etc/nginx/sites-available/{{ webmin_subdomain }}.conf"
