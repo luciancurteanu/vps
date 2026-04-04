@@ -160,11 +160,11 @@ After SSL installation, all sites automatically switch to:
 
 **Install SSL for all subdomains (run after core setup):**
 ```bash
-./vps.sh install ssl --domain=yourdomain.com --ask-vault-pass
+./vps.sh install ssl --domain=example.com --vault-password-file=~/.vault_pass
 ```
 
 **This command:**
-- Obtains Let's Encrypt certificates for: `yourdomain.com`, `mail.yourdomain.com`, `cpanel.yourdomain.com`
+- Obtains Let's Encrypt certificates for: `example.com`, `mail.example.com`, `cpanel.example.com`
 - Configures nginx to redirect HTTP → HTTPS for all sites
 - Enables HTTPS in Roundcube webmail
 - Enables SSL enforcement in Webmin
