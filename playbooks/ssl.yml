@@ -11,6 +11,8 @@
     required_vars:
       - domain
     certbot_package: "python3-certbot-nginx"
+    certbot_dns_plugin: "certbot-dns-dynu"
+    dynu_credentials_file: "/etc/letsencrypt/dynu-credentials.ini"
     force_renewal: false
     email: "webmaster@{{ domain }}"
 
@@ -44,6 +46,20 @@
         state: present
       when: ansible_os_family == "Debian"
 
+    - name: Install certbot-dns-dynu plugin
+      ansible.builtin.pip:
+        name: "{{ certbot_dns_plugin }}"
+        state: present
+        executable: pip3
+
+    - name: Create Dynu credentials file
+      ansible.builtin.copy:
+        dest: "{{ dynu_credentials_file }}"
+        content: "dns_dynu_auth_token = {{ vault_dynu_api_token }}\n"
+        owner: root
+        group: root
+        mode: '0600'
+
     - name: Check if certificate already exists
       ansible.builtin.stat:
         path: "/etc/letsencrypt/live/{{ domain }}/fullchain.pem"
@@ -58,7 +74,10 @@
 
     - name: Obtain SSL certificate
       ansible.builtin.command: >
-        certbot --nginx
+        certbot certonly
+        --authenticator dns-dynu
+        --dns-dynu-credentials {{ dynu_credentials_file }}
+        --dns-dynu-propagation-seconds 60
         --non-interactive
         --agree-tos
         --email {{ email }}
