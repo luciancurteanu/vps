@@ -313,9 +313,12 @@ PYEOF
 run_ansible() {
     start_time=$(date +%s)
     
-    # Ensure logs directory exists
-    mkdir -p "$PROJECT_ROOT/logs"
-    
+    # Ensure logs directory exists (failsafe in case bootstrap was skipped)
+    if [ ! -d "$PROJECT_ROOT/logs" ]; then
+        mkdir -p "$PROJECT_ROOT/logs"
+        echo -e "${YELLOW}Created missing logs directory: $PROJECT_ROOT/logs${RESET}"
+    fi
+
     timestamp=$(date '+%Y%m%d_%H%M%S')
     log_file="$PROJECT_ROOT/logs/vps-${ACTION}-${MODULE}-${timestamp}.log"
     
