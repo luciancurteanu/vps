@@ -36,17 +36,17 @@ master_domain: "{{ domain | default(inventory_hostname) }}"
 #########################
 
 # Admin user configuration (example values)
-admin_user: example_admin  # Example username for docs (do not use in production)
-admin_group: example_group  # Example group for docs
+admin_user: admin  # Admin username created by provisioning
+admin_group: admin  # Admin group
 admin_shell: /bin/bash  # Default shell for admin user
 admin_password: "{{ vault_admin_password | default(lookup('env', 'ADMIN_PASSWORD'), true) }}"  # Admin password (from vault)
 admin_ssh_public_key: "{{ vault_admin_ssh_public_key | default(omit) }}"  # SSH public key for admin (from vault)
 create_admin_user: true  # Whether to create admin user during provisioning
-admin_auth: password  # Authentication method: 'password' or 'key'
+admin_auth: key  # Authentication method: 'password' or 'key'
 admin_sudo_nopasswd: true  # Allow admin to use sudo without password
 
 # SSH configuration (common role)
-ssh_port: 2222  # Example SSH listening port for documentation
+ssh_port: 22  # SSH listening port
 ssh_permit_root_login: "no"  # Allow root login (no = more secure)
 ssh_password_authentication: "yes"  # Allow password authentication (set to 'no' after key setup)
 ssh_pubkey_authentication: "yes"  # Allow public key authentication
@@ -92,9 +92,9 @@ php_version: "8.4"  # PHP version from Remi repository
 # Add any domains for which you want a dedicated php-fpm pool created
 # Example: example.com and common subdomains
 php_fpm_pools:
-  - example.com
-  - cpanel.example.com
-  - mail.example.com
+  - "{{ master_domain }}"           # Replace with your actual domain(s)
+  - "cpanel.{{ master_domain }}"
+  - "mail.{{ master_domain }}"
 # Deploy a managed shared www pool (true/false)
 php_fpm_create_www: true
 
