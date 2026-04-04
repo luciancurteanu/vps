@@ -177,34 +177,41 @@
     - "virtual"
     - "spool"
 
-- name: Ensure mail log directory exists (preserve nginx ownership)
+- name: Ensure mail log directory exists
   ansible.builtin.file:
     path: "/home/{{ domain }}/logs"
     state: directory
     owner: nginx
-    group: nginx
+    group: "{{ user | default(domain.split('.')[-2]) }}"
+    mode: '2775'
 
-- name: Create mail log files with nginx ownership
+- name: Create mail log files
   ansible.builtin.file:
     path: "/home/{{ domain }}/logs/{{ item }}"
     state: touch
     owner: nginx
-    group: nginx
+    group: "{{ user | default(domain.split('.')[-2]) }}"
+    mode: '0664'
     modification_time: preserve
     access_time: preserve
   with_items:
     - mail-access.log
     - mail-error.log
 
-- name: Set SELinux context for domain log directories
+- name: Set SELinux context for /var/vmail
   community.general.sefcontext:
     target: '/var/vmail(/.*)?'
     setype: httpd_log_t
     state: present
   when: ansible_selinux.status == "enabled"
 
-- name: Apply SELinux context to mail log directory
+- name: Apply SELinux context to /var/vmail
   ansible.builtin.command: restorecon -Rv /var/vmail
+  when: ansible_selinux.status == "enabled"
+  changed_when: false
+
+- name: Apply SELinux context to domain logs after creating mail log files
+  ansible.builtin.command: restorecon -Rv /home/{{ domain }}/logs
   when: ansible_selinux.status == "enabled"
   changed_when: false
 
