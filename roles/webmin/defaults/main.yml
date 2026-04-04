@@ -9,6 +9,12 @@ webmin_gpg_key: "https://download.webmin.com/jcameron-key.asc"
 # Installation configuration
 webmin_version: ""  # Empty = latest version; specify version like "2.520" to pin
 
+# Port and proxy configuration (from all.yml)
+webmin_port: 10000
+webmin_subdomain: "cpanel.{{ domain }}"
+webmin_nginx_proxy: true
+webmin_ssl_enabled: false
+
 # Theme configuration
 webmin_theme: "authentic-theme"
 webmin_authentic_version: ""  # Empty = auto-resolve latest stable release from GitHub

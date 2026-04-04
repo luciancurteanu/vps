@@ -37,7 +37,7 @@
 
 - name: Add admin user to wheel group for sudo access
   ansible.builtin.user:
-    name: "{{ default_user }}"
+    name: "{{ admin_user }}"
     groups: wheel
     append: true
 

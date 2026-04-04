@@ -27,8 +27,8 @@ db_character_set: "utf8mb4"
 db_collation: "utf8mb4_unicode_ci"
 
 # Network settings
-db_bind_address: "127.0.0.1"  # Only listen on localhost by default
-db_port: 3306
+db_bind_address: "0.0.0.0"  # Listen on all interfaces; override to 127.0.0.1 for localhost-only
+db_port: 3307
 
 # Security settings
 db_allow_remote_root: false

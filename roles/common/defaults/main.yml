@@ -16,6 +16,8 @@ common_admin_group: "{{ admin_group }}"
 common_admin_shell: "{{ admin_shell }}"
 common_admin_password: "{{ admin_password }}"
 common_admin_ssh_key: "{{ admin_ssh_public_key }}"
+common_admin_auth: "{{ admin_auth | default('key') }}"
+common_admin_sudo_nopasswd: "{{ admin_sudo_nopasswd | default(true) }}"
 
 # SSH configuration (from all.yml)
 common_ssh_port: "{{ ssh_port }}"

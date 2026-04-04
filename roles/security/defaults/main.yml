@@ -51,8 +51,8 @@ security_fail2ban_enabled: "{{ fail2ban_enabled }}"
 security_fail2ban_services: "{{ fail2ban_services }}"
 security_fail2ban_socket_timeout: "{{ fail2ban_socket_timeout | default(30) }}"
 
-# List of IPs to whitelist in fail2ban
-allowed_ips: "149.102.153.46/32 66.249.64.0/19 31.5.191.35/32"
+# List of IPs to whitelist in fail2ban (override in all.yml or host_vars)
+allowed_ips: ""
 
 security_allowed_ips: "{{ allowed_ips }}"
 

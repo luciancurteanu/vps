@@ -71,10 +71,10 @@
     regexp: "{{ item.regexp }}"
     replace: "{{ item.replace }}"
   loop:
-    - { regexp: '^user = apache', replace: 'user = nginx' }
-    - { regexp: '^group = apache', replace: 'group = nginx' }
-    - { regexp: '^;listen\.owner = nobody', replace: 'listen.owner = nginx' }
-    - { regexp: '^;listen\.group = nobody', replace: 'listen.group = nginx' }
+    - { regexp: '^user = apache', replace: 'user = {{ php_fpm_user }}' }
+    - { regexp: '^group = apache', replace: 'group = {{ php_fpm_group }}' }
+    - { regexp: '^;listen\.owner = nobody', replace: 'listen.owner = {{ php_fpm_user }}' }
+    - { regexp: '^;listen\.group = nobody', replace: 'listen.group = {{ php_fpm_group }}' }
     - { regexp: '^;listen\.mode = 0660', replace: 'listen.mode = 0660' }
     - { regexp: '^listen\.acl_users.*', replace: ';listen.acl_users' }
   notify: Restart php-fpm
