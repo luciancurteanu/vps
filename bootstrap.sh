@@ -287,6 +287,30 @@ setup_ssh_keys() {
         echo -e "${GREEN}Control-host key registered: $pub_file${RESET}"
     fi
 
+    # 3) Export any pre-existing authorized_keys entries (non-ansible keys) as .pub files
+    #    so that './vps.sh sync keys' can include them in vault_admin_ssh_public_key.
+    if [ -f "$ssh_dir/authorized_keys" ] && [ -f "$ssh_dir/ansible_id.pub" ]; then
+        local ansible_key_blob
+        ansible_key_blob=$(awk '{print $1" "$2}' "$ssh_dir/ansible_id.pub")
+        while IFS= read -r line; do
+            [[ "$line" =~ ^(ssh-|ecdsa-|sk-) ]] || continue
+            local key_blob
+            key_blob=$(echo "$line" | awk '{print $1" "$2}')
+            # skip the ansible self-connect key
+            [ "$key_blob" = "$ansible_key_blob" ] && continue
+            # derive filename from key comment (3rd field)
+            local key_label
+            key_label=$(echo "$line" | awk '{print $3}' | tr -dc '[:alnum:]-_')
+            [ -z "$key_label" ] && key_label="control-host"
+            local pub_file="$ssh_dir/${key_label}.pub"
+            if [ ! -f "$pub_file" ]; then
+                echo "$line" > "$pub_file"
+                chmod 644 "$pub_file"
+                echo -e "${GREEN}Pre-existing key exported as $pub_file${RESET}"
+            fi
+        done < "$ssh_dir/authorized_keys"
+    fi
+
     # Fix ownership when running as root on behalf of a user
     local target_user="${SUDO_USER:-$USER}"
     chown -R "$target_user":"$target_user" "$ssh_dir" 2>/dev/null || true
@@ -385,7 +409,8 @@ main() {
     echo -e "     ${GREEN}nano inventory/hosts.yml${RESET}"
     echo -e "     ${GREEN}nano vars/secrets.yml${RESET}"
     echo
-    echo -e "     Encrypt the secrets file using Ansible Vault:"
+    echo -e "     Encrypt the secrets file and sync ssh keys using Ansible Vault:"
+    echo -e "     ${GREEN}./vps.sh sync keys${RESET}"
     echo -e "     ${GREEN}ansible-vault encrypt vars/secrets.yml${RESET}"
     echo
     echo -e "  3. Run the setup playbook:"
