@@ -38,6 +38,7 @@ sudo dnf install -y curl
 
 # Download and run bootstrap (installs Git, Ansible, Python, clones repo)
 # When piped, the bootstrap will force-delete and re-clone the repo by default.
+# You will be prompted to enter vault password during setup, which will be used for encrypting secrets.yml.
 curl -fsSL https://raw.githubusercontent.com/luciancurteanu/vps/main/bootstrap.sh | bash
 
 # 1) Change to the repository directory
@@ -62,10 +63,11 @@ Pick one option below and follow the steps exactly.
 
 Option 1 - Interactive (recommended for manual use)
 ```bash
-# No password file is written to disk; Ansible prompts for the vault password.
-# Create/encrypt and run:
+# Run setup (no --vault-password-file needed anymore — ansible.cfg handles it):
+# Copy ssh keys, encrypt secrets.yml and run install:
+./vps.sh sync keys
 ansible-vault encrypt vars/secrets.yml
-./vps.sh install core --domain=yourdomain.com --ask-vault-pass --ask-pass
+./vps.sh install core --domain=yourdomain.com
 ```
 ---
 Option 2 - Password file (plain text, convenient)
