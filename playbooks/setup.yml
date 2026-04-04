@@ -221,10 +221,25 @@
       tags: ['setup', 'nginx']
       ansible.builtin.file:
         path: "/home/{{ domain }}/logs"
+        owner: "{{ user | default(domain.split('.')[-2]) }}"
+        group: "{{ user | default(domain.split('.')[-2]) }}"
+        mode: '2775'
+        state: directory
+      when: domain is defined
+
+    - name: Pre-create nginx log files for domain
+      tags: ['setup', 'nginx']
+      ansible.builtin.file:
+        path: "/home/{{ domain }}/logs/{{ item }}"
+        state: touch
         owner: nginx
-        mode: '0644'
-        group: nginx
-        recurse: true
+        group: "{{ user | default(domain.split('.')[-2]) }}"
+        mode: '0664'
+        access_time: preserve
+        modification_time: preserve
+      loop:
+        - access.log
+        - error.log
       when: domain is defined
 
     - name: Ensure firewall is running

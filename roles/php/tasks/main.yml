@@ -81,7 +81,7 @@
 
 - name: Ensure per-domain directories exist for PHP-FPM pools
   ansible.builtin.file:
-    path: "/home/{{ item.0 }}/{{ item.1 }}"
+    path: "/home/{{ item.0.split('.')[-2:] | join('.') }}/{{ item.1 }}"
     state: directory
     owner: "{{ item.0.split('.')[-2] }}"
     group: "{{ item.0.split('.')[-2] }}"
