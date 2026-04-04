@@ -71,7 +71,7 @@
       ansible.builtin.file:
         path: "/home/{{ domain }}/logs/access.log"
         state: touch
-        owner: nginx
+        owner: "{{ user }}"
         group: "{{ user }}"
         mode: '0664'
         access_time: preserve
