@@ -20,3 +20,5 @@ logs/
 *.log
 !/logs/*.md
 temp/
+.ansible_cache/
+callback_plugins/__pycache__/

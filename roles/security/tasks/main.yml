@@ -140,6 +140,7 @@
     path: /var/run/fail2ban/fail2ban.sock
     state: present
     timeout: "{{ security_fail2ban_socket_timeout }}"
+  ignore_errors: true
   when:
     - security_fail2ban_enabled | default(true)
     - security_firewall_initialize | default(true)

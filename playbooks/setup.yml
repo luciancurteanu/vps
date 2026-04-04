@@ -66,6 +66,18 @@
         - user is defined
         - domain.split('.')[0] != 'cpanel'
 
+    - name: Pre-create nginx access log for fail2ban badbot jail
+      tags: ['setup']
+      ansible.builtin.file:
+        path: "/home/{{ domain }}/logs/access.log"
+        state: touch
+        access_time: preserve
+        modification_time: preserve
+      when:
+        - domain is defined
+        - user is defined
+        - domain.split('.')[0] != 'cpanel'
+
     - name: Validate required variables
       tags: ['setup']
       ansible.builtin.fail:
