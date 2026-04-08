@@ -4,9 +4,9 @@
 # Then connect your DB client to 127.0.0.1:<LocalPort>
 
 param(
-    [string]$RemoteHost   = "192.168.88.8",
-    [string]$SSHUser      = "admin",
-    [string]$SSHKey       = "$env:USERPROFILE\.ssh\lucasvps-test",
+    [string]$RemoteHost   = "YOUR_SERVER_IP",
+    [string]$SSHUser      = "YOUR_SSH_USER",
+    [string]$SSHKey       = "$env:USERPROFILE\.ssh\YOUR_SSH_KEY",
     [int]   $LocalPort    = 3307,
     [int]   $RemotePort   = 3307,
     [int]   $SSHPort      = 22
