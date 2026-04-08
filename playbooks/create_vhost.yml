@@ -48,6 +48,7 @@
         create_home: true
         home: "/home/{{ domain }}"
         shell: /bin/bash
+        password: "{{ vault_domain_user_password | password_hash('sha512') }}"
         update_password: on_create
       when: ((domain == master_domain) or (not (reuse_master_user | default(false)))) and (domain.split('.')[0] != 'cpanel')
 
@@ -218,7 +219,6 @@
           Match Group {{ sftp_group }}
           ForceCommand internal-sftp
           PasswordAuthentication yes
-          ChrootDirectory /home/%u
           PermitTunnel no
           AllowAgentForwarding no
           AllowTcpForwarding no
@@ -232,7 +232,7 @@
         name: "{{ user }}"
         groups: "{{ sftp_group }}"
         append: true
-      when: domain == master_domain
+      when: domain.split('.')[0] != 'cpanel'
 
     - name: Configure hosts file for master domain
       ansible.builtin.lineinfile:
