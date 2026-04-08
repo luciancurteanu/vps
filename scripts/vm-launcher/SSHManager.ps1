@@ -2,6 +2,7 @@ class SSHManager {
     [string]$SSHDir
     [string]$SharedPrivKey
     [string]$SharedPubKey
+    [string]$SharedPpkKey
     [string]$SharedMarker
     [string]$SSHConfig
     [string]$PrivKeyFile
@@ -13,6 +14,7 @@ class SSHManager {
         $this.SSHDir = $sshDir
         $this.SharedPrivKey = $sharedPrivKey
         $this.SharedPubKey = $sharedPubKey
+        $this.SharedPpkKey = [System.IO.Path]::ChangeExtension($sharedPrivKey, '.ppk')
         $this.SharedMarker = $sharedMarker
         $this.SSHConfig = $sshConfig
         $this.VMUtilsInstance = $vmUtilsInstance
@@ -68,6 +70,7 @@ class SSHManager {
                     $this.PubKeyFile = $this.SharedPubKey
                     $this.PubKey = (Get-Content -Raw -LiteralPath $this.SharedPubKey).Trim()
                     $this.UpdateSharedMarker($vmName, $true)
+                    $this.GeneratePpkKey()
                     return $true
                 } else {
                     Write-Host "Key file not found after generation attempt" -ForegroundColor Yellow
@@ -253,8 +256,8 @@ class SSHManager {
         }
 
         if (@($vms).Count -eq 0 -or $createdByScript) {
-            Write-Host "No remaining VMs reference shared key; removing shared vps keys" -ForegroundColor Yellow
-            foreach ($keyFile in @($this.SharedPrivKey, $this.SharedPubKey)) {
+            Write-Host "No remaining VMs reference shared key; removing shared keys" -ForegroundColor Yellow
+            foreach ($keyFile in @($this.SharedPrivKey, $this.SharedPubKey, $this.SharedPpkKey)) {
                 try {
                     if (Test-Path -LiteralPath $keyFile) {
                         Remove-Item -LiteralPath $keyFile -Force -ErrorAction Stop
@@ -270,6 +273,93 @@ class SSHManager {
                 $markerContent[$vmsLineIdx-1] = 'vms=' + ($vms -join ',')
                 $markerContent | Set-Content -LiteralPath $this.SharedMarker -Encoding ascii
             }
+        }
+    }
+
+    [void] GeneratePpkKey() {
+        $python = Get-Command python -ErrorAction SilentlyContinue
+        if (-not $python) { $python = Get-Command python3 -ErrorAction SilentlyContinue }
+        if (-not $python) {
+            Write-Host "PPK generation skipped: python not found in PATH" -ForegroundColor Yellow
+            return
+        }
+
+        $privPath = $this.SharedPrivKey -replace '\\', '/'
+        $pubPath  = $this.SharedPubKey  -replace '\\', '/'
+        $ppkPath  = $this.SharedPpkKey  -replace '\\', '/'
+
+        $pyScript = @"
+import base64, hashlib, hmac as _hmac, struct, sys
+try:
+    from cryptography.hazmat.primitives.serialization import (
+        load_ssh_private_key, Encoding, PrivateFormat, PublicFormat, NoEncryption)
+except ImportError:
+    sys.exit('cryptography module not available')
+
+priv_path = r'$privPath'
+pub_path  = r'$pubPath'
+ppk_path  = r'$ppkPath'
+
+with open(priv_path, 'rb') as f:
+    priv_pem = f.read()
+with open(pub_path, 'r') as f:
+    pub_line = f.read().strip()
+
+key  = load_ssh_private_key(priv_pem, password=None)
+seed = key.private_bytes(Encoding.Raw, PrivateFormat.Raw, NoEncryption())
+pub_bytes = key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
+
+parts   = pub_line.split(' ', 2)
+comment = parts[2] if len(parts) >= 3 else 'imported-key'
+
+def ssh_str(data):
+    if isinstance(data, str): data = data.encode()
+    return struct.pack('>I', len(data)) + data
+
+pub_blob  = ssh_str('ssh-ed25519') + ssh_str(pub_bytes)
+priv_blob = ssh_str(seed)
+
+key_type   = 'ssh-ed25519'
+encryption = 'none'
+
+# PPK3 MAC: HMAC-SHA256 key = SHA256("putty-private-key-file-mac-key" + passphrase)
+# passphrase is empty for unencrypted keys
+mac_key  = hashlib.sha256(b'putty-private-key-file-mac-key').digest()
+mac_data = (ssh_str(key_type) + ssh_str(encryption) + ssh_str(comment)
+            + ssh_str(pub_blob) + ssh_str(priv_blob))
+mac = _hmac.new(mac_key, mac_data, hashlib.sha256).hexdigest()
+
+pub_b64  = base64.b64encode(pub_blob).decode()
+priv_b64 = base64.b64encode(priv_blob).decode()
+
+def split64(s): return [s[i:i+64] for i in range(0, len(s), 64)]
+
+lines  = ['PuTTY-User-Key-File-3: ' + key_type]
+lines += ['Encryption: ' + encryption]
+lines += ['Comment: ' + comment]
+pub_chunks = split64(pub_b64)
+lines += ['Public-Lines: ' + str(len(pub_chunks))]
+lines += pub_chunks
+priv_chunks = split64(priv_b64)
+lines += ['Private-Lines: ' + str(len(priv_chunks))]
+lines += priv_chunks
+lines += ['Private-MAC: ' + mac]
+
+with open(ppk_path, 'w', newline='\n') as f:
+    f.write('\n'.join(lines) + '\n')
+
+print('OK')
+"@
+
+        try {
+            $result = & $python.Source -c $pyScript 2>&1
+            if ($LASTEXITCODE -ne 0 -or $result -notmatch 'OK') {
+                Write-Host "PPK generation failed: $result" -ForegroundColor Yellow
+            } else {
+                Write-Host "PPK key generated: $($this.SharedPpkKey)" -ForegroundColor Green
+            }
+        } catch {
+            Write-Host "PPK generation error: $_" -ForegroundColor Yellow
         }
     }
 }
