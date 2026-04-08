@@ -98,7 +98,7 @@
         weekday: "1"  # Monday
 
     - name: Display certificate information
-      shell: "certbot certificates -d {{ domain }}"
+      shell: "certbot certificates --cert-name {{ domain }}"
       register: cert_info
       changed_when: false
 
@@ -158,6 +158,7 @@
         - { regexp: '^ssl_hsts=', line: 'ssl_hsts=1' }
         - { regexp: '^ssl_enforce=', line: 'ssl_enforce=2' }
       when: install_webmin | default(true)
+      notify: Restart Webmin
       notify: Restart Webmin
 
   handlers:
