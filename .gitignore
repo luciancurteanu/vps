@@ -22,3 +22,7 @@ logs/
 temp/
 .ansible_cache/
 callback_plugins/__pycache__/
+
+# Local scripts with environment-specific settings
+/scripts/db-tunnel.ps1
+!/scripts/db-tunnel.ps1.example
