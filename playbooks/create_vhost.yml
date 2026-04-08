@@ -48,7 +48,7 @@
         name: "{{ user }}"
         comment: "Virtual host user for {{ domain }}"
         create_home: true
-        home: "/home/{{ user }}"
+        home: "/home/{{ domain }}"
         shell: /bin/bash
         update_password: on_create
       when: ((domain == master_domain) or (not (reuse_master_user | default(false)))) and (domain.split('.')[0] != 'cpanel')
