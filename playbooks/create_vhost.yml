@@ -226,7 +226,7 @@
         insertafter: EOF
         block: |
           Match Group {{ sftp_group }}
-          ForceCommand internal-sftp
+          ForceCommand internal-sftp -u 0002
           PasswordAuthentication yes
           PermitTunnel no
           AllowAgentForwarding no

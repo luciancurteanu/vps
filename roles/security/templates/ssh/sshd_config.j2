@@ -49,7 +49,7 @@ StrictModes yes
 # SFTP Chroot settings for the dedicated SFTP group
 Match Group {{ sftp_chroot_group }}
     # Force the connection to use internal-sftp
-    ForceCommand internal-sftp
+    ForceCommand internal-sftp -u 0002
     # Prevent TCP forwarding, agent forwarding, X11 forwarding, and TTY allocation for this group
     PermitTunnel no
     AllowAgentForwarding no
