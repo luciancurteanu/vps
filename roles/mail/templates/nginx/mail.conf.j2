@@ -37,7 +37,8 @@ server {
 
 {% if mail_enable_ssl | default(false) %}
 server {
-    listen 443 ssl http2;
+    listen 443 ssl;
+    http2 on;
     server_name {{ mail_subdomain }};
     
     root {{ webmail_path }};
