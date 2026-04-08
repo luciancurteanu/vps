@@ -149,6 +149,12 @@
       when: install_webmin | default(true)
       notify: Restart Nginx
 
+    - name: Check if Webmin miniserv.conf exists
+      ansible.builtin.stat:
+        path: /etc/webmin/miniserv.conf
+      register: webmin_miniconf_stat
+      when: install_webmin | default(true)
+
     - name: Enable SSL enforcement in Webmin
       ansible.builtin.lineinfile:
         path: /etc/webmin/miniserv.conf
@@ -157,7 +163,7 @@
       loop:
         - { regexp: '^ssl_hsts=', line: 'ssl_hsts=1' }
         - { regexp: '^ssl_enforce=', line: 'ssl_enforce=2' }
-      when: install_webmin | default(true)
+      when: install_webmin | default(true) and (webmin_miniconf_stat.stat.exists | default(false))
       notify: Restart Webmin
       notify: Restart Webmin
 

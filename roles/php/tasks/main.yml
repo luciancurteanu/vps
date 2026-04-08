@@ -173,6 +173,9 @@
   ansible.builtin.debug:
     var: php_fpm_log.stdout_lines
 
+- name: Flush handlers before waiting for PHP-FPM socket
+  ansible.builtin.meta: flush_handlers
+
 - name: Wait for PHP-FPM socket to be created
   ansible.builtin.wait_for:
     path: "{{ php_fpm_listen | default('/var/run/php-fpm/www.sock') }}"

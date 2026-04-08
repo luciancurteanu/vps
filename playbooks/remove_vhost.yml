@@ -37,7 +37,13 @@
         dest: "/var/backups/{{ domain }}-{{ ansible_date_time.date }}.tar.gz"
         format: gz
       register: backup_result
-      failed_when: false
+
+    - name: Abort if backup failed
+      ansible.builtin.fail:
+        msg: "Backup failed for {{ domain }}. Aborting removal to prevent data loss. Use -e skip_backup=true to force."
+      when:
+        - not (skip_backup | default(false))
+        - backup_result is failed or (backup_result.dest is not defined)
 
     - name: Remove Nginx virtual host configuration
       ansible.builtin.file:

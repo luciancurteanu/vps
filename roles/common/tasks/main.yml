@@ -58,11 +58,18 @@
     name: "{{ item }}"
     state: present
   loop: "{{ optional_packages | default([]) }}"
-  failed_when: false  # TODO: Add proper failure condition
+  register: optional_pkg_result
+  ignore_errors: true
   when: ansible_os_family == 'RedHat'
   tags:
     - packages
     - optional
+
+- name: Report failed optional package installs
+  ansible.builtin.debug:
+    msg: "Optional package '{{ item.item }}' failed to install (non-critical): {{ item.msg | default('unknown error') }}"
+  loop: "{{ optional_pkg_result.results | default([]) }}"
+  when: item.failed | default(false)
 
 - name: Check if swap exists
   ansible.builtin.command: swapon --show
@@ -108,3 +115,14 @@
 - name: Include user management tasks
   ansible.builtin.include_tasks: users.yml
   when: common_create_admin_user | bool
+
+- name: Configure centralized rsyslog forwarding
+  ansible.builtin.lineinfile:
+    path: /etc/rsyslog.conf
+    regexp: '^\*\.\*\s+@@'
+    line: "*.* @@{{ syslog_server }}"
+    state: present
+  when: syslog_server is defined and syslog_server | length > 0
+  notify: Restart rsyslog
+  tags:
+    - logging

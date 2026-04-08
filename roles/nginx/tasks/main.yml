@@ -29,7 +29,13 @@
     owner: root
     group: root
   when: not nginx_conf_backup.stat.exists
-  failed_when: false  # TODO: Add proper failure condition
+  ignore_errors: true
+  register: nginx_conf_backup_result
+
+- name: Warn if nginx.conf backup failed
+  ansible.builtin.debug:
+    msg: "Warning: nginx.conf backup failed (non-critical): {{ nginx_conf_backup_result.msg | default('') }}"
+  when: nginx_conf_backup_result is defined and nginx_conf_backup_result.failed | default(false)
 
 - name: Configure Nginx with optimized settings
   ansible.builtin.template:
@@ -53,7 +59,13 @@
     owner: root
     group: root
   when: not default_conf_backup.stat.exists
-  failed_when: false  # TODO: Add proper failure condition
+  ignore_errors: true
+  register: default_conf_backup_result
+
+- name: Warn if default.conf backup failed
+  ansible.builtin.debug:
+    msg: "Warning: default.conf backup failed (non-critical): {{ default_conf_backup_result.msg | default('') }}"
+  when: default_conf_backup_result is defined and default_conf_backup_result.failed | default(false)
 
 - name: Configure default server for unknown domains
   ansible.builtin.template:

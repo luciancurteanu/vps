@@ -153,7 +153,6 @@
     - name: Enable site by creating symlink
       ansible.builtin.file:
         src: "/etc/nginx/sites-available/{{ domain }}.conf"
-        mode: '0644'
         dest: "/etc/nginx/sites-enabled/{{ domain }}.conf"
         state: link
       notify: Restart Nginx
@@ -177,13 +176,33 @@
       when: ansible_selinux.status == "enabled"
       changed_when: false
 
-    - name: Set specific permissions for PHP files
-      shell: find {{ document_root }} -type f -name "*.php" -exec chmod 640 {} \;
-      changed_when: false
+    - name: Find PHP files in document root
+      ansible.builtin.find:
+        paths: "{{ document_root }}"
+        patterns: "*.php"
+        file_type: file
+        recurse: true
+      register: php_files
 
-    - name: Set specific permissions for non-PHP files
-      shell: find {{ document_root }} -type f ! -name "*.php" -exec chmod 755 {} \;
-      changed_when: false
+    - name: Set permissions for PHP files
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        mode: '0640'
+      loop: "{{ php_files.files }}"
+
+    - name: Find non-PHP files in document root
+      ansible.builtin.find:
+        paths: "{{ document_root }}"
+        file_type: file
+        recurse: true
+        excludes: "*.php"
+      register: non_php_files
+
+    - name: Set permissions for non-PHP files
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        mode: '0755'
+      loop: "{{ non_php_files.files }}"
 
     - name: Create SFTP group if it doesn't exist
       ansible.builtin.group:
@@ -199,7 +218,7 @@
           Match Group {{ sftp_group }}
           ForceCommand internal-sftp
           PasswordAuthentication yes
-          ChrootDirectory /home
+          ChrootDirectory /home/%u
           PermitTunnel no
           AllowAgentForwarding no
           AllowTcpForwarding no
@@ -247,7 +266,6 @@
         - name: Enable mail subdomain site
           ansible.builtin.file:
             src: "/etc/nginx/sites-available/{{ mail_subdomain }}.conf"
-            mode: '0644'
             dest: "/etc/nginx/sites-enabled/{{ mail_subdomain }}.conf"
             state: link
           notify: Restart Nginx
@@ -270,7 +288,9 @@
             login_user: "{{ mail_db_user }}"
             login_password: "{{ mail_db_password }}"
             login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
-            query: "INSERT IGNORE INTO domains (domain) VALUES ('{{ domain }}')"
+            query: "INSERT IGNORE INTO domains (domain) VALUES (%s)"
+            positional_args:
+              - "{{ domain }}"
           changed_when: true
 
         - name: Create individual mailboxes in database
@@ -279,9 +299,11 @@
             login_user: "{{ mail_db_user }}"
             login_password: "{{ mail_db_password }}"
             login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
-            query: |
-              INSERT IGNORE INTO users (email, password, domain)
-              VALUES ('{{ item }}@{{ domain }}', '{{ vault_mail_default_password | password_hash('sha512') }}', '{{ domain }}')
+            query: "INSERT IGNORE INTO users (email, password, domain) VALUES (%s, %s, %s)"
+            positional_args:
+              - "{{ item }}@{{ domain }}"
+              - "{{ vault_mail_default_password | password_hash('sha512') }}"
+              - "{{ domain }}"
           with_items:
             - "contact"
             - "support"
@@ -314,19 +336,29 @@
             mode: '0700'
 
         - name: Generate OpenDKIM keys
-          shell: cd /etc/opendkim/keys/{{ domain }} && opendkim-genkey -r -b 2048 -d {{ domain }}
-          args:
+          ansible.builtin.command:
+            argv:
+              - opendkim-genkey
+              - -r
+              - -b
+              - "2048"
+              - -d
+              - "{{ domain }}"
+            chdir: "/etc/opendkim/keys/{{ domain }}"
             creates: "/etc/opendkim/keys/{{ domain }}/default.private"
 
-        - name: Set permissions for OpenDKIM keys
+        - name: Set permissions for OpenDKIM directory
           ansible.builtin.file:
             path: "/etc/opendkim/keys/{{ domain }}"
             mode: '0700'
             recurse: true
 
         - name: Set permissions for OpenDKIM key files
-          shell: find /etc/opendkim/keys/{{ domain }} -type f -exec chmod 600 {} \;
-          changed_when: true
+          ansible.builtin.file:
+            path: "/etc/opendkim/keys/{{ domain }}/{{ item }}"
+            mode: '0600'
+          with_fileglob:
+            - "/etc/opendkim/keys/{{ domain }}/*"
 
         - name: Add domain to OpenDKIM KeyTable
           ansible.builtin.lineinfile:
