@@ -14,6 +14,10 @@
     reuse_master_user: false
     document_root: "/home/{{ domain }}/public_html"
     sftp_group: "sftp"
+    # Mail/DB vars (defined in mail role defaults, needed here for standalone playbook)
+    db_root_user: root
+    db_root_password: "{{ vault_db_root_password | default(lookup('env', 'MARIADB_ROOT_PASSWORD'), true) }}"
+    db_login_unix_socket: /var/lib/mysql/mysql.sock
   pre_tasks:
     - name: Verify required variables are defined
       ansible.builtin.assert:
