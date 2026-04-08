@@ -192,8 +192,8 @@ MariaDB is not exposed to the internet. Use an SSH tunnel to connect from your l
 # Opens tunnel: localhost:3307 -> server:3307
 .\scripts\db-tunnel.ps1
 
-# Then connect any DB client to 127.0.0.1:3307
-# DB user: lucian / password from vars/secrets.yml (vault_db_remote_password)
+# Then connect any DB client to 127.0.0.1:{{ db_port }}
+# DB user: {{ db_user }} / password from vars/secrets.yml ({{ vault_db_remote_password }})
 ```
 
 **Option 2 — HeidiSQL built-in tunnel:**
@@ -202,15 +202,15 @@ MariaDB is not exposed to the internet. Use an SSH tunnel to connect from your l
 |-----|-------|-------|
 | Settings | Network type | MariaDB or MySQL (SSH tunnel) |
 | Settings | Hostname / IP | `127.0.0.1` |
-| Settings | User | `lucian` |
-| Settings | Password | `vault_db_remote_password` |
-| Settings | Port | `3307` |
+| Settings | User | `{{ db_user }}` |
+| Settings | Password | `{{ vault_db_remote_password }}` |
+| Settings | Port | `{{ db_port }}` |
 | SSH tunnel | SSH executable | `ssh.exe` |
-| SSH tunnel | SSH host + port | `192.168.88.8` |
-| SSH tunnel | Username | `admin` |
+| SSH tunnel | SSH host + port | `{{ db_host }}:{{ ssh_port }}` |
+| SSH tunnel | Username | `{{ admin_user }}` |
 | SSH tunnel | Password | *(leave blank)* |
-| SSH tunnel | Private key file | `C:\Users\<you>\.ssh\lucasvps-test` |
-| SSH tunnel | Local port | `3307` |
+| SSH tunnel | Private key file | `C:\Users\<you>\.ssh\key` | # not .ppk or .pub, use OpenSSH format
+| SSH tunnel | Local port | `{{ db_port }}` |
 
 > **Important:** Leave the SSH tunnel **Password field blank** — OpenSSH's `ssh.exe` does not support password auth via `-pw`. Authentication uses the private key only.
 
