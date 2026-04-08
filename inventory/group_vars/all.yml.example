@@ -22,10 +22,9 @@ firewall_service: iptables
 #########################
 
 # Master domain configuration
-# If `--domain` is provided by the wrapper (`vps.sh`) it will be used;
-# otherwise fall back to the inventory hostname so `domain == master_domain`
-# will still match when running without extra-vars.
-master_domain: "{{ domain | default(inventory_hostname) }}"
+# Always anchored to the inventory hostname (e.g. example.com).
+# The `domain` extra-var is the domain being operated on (may differ for vhosts).
+master_domain: "{{ inventory_hostname }}"
 
 ###################################
 # ROLE VARIABLES (setup.yml order)
@@ -42,13 +41,13 @@ admin_shell: /bin/bash  # Default shell for admin user
 admin_password: "{{ vault_admin_password | default(lookup('env', 'ADMIN_PASSWORD'), true) }}"  # Admin password (from vault)
 admin_ssh_public_key: "{{ vault_admin_ssh_public_key | default(omit) }}"  # SSH public key for admin (from vault)
 create_admin_user: true  # Whether to create admin user during provisioning
-admin_auth: password  # Authentication method: 'password' or 'key'
+admin_auth: key  # Authentication method: 'password' or 'key'
 admin_sudo_nopasswd: true  # Allow admin to use sudo without password
 
 # SSH configuration (common role)
-ssh_port: 2222  # Example SSH listening port for documentation
+ssh_port: 22  # Example SSH listening port for documentation
 ssh_permit_root_login: "no"  # Allow root login (no = more secure)
-ssh_password_authentication: "yes"  # Allow password authentication (set to 'no' after key setup)
+ssh_password_authentication: "no"  # Allow password authentication (set to 'no' after key setup)
 ssh_pubkey_authentication: "yes"  # Allow public key authentication
 ssh_allow_agent_forwarding: "no"  # Allow SSH agent forwarding
 ssh_allow_tcp_forwarding: "no"  # Allow TCP port forwarding
@@ -81,7 +80,7 @@ cockpit_subdomain: "cpanel.{{ domain }}" # Change to "admin" or "panel" etc
 # 4. NGINX ROLE         #
 #########################
 
-domain_user: "{{ master_domain }}"  # User account for domain/vhost ownership
+domain_user: "{{ user | default(master_domain.split('.')[-2]) }}"  # User account for domain/vhost ownership
 
 #########################
 # 5. PHP ROLE           #
@@ -92,9 +91,9 @@ php_version: "8.4"  # PHP version from Remi repository
 # Add any domains for which you want a dedicated php-fpm pool created
 # Example: example.com and common subdomains
 php_fpm_pools:
-  - example.com
-  - cpanel.example.com
-  - mail.example.com
+  - "{{ inventory_hostname }}"
+  - "cpanel.{{ inventory_hostname }}"
+  - "mail.{{ inventory_hostname }}"
 # Deploy a managed shared www pool (true/false)
 php_fpm_create_www: true
 
@@ -130,7 +129,7 @@ mail_admin_email: "admin@{{ domain }}"
 
 # Webmail settings
 webmail_path: "/home/{{ master_domain }}/roundcube"
-webmail_version: "1.6.11"
+webmail_version: "1.6.15"
 
 # Database settings for mail services
 mail_db_name: "mailserver"  # Store mail accounts, domains, and delivery information
@@ -161,12 +160,15 @@ roundcube_db_password: "{{ vault_roundcube_db_password }}"  # Reference to vault
 #########################
 
 install_goproxy: true  # Install GoProxy + Tor
+goproxy_version: "1.25.7"  # GoProxy version to install
 
 #########################
 # 10. DEVELOPMENT ROLE  #
 #########################
 
 install_development_tools: false  # Install development tools (disabled by default)
+nodejs_version: "22"     # Node.js LTS version
+composer_version: "latest"  # Composer version ("latest" or specific like "2.7.0")
 
 #########################
 # 11. SECURITY ROLE     #
@@ -178,6 +180,7 @@ firewall_initialize: true  # Initialize firewall on first run
 firewall_allowed_services:
   - { proto: tcp, port: 80 }    # HTTP
   - { proto: tcp, port: 443 }   # HTTPS
+  - { proto: tcp, port: 3306 }  # MariaDB
 
 # Fail2Ban configuration
 fail2ban_enabled: true  # Enable fail2ban intrusion prevention
