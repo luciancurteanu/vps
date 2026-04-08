@@ -141,9 +141,10 @@ class VMConfig {
         $this.CIDataPath = Join-Path $this.VMData "cidata"
 
         $this.SSHDir = Join-Path $env:USERPROFILE '.ssh'
-        $this.SharedPrivKey = Join-Path $this.SSHDir 'vps'
-        $this.SharedPubKey = Join-Path $this.SSHDir 'vps.pub'
-        $this.SharedMarker = Join-Path $this.SSHDir 'vps.keys.mark'
+        $keyName = $this.VMName -replace '[^a-zA-Z0-9_-]', '-'
+        $this.SharedPrivKey = Join-Path $this.SSHDir $keyName
+        $this.SharedPubKey = Join-Path $this.SSHDir "$keyName.pub"
+        $this.SharedMarker = Join-Path $this.SSHDir "$keyName.keys.mark"
         $this.SSHConfig = Join-Path $this.SSHDir 'config'
     }
 

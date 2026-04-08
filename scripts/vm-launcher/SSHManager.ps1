@@ -153,10 +153,11 @@ class SSHManager {
             $configLines = @()
 
             # Filter out only the specific VM config block (not all localhost entries)
+            $vmAlias = Split-Path -Leaf ($privKeyFile -replace '[^a-zA-Z0-9_-]', '-')
             $skipBlock = $false
             foreach ($line in $existingConfig) {
                 # Check if this is the start of a VM config block
-                if ($line -match '^Host localhost$') {
+                if ($line -match "^Host $vmAlias$") {
                     $skipBlock = $true
                     continue
                 }
@@ -183,7 +184,8 @@ class SSHManager {
             }
 
             # Add VM config lines
-            $configLines += "Host localhost"
+            $vmAlias = Split-Path -Leaf ($privKeyFile -replace '[^a-zA-Z0-9_-]', '-')
+            $configLines += "Host $vmAlias"
             $configLines += "    HostName localhost"
             $configLines += "    Port $port"
             $configLines += "    User $user"
@@ -192,7 +194,7 @@ class SSHManager {
 
             # Write using PowerShell's Out-File with proper encoding
             $configLines | Out-File -FilePath $this.SSHConfig -Encoding ASCII -Force
-            Write-Host "SSH config updated: you can now use 'ssh localhost'" -ForegroundColor Green
+            Write-Host "SSH config updated: you can now use 'ssh $vmAlias'" -ForegroundColor Green
         } catch {
             Write-Host "Could not update SSH config file: $_" -ForegroundColor Yellow
         }
