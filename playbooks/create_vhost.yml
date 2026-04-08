@@ -223,6 +223,7 @@
     - name: Configure SSH for SFTP
       ansible.builtin.blockinfile:
         path: /etc/ssh/sshd_config
+        insertafter: EOF
         block: |
           Match Group {{ sftp_group }}
           ForceCommand internal-sftp
@@ -245,6 +246,7 @@
     - name: Configure per-user SFTP chroot in SSH
       ansible.builtin.blockinfile:
         path: /etc/ssh/sshd_config
+        insertafter: EOF
         block: |
           Match User {{ user }}
           ChrootDirectory /home/{{ domain }}
