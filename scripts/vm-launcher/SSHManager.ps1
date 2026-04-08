@@ -289,10 +289,12 @@ class SSHManager {
         $ppkPath  = $this.SharedPpkKey  -replace '\\', '/'
 
         $pyScript = @"
-import base64, hashlib, hmac as _hmac, struct, sys
+import base64, hashlib, hmac as _hmac, struct, sys, warnings
+warnings.filterwarnings('ignore')
 try:
     from cryptography.hazmat.primitives.serialization import (
         load_ssh_private_key, Encoding, PrivateFormat, PublicFormat, NoEncryption)
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 except ImportError:
     sys.exit('cryptography module not available')
 
@@ -306,6 +308,8 @@ with open(pub_path, 'r') as f:
     pub_line = f.read().strip()
 
 key  = load_ssh_private_key(priv_pem, password=None)
+if not isinstance(key, Ed25519PrivateKey):
+    sys.exit('only Ed25519 keys are supported for PPK generation')
 seed = key.private_bytes(Encoding.Raw, PrivateFormat.Raw, NoEncryption())
 pub_bytes = key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
 
@@ -322,9 +326,8 @@ priv_blob = ssh_str(seed)
 key_type   = 'ssh-ed25519'
 encryption = 'none'
 
-# PPK3 MAC: HMAC-SHA256 key = SHA256("putty-private-key-file-mac-key" + passphrase)
-# passphrase is empty for unencrypted keys
-mac_key  = hashlib.sha256(b'putty-private-key-file-mac-key').digest()
+# PPK3 MAC: HMAC-SHA256 with empty key for unencrypted keys
+mac_key  = b''
 mac_data = (ssh_str(key_type) + ssh_str(encryption) + ssh_str(comment)
             + ssh_str(pub_blob) + ssh_str(priv_blob))
 mac = _hmac.new(mac_key, mac_data, hashlib.sha256).hexdigest()
@@ -353,8 +356,8 @@ print('OK')
 
         try {
             $result = & $python.Source -c $pyScript 2>&1
-            if ($LASTEXITCODE -ne 0 -or $result -notmatch 'OK') {
-                Write-Host "PPK generation failed: $result" -ForegroundColor Yellow
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "PPK generation failed: $($result -join ' ')" -ForegroundColor Yellow
             } else {
                 Write-Host "PPK key generated: $($this.SharedPpkKey)" -ForegroundColor Green
             }
