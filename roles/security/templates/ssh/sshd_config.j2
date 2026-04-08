@@ -55,16 +55,11 @@ Match Group {{ sftp_chroot_group }}
     AllowAgentForwarding no
     AllowTcpForwarding no
     X11Forwarding no
-    PermitTTY no # No interactive shell for SFTP-only users
+    PermitTTY no
     # Chroot users to their home directory. %h is replaced by the user's home directory.
-    # The user's home directory (e.g., /sftp/username) must be owned by root and not writable by others.
+    # The user's home directory must be owned by root and not writable by others.
     ChrootDirectory %h
-    # PasswordAuthentication can be enabled for this group if desired, even if globally off for others.
-    # This allows SFTP users to log in with passwords if they don't have keys.
-    # Ensure PasswordAuthentication is 'yes' globally or specifically for admin if admin uses password.
-    # If admin_auth is 'password', global PasswordAuthentication will be 'yes'.
-    # If admin_auth is 'key', global PasswordAuthentication will be 'no'.
-    # We can explicitly allow password auth for the SFTP group here if needed.
+    # Allow password auth for SFTP group even if globally disabled
     PasswordAuthentication {{ 'no' if admin_auth == 'key' else 'yes' }}
-    PubkeyAuthentication yes # Allow key-based auth for SFTP group as well
+    PubkeyAuthentication yes
 {% endif %}
