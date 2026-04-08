@@ -153,7 +153,7 @@ class SSHManager {
             $configLines = @()
 
             # Filter out only the specific VM config block (not all localhost entries)
-            $vmAlias = Split-Path -Leaf ($privKeyFile -replace '[^a-zA-Z0-9_-]', '-')
+            $vmAlias = (Split-Path -Leaf $privKeyFile) -replace '[^a-zA-Z0-9_-]', '-'
             $skipBlock = $false
             foreach ($line in $existingConfig) {
                 # Check if this is the start of a VM config block
@@ -184,7 +184,7 @@ class SSHManager {
             }
 
             # Add VM config lines
-            $vmAlias = Split-Path -Leaf ($privKeyFile -replace '[^a-zA-Z0-9_-]', '-')
+            $vmAlias = (Split-Path -Leaf $privKeyFile) -replace '[^a-zA-Z0-9_-]', '-'
             $configLines += "Host $vmAlias"
             $configLines += "    HostName localhost"
             $configLines += "    Port $port"
