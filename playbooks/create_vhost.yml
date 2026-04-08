@@ -53,6 +53,16 @@
         update_password: on_create
       when: ((domain == master_domain) or (not (reuse_master_user | default(false)))) and (domain.split('.')[0] != 'cpanel')
 
+    - name: Authorize admin SSH key for vhost user
+      ansible.posix.authorized_key:
+        user: "{{ user }}"
+        state: present
+        key: "{{ admin_ssh_public_key }}"
+      when:
+        - admin_ssh_public_key is defined
+        - admin_ssh_public_key != ''
+        - domain.split('.')[0] != 'cpanel'
+
     - name: Create document root directories
       ansible.builtin.file:
         path: "{{ item }}"
