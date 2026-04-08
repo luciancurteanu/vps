@@ -18,6 +18,9 @@
     db_root_user: root
     db_root_password: "{{ vault_db_root_password | default(lookup('env', 'MARIADB_ROOT_PASSWORD'), true) }}"
     db_login_unix_socket: /var/lib/mysql/mysql.sock
+    mail_user: vmail
+    mail_group: vmail
+    mail_db_name: mailserver
   pre_tasks:
     - name: Verify required variables are defined
       ansible.builtin.assert:
