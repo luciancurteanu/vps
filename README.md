@@ -130,7 +130,7 @@ Option 3 - encrypt-vault.sh helper (recommended for scripted use / automation)
 
 **To enable HTTPS:**
 ```bash
-./vps.sh install ssl --domain=yourdomain.com --ask-vault-pass
+./vps.sh install ssl --domain=yourdomain.com
 ```
 
 This automatically:
@@ -148,12 +148,12 @@ After SSL installation, all sites automatically switch to:
 
 **Add a new domain:**
 ```bash
-./vps.sh create host --domain=newsite.com --ask-vault-pass
+./vps.sh create host --domain=newsite.com
 ```
 
 **Remove a domain:**
 ```bash
-./vps.sh remove host --domain=oldsite.com --ask-vault-pass
+./vps.sh remove host --domain=oldsite.com
 ```
 
 ### SSL Certificates
