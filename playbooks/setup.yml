@@ -85,7 +85,7 @@
       tags: ['setup', 'selinux']
       community.general.sefcontext:
         target: "/home/{{ domain }}/logs(/.*)?"
-        setype: httpd_log_t
+        setype: httpd_sys_rw_content_t
         state: present
       when:
         - domain is defined
@@ -94,7 +94,7 @@
 
     - name: Apply SELinux context to domain logs directory
       tags: ['setup', 'selinux']
-      ansible.builtin.command: restorecon -Rv /home/{{ domain }}/logs
+      ansible.builtin.command: restorecon -FRv /home/{{ domain }}/logs
       when:
         - domain is defined
         - ansible_selinux is defined
@@ -279,7 +279,7 @@
       tags: ['setup', 'nginx', 'selinux']
       community.general.sefcontext:
         target: "/home/{{ domain }}/logs(/.*)?"
-        setype: httpd_log_t
+        setype: httpd_sys_rw_content_t
         state: present
       when:
         - domain is defined
@@ -288,7 +288,7 @@
 
     - name: Apply SELinux context to domain logs
       tags: ['setup', 'nginx', 'selinux']
-      ansible.builtin.command: restorecon -Rv /home/{{ domain }}/logs
+      ansible.builtin.command: restorecon -FRv /home/{{ domain }}/logs
       when:
         - domain is defined
         - ansible_selinux.status is defined
@@ -308,7 +308,7 @@
 
     - name: Apply SELinux context to domain public_html
       tags: ['setup', 'nginx', 'selinux']
-      ansible.builtin.command: restorecon -Rv /home/{{ domain }}/public_html
+      ansible.builtin.command: restorecon -FRv /home/{{ domain }}/public_html
       when:
         - domain is defined
         - ansible_selinux.status is defined
