@@ -151,20 +151,13 @@
         state: link
       notify: Restart Nginx
 
-    - name: Copy template website files
-      ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../templates/website/"
-        dest: "{{ document_root }}/"
-        owner: "{{ vhost_owner }}"
-        group: "{{ vhost_owner }}"
-        directory_mode: '0755'
-
     - name: Create index.html from template
       ansible.builtin.template:
         src: "{{ playbook_dir | dirname }}/templates/website/index.html.j2"
         dest: "{{ document_root }}/index.html"
         owner: "{{ vhost_owner }}"
         group: "{{ vhost_owner }}"
+        mode: '0664'
         force: true
 
     - name: Set SELinux context for document root
