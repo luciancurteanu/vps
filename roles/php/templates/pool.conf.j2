@@ -42,6 +42,7 @@ php_admin_value[post_max_size] = 512M
 php_admin_value[upload_max_filesize] = 512M
 php_admin_value[mail.log] = /home/{{ home_domain }}/logs/php_mail.log
 php_admin_value[error_log] = /home/{{ home_domain }}/logs/php_error.log
+env[HOME] = /home/{{ home_domain }}
 
 php_admin_value[opcache.enable] = 1
 php_admin_value[opcache.memory_consumption] = 256
