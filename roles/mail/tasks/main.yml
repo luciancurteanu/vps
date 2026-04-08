@@ -195,8 +195,8 @@
     modification_time: preserve
     access_time: preserve
   with_items:
-    - mail-access.log
-    - mail-error.log
+    - "{{ mail_subdomain.split('.')[0] }}-access.log"
+    - "{{ mail_subdomain.split('.')[0] }}-error.log"
 
 - name: Set SELinux context for /var/vmail
   community.general.sefcontext:

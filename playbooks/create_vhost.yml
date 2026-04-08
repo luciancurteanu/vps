@@ -51,6 +51,13 @@
         update_password: on_create
       when: ((domain == master_domain) or (not (reuse_master_user | default(false)))) and (domain.split('.')[0] != 'cpanel')
 
+    - name: Add admin user to vhost group
+      ansible.builtin.user:
+        name: "{{ admin_user | default('admin') }}"
+        groups: "{{ user }}"
+        append: true
+      when: ((domain == master_domain) or (not (reuse_master_user | default(false)))) and (domain.split('.')[0] != 'cpanel')
+
     - name: Authorize admin SSH key for vhost user
       ansible.posix.authorized_key:
         user: "{{ user }}"
@@ -67,6 +74,7 @@
         state: directory
         owner: "{{ vhost_owner }}"
         group: "{{ vhost_owner }}"
+        mode: '0770'
       with_items:
         - "/home/{{ domain }}"
         - "{{ document_root }}"

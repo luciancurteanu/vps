@@ -276,9 +276,9 @@
       vars:
         _nginx_log_files: >-
           {{ ['access.log', 'error.log']
-             + (['cpanel.' + domain + '-access.log', 'cpanel.' + domain + '-error.log']
+             + ([webmin_subdomain.split('.')[0] + '-access.log', webmin_subdomain.split('.')[0] + '-error.log']
                 if install_webmin | default(true) else [])
-             + (['mail-access.log', 'mail-error.log']
+             + ([mail_subdomain.split('.')[0] + '-access.log', mail_subdomain.split('.')[0] + '-error.log']
                 if install_mail | default(false) else []) }}
       when: domain is defined
 

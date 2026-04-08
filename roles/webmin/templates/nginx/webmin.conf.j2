@@ -31,8 +31,8 @@ server {
 {% endif %}
 
     # Logging
-    access_log /home/{{ domain }}/logs/{{ webmin_subdomain }}-access.log;
-    error_log /home/{{ domain }}/logs/{{ webmin_subdomain }}-error.log;
+    access_log /home/{{ domain }}/logs/{{ webmin_subdomain.split('.')[0] }}-access.log;
+    error_log /home/{{ domain }}/logs/{{ webmin_subdomain.split('.')[0] }}-error.log;
 
     # Gzip compression
     gzip on;

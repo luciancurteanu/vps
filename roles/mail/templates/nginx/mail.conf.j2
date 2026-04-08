@@ -6,8 +6,8 @@ server {
     root {{ webmail_path }};
     index index.php index.html;
     
-    access_log /home/{{ domain }}/logs/mail-access.log;
-    error_log /home/{{ domain }}/logs/mail-error.log;
+    access_log /home/{{ domain }}/logs/{{ mail_subdomain.split('.')[0] }}-access.log;
+    error_log /home/{{ domain }}/logs/{{ mail_subdomain.split('.')[0] }}-error.log;
 
     # PHP handling
     location ~ \.php$ {
@@ -44,8 +44,8 @@ server {
     root {{ webmail_path }};
     index index.php index.html;
     
-    access_log /home/{{ domain }}/logs/mail-access.log;
-    error_log /home/{{ domain }}/logs/mail-error.log;
+    access_log /home/{{ domain }}/logs/{{ mail_subdomain.split('.')[0] }}-access.log;
+    error_log /home/{{ domain }}/logs/{{ mail_subdomain.split('.')[0] }}-error.log;
 
     # SSL configuration (will be managed by Certbot)
     ssl_certificate /etc/letsencrypt/live/{{ domain }}/fullchain.pem;
