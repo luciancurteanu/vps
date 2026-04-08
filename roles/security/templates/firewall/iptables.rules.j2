@@ -19,7 +19,8 @@
 # Allow established and related connections
 -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
 
-# Allow ICMP (ping)
+# Allow ICMP (ping) with rate limiting
+-A INPUT -p icmp --icmp-type echo-request -m limit --limit 1/s --limit-burst 5 -j ACCEPT
 -A INPUT -p icmp -j ACCEPT
 
 {% if security_fail2ban_enabled | default(true) %}
@@ -46,9 +47,9 @@
 -A INPUT -p tcp --dport {{ security_cockpit_port | default(9090) }} -m comment --comment "Allow Cockpit web interface" -j ACCEPT
 {% endif %}
 
-# Allow Webmin (if installed)
+# Allow Webmin (if installed, localhost-only via nginx proxy — block direct external access)
 {% if security_install_webmin | default(true) %}
--A INPUT -p tcp --dport {{ security_webmin_port | default(10000) }} -m comment --comment "Allow Webmin" -j ACCEPT
+-A INPUT -i lo -p tcp --dport {{ webmin_port | default(security_webmin_port | default(10000)) }} -j ACCEPT
 {% endif %}
 
 {% if security_fail2ban_enabled | default(true) %}
