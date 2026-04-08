@@ -2,7 +2,7 @@
 - name: Remove Virtual Host
   hosts: all
   become: true
-  gather_facts: false
+  gather_facts: true
 
   vars_files:
     - ../vars/secrets.yml
@@ -53,7 +53,7 @@
 
     - name: Remove PHP-FPM pool configuration
       ansible.builtin.file:
-        path: "/etc/php-fpm.d/{{ domain }}.conf"
+        path: "/etc/php-fpm.d/{{ domain | replace('.', '_') }}.conf"
         state: absent
       notify: Restart PHP-FPM
 
