@@ -341,5 +341,5 @@
 
     - name: Restart SSH
       ansible.builtin.service:
-        name: Sshd
+        name: sshd
         state: restarted
