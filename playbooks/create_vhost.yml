@@ -74,7 +74,7 @@
       ansible.builtin.file:
         path: "/home/{{ domain }}/logs"
         owner: "{{ vhost_owner }}"
-        mode: '0644'
+        mode: '0755'
         group: "{{ vhost_owner }}"
         recurse: true
 
@@ -82,7 +82,7 @@
       ansible.builtin.file:
         path: "/home/{{ domain }}/tmp"
         owner: "{{ vhost_owner }}"
-        mode: '0644'
+        mode: '0755'
         group: "{{ vhost_owner }}"
         recurse: true
 
@@ -92,7 +92,7 @@
         dest: "/etc/php-fpm.d/{{ domain | replace('.', '_') }}.conf"
         owner: root
         group: root
-      notify: Restart php-fpm
+      notify: Restart PHP-FPM
 
     - name: Ensure nginx sites-available directory exists
       ansible.builtin.file:
@@ -210,11 +210,10 @@
       when: domain != master_domain
 
     - name: Configure mail subdomain if this is the master domain
-      when: domain == master_domain
       block:
         - name: Create mail subdomain configuration
           ansible.builtin.template:
-            src: "{{ playbook_dir | dirname }}/templates/nginx/mail.conf.j2"
+            src: "{{ playbook_dir | dirname }}/roles/mail/templates/nginx/mail.conf.j2"
             dest: "/etc/nginx/sites-available/{{ mail_subdomain }}.conf"
             owner: root
             group: root
@@ -268,10 +267,9 @@
 
         - name: Create mailbox directories
           ansible.builtin.file:
-            path: "/home/{{ master_domain }}/mail/virtual/{{ domain }}/{{ item }}"
+            path: "/var/vmail/{{ domain }}/{{ item }}"
             state: directory
             owner: "{{ mail_user }}"
-            group: "{{ mail_group }}"
             group: "{{ mail_group }}"
             recurse: true
           with_items:
