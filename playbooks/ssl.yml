@@ -165,7 +165,6 @@
         - { regexp: '^ssl_enforce=', line: 'ssl_enforce=2' }
       when: install_webmin | default(true) and (webmin_miniconf_stat.stat.exists | default(false))
       notify: Restart Webmin
-      notify: Restart Webmin
 
   handlers:
     - name: Restart Nginx
