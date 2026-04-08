@@ -3,7 +3,7 @@
 
 [DEFAULT]
 # Global settings
-ignoreip = 127.0.0.1/8 192.168.0.1/16 149.102.153.46/32 66.249.64.0/19 31.5.191.35/32 {{ allowed_ips | default('') }}
+ignoreip = 127.0.0.1/8 192.168.0.0/16 {{ security_allowed_ips | default(allowed_ips | default('')) }}
 bantime = -1
 findtime = 86400
 maxretry = 3
