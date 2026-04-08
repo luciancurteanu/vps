@@ -168,6 +168,16 @@
         - domain is defined
         - user is defined
 
+    - name: Add admin to domain user group for file access
+      tags: ['setup', 'nginx']
+      ansible.builtin.user:
+        name: "{{ admin_user | default('admin') }}"
+        groups: "{{ user }}"
+        append: true
+      when:
+        - domain is defined
+        - user is defined
+
     - name: Create main domain vhost configuration
       tags: ['setup', 'nginx']
       ansible.builtin.template:
@@ -187,7 +197,6 @@
       tags: ['setup', 'nginx']
       ansible.builtin.file:
         src: "/etc/nginx/sites-available/{{ domain }}.conf"
-        mode: '0644'
         dest: "/etc/nginx/sites-enabled/{{ domain }}.conf"
         state: link
       when: domain is defined
@@ -200,6 +209,7 @@
         state: directory
         owner: "{{ user | default(domain.split('.')[-2]) }}"
         group: "{{ user | default(domain.split('.')[-2]) }}"
+        mode: '0770'
       when: domain is defined
 
     - name: Create default index.html for main domain
@@ -209,6 +219,7 @@
         dest: "/home/{{ domain }}/public_html/index.html"
         owner: "{{ user | default(domain.split('.')[-2]) }}"
         group: "{{ user | default(domain.split('.')[-2]) }}"
+        mode: '0664'
         force: true
       when: domain is defined
 
