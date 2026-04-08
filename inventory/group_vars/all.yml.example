@@ -121,7 +121,7 @@ db_collation: "utf8mb4_unicode_ci"
 # 7. MAIL ROLE          #
 #########################
 
-install_mail: true  # Install mail server (Postfix + Dovecot)
+install_mail: true  # Install mail server (Postfix + Dovecot + Opendkim)
 
 # Email domain settings
 mail_subdomain: "mail.{{ domain }}"
