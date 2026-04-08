@@ -158,6 +158,36 @@
       when: install_development_tools | default(false)
 
   post_tasks:
+    - name: Ensure SFTP group exists
+      tags: ['setup', 'sftp']
+      ansible.builtin.group:
+        name: sftp
+        state: present
+      when: domain is defined
+
+    - name: Add master domain user to SFTP group
+      tags: ['setup', 'sftp']
+      ansible.builtin.user:
+        name: "{{ user }}"
+        groups: sftp
+        append: true
+      when:
+        - domain is defined
+        - user is defined
+
+    - name: Configure per-user SFTP chroot in SSH
+      tags: ['setup', 'sftp']
+      ansible.builtin.blockinfile:
+        path: /etc/ssh/sshd_config
+        block: |
+          Match User {{ user }}
+          ChrootDirectory /home/{{ domain }}
+        marker: "# {mark} ANSIBLE MANAGED SFTP CHROOT {{ domain }}"
+      notify: Restart SSH
+      when:
+        - domain is defined
+        - user is defined
+
     - name: Add nginx to domain user group for log access
       tags: ['setup', 'nginx']
       ansible.builtin.user:
@@ -201,6 +231,16 @@
         state: link
       when: domain is defined
       notify: Restart Nginx
+
+    - name: Create home directory with root ownership for SFTP chroot
+      tags: ['setup', 'nginx']
+      ansible.builtin.file:
+        path: "/home/{{ domain }}"
+        state: directory
+        owner: root
+        group: "{{ user | default(domain.split('.')[-2]) }}"
+        mode: '0750'
+      when: domain is defined
 
     - name: Create main domain public_html directory
       tags: ['setup', 'nginx']
@@ -328,4 +368,9 @@
     - name: Restart Nginx
       ansible.builtin.service:
         name: nginx
+        state: restarted
+
+    - name: Restart SSH
+      ansible.builtin.service:
+        name: sshd
         state: restarted

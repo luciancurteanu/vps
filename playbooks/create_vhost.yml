@@ -76,6 +76,15 @@
         - admin_ssh_public_key != ''
         - domain.split('.')[0] != 'cpanel'
 
+    - name: Create home directory with root ownership for SFTP chroot
+      ansible.builtin.file:
+        path: "/home/{{ domain }}"
+        state: directory
+        owner: root
+        group: "{{ vhost_owner }}"
+        mode: '0750'
+      when: domain.split('.')[0] != 'cpanel'
+
     - name: Create document root directories
       ansible.builtin.file:
         path: "{{ item }}"
@@ -84,7 +93,6 @@
         group: "{{ vhost_owner }}"
         mode: '0770'
       with_items:
-        - "/home/{{ domain }}"
         - "{{ document_root }}"
         - "/home/{{ domain }}/logs"
         - "/home/{{ domain }}/backup"
@@ -232,6 +240,16 @@
         name: "{{ user }}"
         groups: "{{ sftp_group }}"
         append: true
+      when: domain.split('.')[0] != 'cpanel'
+
+    - name: Configure per-user SFTP chroot in SSH
+      ansible.builtin.blockinfile:
+        path: /etc/ssh/sshd_config
+        block: |
+          Match User {{ user }}
+          ChrootDirectory /home/{{ domain }}
+        marker: "# {mark} ANSIBLE MANAGED SFTP CHROOT {{ domain }}"
+      notify: Restart SSH
       when: domain.split('.')[0] != 'cpanel'
 
     - name: Configure hosts file for master domain
