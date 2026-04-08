@@ -1,6 +1,11 @@
 ---
 # OpenDKIM configuration tasks
 
+- name: Enable CRB repository (required for opendkim dependencies on EL9)
+  ansible.builtin.command:
+    cmd: dnf config-manager --set-enabled crb
+  changed_when: false
+
 - name: Install OpenDKIM packages
   ansible.builtin.package:
     name:
