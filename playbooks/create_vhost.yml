@@ -87,8 +87,11 @@
       ansible.builtin.file:
         path: "/home/{{ domain }}/logs/{{ item }}"
         state: touch
-        owner: "{{ vhost_owner }}"
+        owner: nginx
         group: "{{ vhost_owner }}"
+        mode: '0664'
+        modification_time: preserve
+        access_time: preserve
       with_items:
         - "access.log"
         - "error.log"
@@ -97,9 +100,8 @@
       ansible.builtin.file:
         path: "/home/{{ domain }}/logs"
         owner: "{{ vhost_owner }}"
-        mode: '0755'
         group: "{{ vhost_owner }}"
-        recurse: true
+        mode: '0770'
 
     - name: Set proper permissions for tmp directory
       ansible.builtin.file:
