@@ -355,7 +355,7 @@ function PerformInstallation([VMConfig]$config) {
 
         # Update SSH config for easy access
         if ($pubKey) {
-            $sshManager.UpdateSSHConfig($config.HostSSHPort, $config.SSHUser, $sshManager.PrivKeyFile)
+            $sshManager.UpdateSSHConfig($config.HostSSHPort, $config.SSHUser, $sshManager.PrivKeyFile, $config.VMName)
         }
 
         # Run full automated setup if requested

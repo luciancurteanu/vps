@@ -45,8 +45,8 @@ class SSHManager {
 
         # Try ed25519 first, then RSA as fallback
         $keyTypes = @(
-            @{ Type = 'ed25519'; Args = @('-t', 'ed25519', '-C', "vps-$vmName") },
-            @{ Type = 'rsa'; Args = @('-t', 'rsa', '-b', '4096', '-C', "vps-$vmName") }
+            @{ Type = 'ed25519'; Args = @('-t', 'ed25519', '-C', $vmName) },
+            @{ Type = 'rsa'; Args = @('-t', 'rsa', '-b', '4096', '-C', $vmName) }
         )
 
         $sshKeygen = Get-Command ssh-keygen.exe -ErrorAction SilentlyContinue
@@ -144,7 +144,7 @@ class SSHManager {
         }
     }
 
-    [void] UpdateSSHConfig([int]$port, [string]$user, [string]$privKeyFile) {
+    [void] UpdateSSHConfig([int]$port, [string]$user, [string]$privKeyFile, [string]$vmName) {
         try {
             # Read existing config if it exists
             $existingConfig = @()
@@ -155,8 +155,8 @@ class SSHManager {
             # Build the SSH config as an array of lines
             $configLines = @()
 
-            # Filter out only the specific VM config block (not all localhost entries)
-            $vmAlias = (Split-Path -Leaf $privKeyFile) -replace '[^a-zA-Z0-9_-]', '-'
+            # Use VMName as alias (dots are valid in SSH Host entries)
+            $vmAlias = $vmName
             $skipBlock = $false
             foreach ($line in $existingConfig) {
                 # Check if this is the start of a VM config block
@@ -187,7 +187,6 @@ class SSHManager {
             }
 
             # Add VM config lines
-            $vmAlias = (Split-Path -Leaf $privKeyFile) -replace '[^a-zA-Z0-9_-]', '-'
             $configLines += "Host $vmAlias"
             $configLines += "    HostName localhost"
             $configLines += "    Port $port"

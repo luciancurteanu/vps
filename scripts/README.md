@@ -107,7 +107,7 @@ It does NOT delete your personal SSH keys (e.g., `~/.ssh/id_ed25519`, `~/.ssh/id
 
 - If a public key already exists at `~/.ssh/id_ed25519.pub` or `~/.ssh/id_rsa.pub`, it will be injected into the VM and password SSH will be disabled.
 - If only a private key exists (no `.pub`), the script will derive the corresponding public key file non-destructively.
-    - If no keypair is available, the script will generate a temporary ed25519 keypair and record a marker file at `~/.ssh/vps-<VMName>-keys.mark` listing the created files.
+    - If no keypair is available, the script will generate a temporary ed25519 keypair and record a marker file at `~/.ssh/<vmname>.keys.mark` listing the created files.
 - When you run with `--delete`, the script will remove only the key files listed in that marker (if present) and then remove the marker. Pre-existing user keys are never touched.
 
 ## Windows: Manual Installation of mkisofs
