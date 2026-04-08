@@ -193,6 +193,26 @@
       when: ansible_selinux.status == "enabled"
       changed_when: false
 
+    - name: Create app directory for backend files
+      ansible.builtin.file:
+        path: "/home/{{ domain }}/app"
+        state: directory
+        owner: "{{ vhost_owner }}"
+        group: "{{ vhost_owner }}"
+        mode: '0770'
+
+    - name: Set persistent SELinux context policy for app directory
+      ansible.builtin.command: >
+        semanage fcontext -a -t httpd_user_content_t '/home/{{ domain }}/app(/.*)?'
+      when: ansible_selinux.status == "enabled"
+      changed_when: false
+      failed_when: false
+
+    - name: Apply SELinux context to app directory
+      ansible.builtin.command: restorecon -R /home/{{ domain }}/app
+      when: ansible_selinux.status == "enabled"
+      changed_when: false
+
     - name: Find PHP files in document root
       ansible.builtin.find:
         paths: "{{ document_root }}"
