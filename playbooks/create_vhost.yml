@@ -15,8 +15,6 @@
     document_root: "/home/{{ domain }}/public_html"
     sftp_group: "sftp"
     # Mail/DB vars (defined in mail role defaults, needed here for standalone playbook)
-    db_root_user: root
-    db_root_password: "{{ vault_db_root_password | default(lookup('env', 'MARIADB_ROOT_PASSWORD'), true) }}"
     db_login_unix_socket: /var/lib/mysql/mysql.sock
     mail_user: vmail
     mail_group: vmail
@@ -259,8 +257,8 @@
         - name: Add domain to mail database
           community.mysql.mysql_query:
             login_db: "{{ mail_db_name }}"
-            login_user: "{{ db_root_user }}"
-            login_password: "{{ db_root_password }}"
+            login_user: "{{ mail_db_user }}"
+            login_password: "{{ mail_db_password }}"
             login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
             query: "INSERT IGNORE INTO domains (domain) VALUES ('{{ domain }}')"
           changed_when: true
@@ -268,8 +266,8 @@
         - name: Create individual mailboxes in database
           community.mysql.mysql_query:
             login_db: "{{ mail_db_name }}"
-            login_user: "{{ db_root_user }}"
-            login_password: "{{ db_root_password }}"
+            login_user: "{{ mail_db_user }}"
+            login_password: "{{ mail_db_password }}"
             login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
             query: |
               INSERT IGNORE INTO users (email, password, domain)
