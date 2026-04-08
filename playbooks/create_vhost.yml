@@ -197,6 +197,16 @@
       changed_when: false
       failed_when: false
 
+    - name: Set persistent SELinux context policy for writable dirs (tmp, backup)
+      ansible.builtin.command: >
+        semanage fcontext -a -t httpd_sys_rw_content_t '/home/{{ domain }}/{{ item }}(/.*)?'
+      loop:
+        - tmp
+        - backup
+      when: ansible_selinux.status == "enabled"
+      changed_when: false
+      failed_when: false
+
     - name: Apply SELinux contexts to entire vhost home
       ansible.builtin.command: restorecon -R /home/{{ domain }}
       when: ansible_selinux.status == "enabled"
