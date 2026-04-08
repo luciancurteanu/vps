@@ -12,6 +12,19 @@ param(
     [int]   $SSHPort      = 22
 )
 
+# Kill any existing SSH tunnel processes holding the local port
+$existing = Get-NetTCPConnection -LocalPort $LocalPort -State Listen -ErrorAction SilentlyContinue
+if ($existing) {
+    $existing | ForEach-Object {
+        $proc = Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue
+        if ($proc -and $proc.Name -eq "ssh") {
+            Write-Host "Killing existing tunnel (PID $($proc.Id)) on port $LocalPort..."
+            Stop-Process -Id $proc.Id -Force
+        }
+    }
+    Start-Sleep -Milliseconds 500
+}
+
 Write-Host "Starting SSH tunnel: localhost:$LocalPort -> ${RemoteHost}:$RemotePort"
 Write-Host "Connect your DB client to: 127.0.0.1:$LocalPort"
 Write-Host "Press Ctrl+C to close the tunnel."
