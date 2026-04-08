@@ -183,33 +183,22 @@
         mode: '0664'
         force: true
 
-    - name: Set SELinux context for document root
-      ansible.builtin.command: chcon -R -t httpd_sys_content_t {{ document_root }}
-      when: ansible_selinux.status == "enabled"
-      changed_when: false
-
-    - name: Set SELinux context for log directory
-      ansible.builtin.command: chcon -R -t httpd_log_t /home/{{ domain }}/logs
-      when: ansible_selinux.status == "enabled"
-      changed_when: false
-
-    - name: Create app directory for backend files
-      ansible.builtin.file:
-        path: "/home/{{ domain }}/app"
-        state: directory
-        owner: "{{ vhost_owner }}"
-        group: "{{ vhost_owner }}"
-        mode: '0770'
-
-    - name: Set persistent SELinux context policy for app directory
+    - name: Set persistent SELinux context policy for vhost home (covers all subdirs)
       ansible.builtin.command: >
-        semanage fcontext -a -t httpd_user_content_t '/home/{{ domain }}/app(/.*)?'
+        semanage fcontext -a -t httpd_user_content_t '/home/{{ domain }}(/.*)?'
       when: ansible_selinux.status == "enabled"
       changed_when: false
       failed_when: false
 
-    - name: Apply SELinux context to app directory
-      ansible.builtin.command: restorecon -R /home/{{ domain }}/app
+    - name: Set persistent SELinux context policy for log directory
+      ansible.builtin.command: >
+        semanage fcontext -a -t httpd_log_t '/home/{{ domain }}/logs(/.*)?'
+      when: ansible_selinux.status == "enabled"
+      changed_when: false
+      failed_when: false
+
+    - name: Apply SELinux contexts to entire vhost home
+      ansible.builtin.command: restorecon -R /home/{{ domain }}
       when: ansible_selinux.status == "enabled"
       changed_when: false
 
