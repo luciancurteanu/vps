@@ -12,7 +12,7 @@ param(
     [int]   $SSHPort      = 22
 )
 
-Write-Host "Starting SSH tunnel: localhost:$LocalPort -> $RemoteHost:$RemotePort"
+Write-Host "Starting SSH tunnel: localhost:$LocalPort -> ${RemoteHost}:$RemotePort"
 Write-Host "Connect your DB client to: 127.0.0.1:$LocalPort"
 Write-Host "Press Ctrl+C to close the tunnel."
 Write-Host ""

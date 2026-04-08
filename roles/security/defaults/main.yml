@@ -56,6 +56,18 @@ allowed_ips: ""
 
 security_allowed_ips: "{{ allowed_ips }}"
 
+# SSH forwarding settings
+security_ssh_allow_tcp_forwarding: "{{ ssh_allow_tcp_forwarding | default('no') }}"
+security_ssh_allow_agent_forwarding: "{{ ssh_allow_agent_forwarding | default('no') }}"
+security_ssh_x11_forwarding: "{{ ssh_x11_forwarding | default('no') }}"
+security_ssh_max_auth_tries: "{{ ssh_max_auth_tries | default(3) }}"
+security_ssh_max_sessions: "{{ ssh_max_sessions | default(10) }}"
+security_ssh_client_alive_interval: "{{ ssh_client_alive_interval | default(300) }}"
+security_ssh_client_alive_count_max: "{{ ssh_client_alive_count_max | default(3) }}"
+security_ssh_permit_root_login: "{{ ssh_permit_root_login | default('no') }}"
+security_ssh_pubkey_authentication: "{{ ssh_pubkey_authentication | default('yes') }}"
+security_ssh_password_authentication: "{{ ssh_password_authentication | default('no') }}"
+
 # Webmin exposure controls
 security_install_webmin: "{{ install_webmin | default(true) }}"
 security_webmin_port: "{{ webmin_port | default(10000) }}"
