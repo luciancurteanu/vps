@@ -32,7 +32,7 @@
 
 # Allow defined services
 {% for service in security_firewall_allowed_services %}
--A INPUT -p {{ service.proto | default('tcp') }} --dport {{ service.port }} -j ACCEPT
+-A INPUT -p {{ service.proto | default('tcp') }}{% if service.src is defined %} -s {{ service.src }}{% endif %} --dport {{ service.port }} -j ACCEPT
 {% endfor %}
 
 # Mail service ports (only when mail is installed and this is the master domain)
