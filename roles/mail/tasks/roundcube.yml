@@ -112,9 +112,9 @@
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
-    owner: nginx
+    owner: "{{ domain_user }}"
     group: nginx
-    mode: '0755'
+    mode: '0775'
   with_items:
     - "{{ webmail_path }}/temp"
     - "{{ webmail_path }}/logs"
