@@ -3,7 +3,7 @@ server {
     listen 80;
     server_name {{ mail_subdomain }};
     
-    root {{ webmail_path }};
+    root {{ webmail_path }}/public_html;
     index index.php index.html;
     
     access_log /home/{{ domain }}/logs/{{ mail_subdomain.split('.')[0] }}-access.log;
@@ -13,7 +13,7 @@ server {
     location ~ \.php$ {
         try_files $uri =404;
         fastcgi_split_path_info ^(.+\.php)(/.+)$;
-        fastcgi_pass unix:{{ fastcgi_socket | default(php_fpm_listen | default('/run/php-fpm/' ~ (domain | replace('.', '_')) ~ '.sock')) }};
+        fastcgi_pass unix:/run/php-fpm/{{ mail_subdomain | replace('.', '_') }}.sock;
         fastcgi_index index.php;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         include fastcgi_params;
@@ -41,7 +41,7 @@ server {
     http2 on;
     server_name {{ mail_subdomain }};
     
-    root {{ webmail_path }};
+    root {{ webmail_path }}/public_html;
     index index.php index.html;
     
     access_log /home/{{ domain }}/logs/{{ mail_subdomain.split('.')[0] }}-access.log;
@@ -61,7 +61,7 @@ server {
     location ~ \.php$ {
         try_files $uri =404;
         fastcgi_split_path_info ^(.+\.php)(/.+)$;
-        fastcgi_pass unix:{{ fastcgi_socket | default(php_fpm_listen | default('/run/php-fpm/' ~ (domain | replace('.', '_')) ~ '.sock')) }};
+        fastcgi_pass unix:/run/php-fpm/{{ mail_subdomain | replace('.', '_') }}.sock;
         fastcgi_index index.php;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         include fastcgi_params;
