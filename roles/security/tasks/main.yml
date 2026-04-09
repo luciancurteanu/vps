@@ -176,33 +176,6 @@
   notify: restart fail2ban
   tags: ['fail2ban', 'selinux', 'security']
 
-- name: Create systemd override dir for fail2ban
-  ansible.builtin.file:
-    path: /etc/systemd/system/fail2ban.service.d
-    state: directory
-    owner: root
-    group: root
-    mode: '0755'
-  when: security_fail2ban_enabled | default(true)
-  tags: ['fail2ban', 'security']
-
-- name: Fix fail2ban systemd service type to track daemon correctly
-  ansible.builtin.copy:
-    dest: /etc/systemd/system/fail2ban.service.d/service-type.conf
-    content: |
-      [Service]
-      Type=oneshot
-      RemainAfterExit=yes
-      SuccessExitStatus=255
-    owner: root
-    group: root
-    mode: '0644'
-  when: security_fail2ban_enabled | default(true)
-  notify:
-    - reload systemd
-    - restart fail2ban
-  tags: ['fail2ban', 'security']
-
 - name: Ensure fail2ban service is enabled and running
   ansible.builtin.service:
     name: fail2ban
