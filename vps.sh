@@ -343,10 +343,11 @@ db_tunnel() {
     server_user=$(grep -E '^admin_user:' "$all_vars" 2>/dev/null | awk '{print $2}' | tr -d '"')
     [ -z "$server_user" ] && server_user="admin"
 
-    # Derive SSH key name from inventory hostname (same convention as bootstrap.sh)
-    local inventory_host
-    inventory_host=$(awk '/ansible_host:/{print prev} {prev=$0}' "$hosts_file" 2>/dev/null | head -1 | tr -d ': ' | tr '.-' '_' | tr -dc '[:alnum:]_')
-    local ssh_key="${inventory_host:-vps}"
+    # Find the actual SSH key name from exported .pub files in ~/.ssh/ (set by bootstrap.sh)
+    local ssh_key
+    ssh_key=$(ls "$HOME"/.ssh/*.pub 2>/dev/null | grep -v 'ansible_id\.pub' | head -1 | xargs -I{} basename {} .pub 2>/dev/null)
+    [ -z "$ssh_key" ] && ssh_key=$(awk '/ansible_host:/{print prev} {prev=$0}' "$hosts_file" 2>/dev/null | head -1 | tr -d ': ' | tr '.-' '_' | tr -dc '[:alnum:]_')
+    [ -z "$ssh_key" ] && ssh_key="vps"
 
     local db_port
     db_port=$(grep -E '^db_port:' "$all_vars" 2>/dev/null | awk '{print $2}' | tr -d '"')
