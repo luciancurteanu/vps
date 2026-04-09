@@ -274,7 +274,7 @@ setup_ssh_keys() {
     #    Pass it via: SSH_PUBLIC_KEY="ssh-ed25519 AAAA... label" bash bootstrap.sh
     if [ -n "${SSH_PUBLIC_KEY:-}" ]; then
         local label
-        label=$(echo "$SSH_PUBLIC_KEY" | awk '{print $NF}' | tr -dc '[:alnum:]-_')
+        label=$(echo "$SSH_PUBLIC_KEY" | awk '{print $NF}' | tr -dc '[:alnum:]_-')
         [ -z "$label" ] && label="control-host"
         local pub_file="$ssh_dir/${label}.pub"
         echo "$SSH_PUBLIC_KEY" > "$pub_file"
@@ -300,7 +300,7 @@ setup_ssh_keys() {
             [ "$key_blob" = "$ansible_key_blob" ] && continue
             # derive filename from key comment (3rd field)
             local key_label
-            key_label=$(echo "$line" | awk '{print $3}' | tr -dc '[:alnum:]-_')
+            key_label=$(echo "$line" | awk '{print $3}' | tr -dc '[:alnum:]_-')
             [ -z "$key_label" ] && key_label="control-host"
             local pub_file="$ssh_dir/${key_label}.pub"
             if [ ! -f "$pub_file" ]; then
