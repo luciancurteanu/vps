@@ -207,6 +207,13 @@
       changed_when: false
       failed_when: false
 
+    - name: Set persistent SELinux context policy for .ssh directory (ssh_home_t)
+      ansible.builtin.command: >
+        semanage fcontext -a -t ssh_home_t '/home/{{ domain }}/\.ssh(/.*)?'
+      when: ansible_selinux.status == "enabled"
+      changed_when: false
+      failed_when: false
+
     - name: Apply SELinux contexts to entire vhost home
       ansible.builtin.command: restorecon -FR /home/{{ domain }}
       when: ansible_selinux.status == "enabled"
