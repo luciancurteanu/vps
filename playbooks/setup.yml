@@ -190,6 +190,50 @@
         - domain is defined
         - user is defined
 
+    - name: Create .ssh directory for domain user
+      tags: ['setup', 'sftp']
+      ansible.builtin.file:
+        path: "/home/{{ domain }}/.ssh"
+        state: directory
+        owner: "{{ user }}"
+        group: "{{ user }}"
+        mode: '0700'
+      when:
+        - domain is defined
+        - user is defined
+
+    - name: Authorize admin SSH key for domain user
+      tags: ['setup', 'sftp']
+      ansible.posix.authorized_key:
+        user: "{{ user }}"
+        state: present
+        key: "{{ admin_ssh_public_key }}"
+      when:
+        - domain is defined
+        - user is defined
+        - admin_ssh_public_key is defined
+        - admin_ssh_public_key != ''
+
+    - name: Set SELinux ssh_home_t context for domain user .ssh directory
+      tags: ['setup', 'sftp', 'selinux']
+      ansible.builtin.command: >
+        semanage fcontext -a -t ssh_home_t '/home/{{ domain }}/\.ssh(/.*)?'
+      when:
+        - domain is defined
+        - ansible_selinux is defined
+        - ansible_selinux.status == "enabled"
+      changed_when: false
+      failed_when: false
+
+    - name: Apply ssh_home_t SELinux context to .ssh directory
+      tags: ['setup', 'sftp', 'selinux']
+      ansible.builtin.command: restorecon -RFv /home/{{ domain }}/.ssh
+      when:
+        - domain is defined
+        - ansible_selinux is defined
+        - ansible_selinux.status == "enabled"
+      changed_when: false
+
     - name: Set master domain user umask to 0002 (group-writable files)
       tags: ['setup', 'nginx']
       ansible.builtin.lineinfile:
