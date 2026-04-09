@@ -201,7 +201,7 @@
 - name: Set SELinux context for /var/vmail
   community.general.sefcontext:
     target: '/var/vmail(/.*)?'
-    setype: httpd_log_t
+    setype: mail_spool_t
     state: present
   when: ansible_selinux.status == "enabled"
 
