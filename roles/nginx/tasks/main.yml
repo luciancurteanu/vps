@@ -186,6 +186,10 @@
     state: true
     persistent: true
   when: ansible_selinux.status is defined and ansible_selinux.status == "enabled"
+  retries: 5
+  delay: 5
+  register: selinux_homedirs_result
+  until: selinux_homedirs_result is succeeded
 
 - name: Allow Nginx to connect to network services (for proxying)
   ansible.posix.seboolean:
@@ -193,3 +197,7 @@
     state: true
     persistent: true
   when: ansible_selinux.status is defined and ansible_selinux.status == "enabled"
+  retries: 5
+  delay: 5
+  register: selinux_connect_result
+  until: selinux_connect_result is succeeded
