@@ -286,7 +286,7 @@
         state: present
       when:
         - domain is defined
-        - ansible_selinux.status is defined
+        - ansible_selinux is defined
         - ansible_selinux.status == "enabled"
 
     - name: Apply SELinux context to domain logs
@@ -294,7 +294,7 @@
       ansible.builtin.command: restorecon -FRv /home/{{ domain }}/logs
       when:
         - domain is defined
-        - ansible_selinux.status is defined
+        - ansible_selinux is defined
         - ansible_selinux.status == "enabled"
       changed_when: false
 
@@ -306,7 +306,7 @@
         state: present
       when:
         - domain is defined
-        - ansible_selinux.status is defined
+        - ansible_selinux is defined
         - ansible_selinux.status == "enabled"
 
     - name: Apply SELinux context to domain public_html
@@ -314,7 +314,7 @@
       ansible.builtin.command: restorecon -FRv /home/{{ domain }}/public_html
       when:
         - domain is defined
-        - ansible_selinux.status is defined
+        - ansible_selinux is defined
         - ansible_selinux.status == "enabled"
       changed_when: false
 
