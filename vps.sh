@@ -309,6 +309,16 @@ PYEOF
     fi
 }
 
+# Pull latest code from git remote before running Ansible
+git_pull() {
+    if git -C "$PROJECT_ROOT" rev-parse --git-dir &>/dev/null; then
+        echo -e "${GREEN}Pulling latest code from git...${RESET}"
+        if ! git -C "$PROJECT_ROOT" pull --ff-only 2>&1; then
+            echo -e "${YELLOW}Warning: git pull failed (local changes or diverged branch). Continuing with current code.${RESET}"
+        fi
+    fi
+}
+
 # Run the appropriate Ansible playbook
 run_ansible() {
     start_time=$(date +%s)
@@ -417,6 +427,7 @@ main() {
         exit 0
     fi
     check_ansible
+    git_pull
     run_ansible
 }
 
