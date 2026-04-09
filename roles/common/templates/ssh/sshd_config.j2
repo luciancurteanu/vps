@@ -16,7 +16,7 @@ UsePAM yes
 
 # Forwarding settings
 AllowAgentForwarding {{ 'yes' if (common_ssh_allow_agent_forwarding | bool) else 'no' }}
-AllowTcpForwarding {% if common_ssh_allow_tcp_forwarding | string | lower == 'local' %}local{% elif common_ssh_allow_tcp_forwarding | bool %}yes{% else %}no{% endif %}
+AllowTcpForwarding {{ 'local' if common_ssh_allow_tcp_forwarding | string | lower == 'local' else ('yes' if common_ssh_allow_tcp_forwarding | bool else 'no') }}
 X11Forwarding {{ 'yes' if (common_ssh_x11_forwarding | bool) else 'no' }}
 
 # Connection settings
