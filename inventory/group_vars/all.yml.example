@@ -112,7 +112,7 @@ db_remote_password: "{{ vault_db_remote_password }}"
 db_backup_dir: "/var/backups/mysql"
 setup_db_backups: true
 db_optimize_for_server: true
-db_bind_address: "0.0.0.0"  # Listen on all interfaces (change to 127.0.0.1 for localhost only)
+db_bind_address: "127.0.0.1"  # Localhost only — remote access via SSH tunnel
 db_port: 3306
 db_character_set: "utf8mb4"
 db_collation: "utf8mb4_unicode_ci"
