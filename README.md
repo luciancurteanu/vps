@@ -46,6 +46,7 @@ cd ~/vps
 
 # 2) Configure inventory and site defaults (copy examples)
 cp inventory/group_vars/all.yml.example inventory/group_vars/all.yml
+# Add your server domain and ip to hosts.yml
 cp inventory/hosts.yml.example inventory/hosts.yml
 
 # 3) Create vault for secrets (copy example, edit, then encrypt)
