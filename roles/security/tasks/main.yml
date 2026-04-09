@@ -121,6 +121,88 @@
   notify: restart fail2ban
   tags: ['fail2ban', 'security']
 
+- name: Install SELinux policy compilation tools for fail2ban
+  ansible.builtin.package:
+    name: checkpolicy
+    state: present
+  when:
+    - security_fail2ban_enabled | default(true)
+    - ansible_selinux is defined
+    - ansible_selinux.status == 'enabled'
+  tags: ['fail2ban', 'selinux', 'security']
+
+- name: Deploy SELinux policy to allow fail2ban to monitor home directory logs
+  ansible.builtin.copy:
+    dest: /tmp/fail2ban_homelogs.te
+    content: |
+      module fail2ban_homelogs 3.0;
+      require {
+        type fail2ban_t;
+        type home_root_t;
+        type user_home_dir_t;
+        type user_home_t;
+        type httpd_sys_rw_content_t;
+        type unconfined_t;
+        class dir { read open search getattr };
+        class file { read open getattr ioctl };
+        class unix_stream_socket { connectto };
+      }
+      allow fail2ban_t home_root_t:dir { read open search getattr };
+      allow fail2ban_t user_home_dir_t:dir { read open search getattr };
+      allow fail2ban_t user_home_t:dir { read open search getattr };
+      allow fail2ban_t user_home_t:file { read open getattr ioctl };
+      allow fail2ban_t httpd_sys_rw_content_t:dir { read open search getattr };
+      allow fail2ban_t httpd_sys_rw_content_t:file { read open getattr ioctl };
+      allow fail2ban_t unconfined_t:unix_stream_socket connectto;
+    mode: '0644'
+  when:
+    - security_fail2ban_enabled | default(true)
+    - ansible_selinux is defined
+    - ansible_selinux.status == 'enabled'
+  register: selinux_fail2ban_te
+  tags: ['fail2ban', 'selinux', 'security']
+
+- name: Compile and install fail2ban SELinux policy module
+  ansible.builtin.shell: |
+    cd /tmp
+    checkmodule -M -m -o fail2ban_homelogs.mod fail2ban_homelogs.te
+    semodule_package -o fail2ban_homelogs.pp -m fail2ban_homelogs.mod
+    semodule -i fail2ban_homelogs.pp
+  when:
+    - security_fail2ban_enabled | default(true)
+    - ansible_selinux is defined
+    - ansible_selinux.status == 'enabled'
+    - selinux_fail2ban_te is changed
+  notify: restart fail2ban
+  tags: ['fail2ban', 'selinux', 'security']
+
+- name: Create systemd override dir for fail2ban
+  ansible.builtin.file:
+    path: /etc/systemd/system/fail2ban.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  when: security_fail2ban_enabled | default(true)
+  tags: ['fail2ban', 'security']
+
+- name: Fix fail2ban systemd service type to track daemon correctly
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/fail2ban.service.d/service-type.conf
+    content: |
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      SuccessExitStatus=255
+    owner: root
+    group: root
+    mode: '0644'
+  when: security_fail2ban_enabled | default(true)
+  notify:
+    - reload systemd
+    - restart fail2ban
+  tags: ['fail2ban', 'security']
+
 - name: Ensure fail2ban service is enabled and running
   ansible.builtin.service:
     name: fail2ban

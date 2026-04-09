@@ -44,7 +44,7 @@ findtime = 86400
 
 [mariadb]
 enabled = {% if stat_mariadb_log.stat.exists %}true{% else %}false{% endif %}
-port = 3306
+port = {{ db_port | default(3306) }}
 filter = mariadb
 action = %(action_lc)s
 logpath = /var/log/mariadb/error.log

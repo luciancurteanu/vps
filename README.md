@@ -179,41 +179,59 @@ sudo certbot renew
 
 ### Database Operations
 
-**Create database and user:**
-```bash
-./vps.sh create database --domain=yourdomain.com --dbname=mydb --ask-vault-pass
-```
-
 **Remote database access (SSH tunnel):**
 
-MariaDB is not exposed to the internet. Use an SSH tunnel to connect from your local machine.
+MariaDB binds to `127.0.0.1` only and is not exposed to the internet. Use an SSH tunnel to connect from your local machine.
 
-**Option 1 — PowerShell script (recommended):**
-```powershell
-# Opens tunnel: localhost:3307 -> server:3307
-.\scripts\db-tunnel.ps1
-
-# Then connect any DB client to 127.0.0.1:{{ db_port }}
-# DB user: {{ db_user }} / password from vars/secrets.yml ({{ vault_db_remote_password }})
+**Step 1 — Get the tunnel command:**
+```bash
+# Run on the server — reads server IP, admin user, and db_port from inventory automatically
+./vps.sh db tunnel
 ```
 
-**Option 2 — HeidiSQL built-in tunnel:**
+This prints the exact `ssh` command to run on your client machine, using values read live from your inventory:
+```
+ssh -N -L <db_port>:127.0.0.1:<db_port> -i ~/.ssh/<key> <admin_user>@<server-ip>
+```
+
+> - **`<admin_user>`** — set in `inventory/group_vars/all.yml` → `admin_user` (default: `admin`)
+> - **`<db_port>`** — set in `inventory/group_vars/all.yml` → `db_port` (default: `3307`)
+> - **`<key>`** — derived from the inventory hostname: dots and dashes replaced with underscores (e.g. `myserver.com` → `myserver_com`), same convention `bootstrap.sh` uses when exporting your key from `authorized_keys`
+
+**Step 2 — Open the tunnel (run on your Windows/Linux/Mac client):**
+
+Use the command printed by Step 1. The values are already substituted for your inventory.
+```bash
+# Linux / Mac
+ssh -N -L <db_port>:127.0.0.1:<db_port> -i ~/.ssh/<key> <admin_user>@<server-ip>
+
+# Windows PowerShell
+ssh -N -L <db_port>:127.0.0.1:<db_port> -i "$env:USERPROFILE\.ssh\<key>" <admin_user>@<server-ip>
+```
+
+**Step 3 — Connect your DB client to `127.0.0.1:<db_port>`:**
+```bash
+mysql -h 127.0.0.1 -P <db_port> -u <db_remote_user> -p
+```
+`db_remote_user` and `db_port` are both set in `inventory/group_vars/all.yml`.
+
+**HeidiSQL built-in tunnel:**
 
 | Tab | Field | Value |
 |-----|-------|-------|
 | Settings | Network type | MariaDB or MySQL (SSH tunnel) |
 | Settings | Hostname / IP | `127.0.0.1` |
-| Settings | User | `{{ db_user }}` |
-| Settings | Password | `{{ vault_db_remote_password }}` |
-| Settings | Port | `{{ db_port }}` |
+| Settings | User | value of `db_remote_user` in `all.yml` |
+| Settings | Password | value of `vault_db_remote_password` in `vars/secrets.yml` |
+| Settings | Port | value of `db_port` in `all.yml` |
 | SSH tunnel | SSH executable | `ssh.exe` |
-| SSH tunnel | SSH host + port | `{{ db_host }}:{{ ssh_port }}` |
-| SSH tunnel | Username | `{{ admin_user }}` |
+| SSH tunnel | SSH host + port | `<server-ip>:22` |
+| SSH tunnel | Username | value of `admin_user` in `all.yml` |
 | SSH tunnel | Password | *(leave blank)* |
-| SSH tunnel | Private key file | `C:\Users\<you>\.ssh\key` | # not .ppk or .pub, use OpenSSH format
-| SSH tunnel | Local port | `{{ db_port }}` |
+| SSH tunnel | Private key file | `C:\Users\<you>\.ssh\<key>` (key name from Step 1 output) |
+| SSH tunnel | Local port | value of `db_port` in `all.yml` |
 
-> **Important:** Leave the SSH tunnel **Password field blank** — OpenSSH's `ssh.exe` does not support password auth via `-pw`. Authentication uses the private key only.
+> **Important:** Leave the SSH tunnel **Password field blank** — OpenSSH's `ssh.exe` does not support password auth via `-pw`. Authentication uses the private key only. The key file must be OpenSSH format (not `.ppk` or `.pub`).
 
 ---
 

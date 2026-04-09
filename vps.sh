@@ -32,6 +32,7 @@ show_help() {
     echo "  create       Create new configurations (like virtual hosts)"
     echo "  remove       Remove configurations or components"
     echo "  sync         Sync local state into config files"
+    echo "  db           Database utilities"
     echo
     echo -e "${BOLD}Modules:${RESET}"
     echo "  core         Full server setup (base system, web server, database, etc.)"
@@ -39,6 +40,7 @@ show_help() {
     echo "  ssl          SSL certificate management"
     echo "  mariadb      Database server management"
     echo "  keys         SSH public keys (reads ~/.ssh/*.pub → secrets.yml)"
+    echo "  tunnel       Open SSH port-forward tunnel (use with: db tunnel)"
     echo
     echo -e "${BOLD}Options:${RESET}"
     echo "  --domain, -d                 Domain name (required for most operations)"
@@ -54,6 +56,7 @@ show_help() {
     echo "  $0 create host --domain=yourdomain.com --ask-vault-pass"
     echo "  $0 install ssl --domain=yourdomain.com --vault-password-file=~/.vault_pass"
     echo "  $0 sync keys"
+    echo "  $0 db tunnel"
 }
 
 # Check for Git installation and install if necessary
@@ -173,8 +176,12 @@ parse_args() {
             ACTION="$1"
             shift
             ;;
-        core | host | ssl | mariadb | keys)
+        core | host | ssl | mariadb | keys | tunnel)
             MODULE="$1"
+            shift
+            ;;
+        db)
+            ACTION="$1"
             shift
             ;;
         --domain=* | -d=*)
@@ -219,7 +226,7 @@ parse_args() {
         exit 1
     fi
 
-    if [[ "$MODULE" != "core" && "$MODULE" != "keys" && -z "$DOMAIN" ]]; then
+    if [[ "$MODULE" != "core" && "$MODULE" != "keys" && "$MODULE" != "tunnel" && -z "$DOMAIN" ]]; then
         echo -e "${RED}Error: Domain is required for '$MODULE' operations.${RESET}"
         show_help
         exit 1
@@ -317,6 +324,49 @@ git_pull() {
             echo -e "${YELLOW}Warning: git pull failed (local changes or diverged branch). Continuing with current code.${RESET}"
         fi
     fi
+}
+
+# Open an SSH tunnel to MariaDB on the remote server so clients can connect locally.
+# Usage: ./vps.sh db tunnel [--local-port=PORT]
+db_tunnel() {
+    local hosts_file="$PROJECT_ROOT/inventory/hosts.yml"
+    local all_vars="$PROJECT_ROOT/inventory/group_vars/all.yml"
+
+    local server_ip
+    server_ip=$(grep -E 'ansible_host:' "$hosts_file" 2>/dev/null | head -1 | awk '{print $2}' | tr -d '"')
+    if [ -z "$server_ip" ]; then
+        server_ip="<server-ip>"
+    fi
+
+    # Read admin_user from all.yml (ansible_user in hosts.yml is a Jinja2 reference)
+    local server_user
+    server_user=$(grep -E '^admin_user:' "$all_vars" 2>/dev/null | awk '{print $2}' | tr -d '"')
+    [ -z "$server_user" ] && server_user="admin"
+
+    # Derive SSH key name from inventory hostname (same convention as bootstrap.sh)
+    local inventory_host
+    inventory_host=$(awk '/ansible_host:/{print prev} {prev=$0}' "$hosts_file" 2>/dev/null | head -1 | tr -d ': ' | tr '.-' '_' | tr -dc '[:alnum:]_')
+    local ssh_key="${inventory_host:-vps}"
+
+    local db_port
+    db_port=$(grep -E '^db_port:' "$all_vars" 2>/dev/null | awk '{print $2}' | tr -d '"')
+    [ -z "$db_port" ] && db_port="3307"
+
+    local local_port="${DB_LOCAL_PORT:-${db_port}}"
+
+    log "${GREEN}${BOLD}MariaDB SSH Tunnel${RESET}"
+    log "  Server:     ${server_ip}"
+    log "  Remote DB:  127.0.0.1:${db_port}  (bound to loopback only)"
+    log "  Local port: ${local_port}"
+    log ""
+    log "${BOLD}Run this on your client machine (Windows/Linux/Mac):${RESET}"
+    log "  ssh -N -L ${local_port}:127.0.0.1:${db_port} -i ~/.ssh/${ssh_key} ${server_user}@${server_ip}"
+    log ""
+    log "${BOLD}Then connect to MariaDB:${RESET}"
+    log "  mysql -h 127.0.0.1 -P ${local_port} -u <dbuser> -p"
+    log ""
+    log "${YELLOW}Note: SSH TCP forwarding must be enabled (AllowTcpForwarding local/yes in sshd_config).${RESET}"
+    log "${YELLOW}      Current setting: $(grep AllowTcpForwarding /etc/ssh/sshd_config 2>/dev/null | head -1 | awk '{print $2}')${RESET}"
 }
 
 # Run the appropriate Ansible playbook
@@ -424,6 +474,10 @@ main() {
     parse_args "$@"
     if [[ "$ACTION" == "sync" && "$MODULE" == "keys" ]]; then
         sync_keys
+        exit 0
+    fi
+    if [[ "$ACTION" == "db" && "$MODULE" == "tunnel" ]]; then
+        db_tunnel
         exit 0
     fi
     check_ansible
