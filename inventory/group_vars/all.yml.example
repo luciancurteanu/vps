@@ -188,7 +188,7 @@ fail2ban_services:
   - sshd
   - postfix
   - dovecot
-fail2ban_socket_timeout: 30  # Socket timeout in seconds
+fail2ban_socket_timeout: 60  # Socket timeout in seconds
 
 # IP whitelist (IPs that bypass fail2ban - space-separated CIDR notation)
 allowed_ips: ""  # Add your trusted IPs here (e.g., "1.2.3.4/32 5.6.7.8/32")
