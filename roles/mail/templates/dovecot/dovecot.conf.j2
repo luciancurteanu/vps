@@ -6,7 +6,7 @@ protocols = imap pop3 lmtp
 listen = *, ::
 
 # Mail location
-mail_location = maildir:/home/{{ domain }}/mail/virtual/%d/%n
+mail_location = maildir:/var/vmail/%d/%n
 mail_uid = vmail
 mail_gid = vmail
 first_valid_uid = {{ mail_uid | default(5000) }}

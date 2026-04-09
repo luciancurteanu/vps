@@ -6,7 +6,7 @@ connect = host=127.0.0.1 port={{ db_port }} dbname={{ mail_db_name }} user={{ ma
 default_pass_scheme = SHA512-CRYPT
 
 # User query
-user_query = SELECT CONCAT('/home/{{ domain }}/mail/virtual/', SUBSTRING_INDEX(email,'@',-1), '/', SUBSTRING_INDEX(email,'@',1)) as home, 5000 as uid, 5000 as gid FROM users WHERE email='%u'
+user_query = SELECT CONCAT('/var/vmail/', SUBSTRING_INDEX(email,'@',-1), '/', SUBSTRING_INDEX(email,'@',1)) as home, 5000 as uid, 5000 as gid FROM users WHERE email='%u'
 
 # Password query - returns full email as username
 password_query = SELECT email as username, password FROM users WHERE email='%u'
