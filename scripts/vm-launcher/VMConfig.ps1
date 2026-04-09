@@ -142,7 +142,7 @@ class VMConfig {
         $this.CIDataPath = Join-Path $this.VMData "cidata"
 
         $this.SSHDir = Join-Path $env:USERPROFILE '.ssh'
-        $keyName = ($this.VMName -replace '[^a-zA-Z0-9_-]', '-').ToLower()
+        $keyName = ($this.VMName -replace '[^a-zA-Z0-9_]', '_').ToLower()
         $this.SharedPrivKey = Join-Path $this.SSHDir $keyName
         $this.SharedPubKey = Join-Path $this.SSHDir "$keyName.pub"
         $this.SharedPpkKey = Join-Path $this.SSHDir "$keyName.ppk"
