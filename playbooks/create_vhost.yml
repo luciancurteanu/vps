@@ -277,11 +277,10 @@
         block: |
           Match User {{ user }}
           ChrootDirectory /home/{{ domain }}
+          ForceCommand internal-sftp
         marker: "# {mark} ANSIBLE MANAGED SFTP CHROOT {{ domain }}"
       notify: Restart SSH
       when: domain.split('.')[0] != 'cpanel'
-
-    - name: Configure hosts file for master domain
       ansible.builtin.lineinfile:
         path: /etc/hosts
         line: "{{ item }}"
