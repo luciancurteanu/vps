@@ -6,6 +6,7 @@
     name:
       - tar
       - wget
+      - unzip
       - php-pdo
       - php-mbstring
       - php-intl
