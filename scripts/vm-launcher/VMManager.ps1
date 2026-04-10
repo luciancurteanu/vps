@@ -120,7 +120,9 @@ class VMManager {
         if ($diskSizeGB -gt 0) {
             $targetMB = $diskSizeGB * 1024
             Write-Host "Resizing VDI disk to ${diskSizeGB}GB (${targetMB}MB)" -ForegroundColor Cyan
-            & $this.VBoxManage modifymedium disk $this.VDIPath --resize $targetMB 2>$null | Out-Null
+            $vboxBin = $this.VBoxManage
+            $vdiDisk = $this.VDIPath
+            & cmd.exe /c "`"$vboxBin`" modifymedium disk `"$vdiDisk`" --resize $targetMB >NUL 2>&1"
         }
     }
 
