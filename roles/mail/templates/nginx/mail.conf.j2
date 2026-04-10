@@ -47,10 +47,10 @@ server {
     access_log /home/{{ domain }}/logs/{{ mail_subdomain.split('.')[0] }}-access.log;
     error_log /home/{{ domain }}/logs/{{ mail_subdomain.split('.')[0] }}-error.log;
 
-    # SSL configuration (will be managed by Certbot)
-    ssl_certificate /etc/letsencrypt/live/{{ domain }}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/{{ domain }}/privkey.pem;
-    ssl_trusted_certificate /etc/letsencrypt/live/{{ domain }}/chain.pem;
+    # SSL configuration
+    ssl_certificate {{ nginx_ssl_cert | default('/etc/letsencrypt/live/' + domain + '/fullchain.pem') }};
+    ssl_certificate_key {{ nginx_ssl_key | default('/etc/letsencrypt/live/' + domain + '/privkey.pem') }};
+    ssl_trusted_certificate {{ nginx_ssl_ca | default('/etc/letsencrypt/live/' + domain + '/chain.pem') }};
     
     # Security headers
     add_header X-Content-Type-Options nosniff;

@@ -28,17 +28,17 @@ smtp_use_tls = yes
 smtp_tls_security_level = may
 smtp_tls_loglevel = 1
 smtp_tls_session_cache_database = btree:${data_directory}/smtp_scache
-smtp_tls_cert_file = /etc/letsencrypt/live/{{ domain }}/fullchain.pem
-smtp_tls_key_file = /etc/letsencrypt/live/{{ domain }}/privkey.pem
-smtp_tls_CAfile = /etc/letsencrypt/live/{{ domain }}/chain.pem
+smtp_tls_cert_file = {{ mail_tls_cert_file }}
+smtp_tls_key_file = {{ mail_tls_key_file }}
+smtp_tls_CAfile = {{ mail_tls_ca_file }}
 
 smtpd_use_tls = yes
 smtpd_tls_security_level = may
 smtpd_tls_loglevel = 1
 smtpd_tls_session_cache_database = btree:${data_directory}/smtpd_scache
-smtpd_tls_cert_file = /etc/letsencrypt/live/{{ domain }}/fullchain.pem
-smtpd_tls_key_file = /etc/letsencrypt/live/{{ domain }}/privkey.pem
-smtpd_tls_CAfile = /etc/letsencrypt/live/{{ domain }}/chain.pem
+smtpd_tls_cert_file = {{ mail_tls_cert_file }}
+smtpd_tls_key_file = {{ mail_tls_key_file }}
+smtpd_tls_CAfile = {{ mail_tls_ca_file }}
 
 # SMTP restrictions
 smtpd_helo_required = yes

@@ -15,6 +15,13 @@
     dynu_credentials_file: "/etc/letsencrypt/dynu-credentials.ini"
     force_renewal: false
     email: "webmaster@{{ domain }}"
+    # Detect dev (.test) vs prod domain automatically
+    is_dev_domain: "{{ domain.split('.')[-1] == 'test' }}"
+    ssl_local_dir: "/etc/ssl/local/{{ domain }}"
+    # Cert paths — resolved based on domain TLD
+    ssl_cert_file: "{{ ssl_local_dir + '/server.crt' if is_dev_domain else '/etc/letsencrypt/live/' + domain + '/fullchain.pem' }}"
+    ssl_cert_key: "{{ ssl_local_dir + '/server.key' if is_dev_domain else '/etc/letsencrypt/live/' + domain + '/privkey.pem' }}"
+    ssl_ca_file: "{{ ssl_local_dir + '/ca.crt' if is_dev_domain else '/etc/letsencrypt/live/' + domain + '/chain.pem' }}"
 
   pre_tasks:
     - name: Verify required variables are defined
@@ -34,28 +41,154 @@
       when: not nginx_conf.stat.exists
 
   tasks:
+    # ── DEV / .test: local CA-signed cert with SAN ─────────────────────────────
+
+    - name: Create local SSL directory
+      ansible.builtin.file:
+        path: "{{ ssl_local_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      when: is_dev_domain
+
+    - name: Generate local CA private key
+      ansible.builtin.command:
+        argv: [openssl, genrsa, -out, "{{ ssl_local_dir }}/ca.key", "4096"]
+        creates: "{{ ssl_local_dir }}/ca.key"
+      when: is_dev_domain
+
+    - name: Protect CA private key
+      ansible.builtin.file:
+        path: "{{ ssl_local_dir }}/ca.key"
+        owner: root
+        group: root
+        mode: '0600'
+      when: is_dev_domain
+
+    - name: Generate local CA certificate
+      ansible.builtin.command:
+        argv:
+          - openssl
+          - req
+          - -new
+          - -x509
+          - -days
+          - "3650"
+          - -key
+          - "{{ ssl_local_dir }}/ca.key"
+          - -out
+          - "{{ ssl_local_dir }}/ca.crt"
+          - -subj
+          - "/CN=Local Dev CA/O={{ domain }}"
+        creates: "{{ ssl_local_dir }}/ca.crt"
+      when: is_dev_domain
+
+    - name: Generate server private key
+      ansible.builtin.command:
+        argv: [openssl, genrsa, -out, "{{ ssl_local_dir }}/server.key", "2048"]
+        creates: "{{ ssl_local_dir }}/server.key"
+      when: is_dev_domain
+
+    - name: Write OpenSSL SAN config
+      ansible.builtin.copy:
+        dest: "{{ ssl_local_dir }}/san.cnf"
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          [req]
+          distinguished_name = req_distinguished_name
+          [req_distinguished_name]
+          [v3_req]
+          subjectAltName = DNS:{{ domain }},DNS:*.{{ domain }}
+      when: is_dev_domain
+
+    - name: Generate server CSR
+      ansible.builtin.command:
+        argv:
+          - openssl
+          - req
+          - -new
+          - -key
+          - "{{ ssl_local_dir }}/server.key"
+          - -out
+          - "{{ ssl_local_dir }}/server.csr"
+          - -subj
+          - "/CN={{ domain }}"
+        creates: "{{ ssl_local_dir }}/server.csr"
+      when: is_dev_domain
+
+    - name: Sign server certificate with local CA
+      ansible.builtin.command:
+        argv:
+          - openssl
+          - x509
+          - -req
+          - -days
+          - "3650"
+          - -in
+          - "{{ ssl_local_dir }}/server.csr"
+          - -CA
+          - "{{ ssl_local_dir }}/ca.crt"
+          - -CAkey
+          - "{{ ssl_local_dir }}/ca.key"
+          - -CAcreateserial
+          - -out
+          - "{{ ssl_local_dir }}/server.crt"
+          - -extfile
+          - "{{ ssl_local_dir }}/san.cnf"
+          - -extensions
+          - v3_req
+        creates: "{{ ssl_local_dir }}/server.crt"
+      when: is_dev_domain
+      notify: Reload Nginx
+
+    - name: Set permissions on server cert and key
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        owner: root
+        group: root
+        mode: "{{ item.mode }}"
+      loop:
+        - { path: "{{ ssl_local_dir }}/server.crt", mode: '0644' }
+        - { path: "{{ ssl_local_dir }}/server.key", mode: '0644' }
+        - { path: "{{ ssl_local_dir }}/ca.crt",     mode: '0644' }
+      when: is_dev_domain
+
+    - name: Fetch local CA cert to controller (import into browser/OS to get green HTTPS)
+      ansible.builtin.fetch:
+        src: "{{ ssl_local_dir }}/ca.crt"
+        dest: "{{ playbook_dir }}/../temp/{{ domain }}-local-ca.crt"
+        flat: true
+      when: is_dev_domain
+
+    # ── PROD: Let's Encrypt via certbot + Dynu DNS ─────────────────────────────
+
     - name: Install Certbot (RedHat/CentOS)
       ansible.builtin.dnf:
         name: "{{ certbot_package }}"
         state: present
-      when: ansible_os_family == "RedHat"
+      when: not is_dev_domain and ansible_os_family == "RedHat"
 
     - name: Install Certbot (Debian/Ubuntu)
       ansible.builtin.apt:
         name: "{{ certbot_package }}"
         state: present
-      when: ansible_os_family == "Debian"
+      when: not is_dev_domain and ansible_os_family == "Debian"
 
     - name: Get certbot Python site-packages path
       ansible.builtin.command: /usr/bin/python3 -s -c "import site; print(site.getsitepackages()[-1])"
       register: certbot_site_packages
       changed_when: false
+      when: not is_dev_domain
 
     - name: Install certbot-dns-dynu plugin
       ansible.builtin.pip:
         name: "{{ certbot_dns_plugin }}"
         state: present
         extra_args: "--target {{ certbot_site_packages.stdout }}"
+      when: not is_dev_domain
 
     - name: Create Dynu credentials file
       ansible.builtin.copy:
@@ -64,15 +197,18 @@
         owner: root
         group: root
         mode: '0600'
+      when: not is_dev_domain
 
     - name: Check if certificate already exists
       ansible.builtin.stat:
         path: "/etc/letsencrypt/live/{{ domain }}/fullchain.pem"
       register: cert_file
+      when: not is_dev_domain
 
     - name: Build certbot domain list
       ansible.builtin.set_fact:
         certbot_domains: "{{ domain }},*.{{ domain }}"
+      when: not is_dev_domain
 
     - name: Obtain SSL certificate
       ansible.builtin.command: >
@@ -87,7 +223,7 @@
         {{ '--force-renewal' if force_renewal else '' }}
       register: certbot_result
       changed_when: "'Congratulations! Your certificate and chain have been saved' in certbot_result.stdout"
-      when: not cert_file.stat.exists or force_renewal
+      when: not is_dev_domain and (not cert_file.stat.exists or force_renewal)
 
     - name: Install cronjob for certificate renewal
       ansible.builtin.cron:
@@ -98,15 +234,20 @@
         minute: "0"
         hour: "3"
         weekday: "1"  # Monday
+      when: not is_dev_domain
 
     - name: Display certificate information
       shell: "certbot certificates --cert-name {{ domain }}"
       register: cert_info
       changed_when: false
+      when: not is_dev_domain
 
     - name: Output certificate information
       ansible.builtin.debug:
         msg: "{{ cert_info.stdout_lines }}"
+      when: not is_dev_domain
+
+    # ── Shared: enable SSL in all nginx/app configs ─────────────────────────────
 
     - name: Update Nginx virtual host with SSL enabled
       ansible.builtin.template:
@@ -116,6 +257,8 @@
         group: root
       vars:
         nginx_ssl_enabled: true
+        nginx_ssl_cert: "{{ ssl_cert_file }}"
+        nginx_ssl_key: "{{ ssl_cert_key }}"
       notify: Reload Nginx
 
     - name: Update mail subdomain nginx configuration with SSL enabled
@@ -126,6 +269,9 @@
         group: root
       vars:
         mail_enable_ssl: true
+        nginx_ssl_cert: "{{ ssl_cert_file }}"
+        nginx_ssl_key: "{{ ssl_cert_key }}"
+        nginx_ssl_ca: "{{ ssl_ca_file }}"
       when: install_mail | default(true)
       notify: Reload Nginx
 
@@ -148,6 +294,8 @@
         group: root
       vars:
         webmin_ssl_enabled: true
+        nginx_ssl_cert: "{{ ssl_cert_file }}"
+        nginx_ssl_key: "{{ ssl_cert_key }}"
       when: install_webmin | default(true)
       notify: Reload Nginx
 

@@ -7,6 +7,15 @@
     - ../vars/secrets.yml
 
   pre_tasks:
+    - name: Install passlib on controller (needed for password_hash filter)
+      tags: ['setup']
+      ansible.builtin.pip:
+        name: passlib
+        state: present
+      delegate_to: localhost
+      become: false
+      run_once: true
+
     - name: Install passlib before password hashing tasks
       tags: ['setup']
       ansible.builtin.pip:

@@ -31,8 +31,8 @@ server {
     error_log /home/{{ domain }}/logs/error.log;
 
     # SSL Configuration
-    ssl_certificate /etc/letsencrypt/live/{{ domain }}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/{{ domain }}/privkey.pem;
+    ssl_certificate {{ nginx_ssl_cert | default('/etc/letsencrypt/live/' + domain + '/fullchain.pem') }};
+    ssl_certificate_key {{ nginx_ssl_key | default('/etc/letsencrypt/live/' + domain + '/privkey.pem') }};
 
     # SSL optimization
     ssl_session_cache shared:SSL:10m;

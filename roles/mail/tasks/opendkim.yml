@@ -75,7 +75,7 @@
   ansible.builtin.file:
     path: "{{ item }}"
     owner: opendkim
-    mode: '0644'
+    mode: '0640'
     group: opendkim
   with_items:
     - /etc/opendkim/keys/{{ domain }}/mail.private
@@ -98,3 +98,10 @@
     name: opendkim
     state: started
     enabled: true
+
+- name: Add postfix user to opendkim group
+  ansible.builtin.user:
+    name: postfix
+    groups: opendkim
+    append: true
+  notify: restart postfix

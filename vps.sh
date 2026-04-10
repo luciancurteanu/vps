@@ -446,8 +446,6 @@ run_ansible() {
     
     ansible_exit_code=${PIPESTATUS[0]}
 
-    ansible_exit_code=${PIPESTATUS[0]}
-
     end_time=$(date +%s)
     duration=$((end_time - start_time))
     minutes=$((duration / 60))
@@ -468,6 +466,40 @@ run_ansible() {
     if [ $ansible_exit_code -eq 0 ]; then
         log "${GREEN}Operation completed successfully in ${minutes}m ${seconds}s${RESET}"
         log "${GREEN}Full log saved to: $log_file${RESET}"
+
+        # Auto-run SSL setup after install core or create host
+        if [[ "$ACTION $MODULE" == "install core" || "$ACTION $MODULE" == "create host" ]] && [[ -n "$DOMAIN" ]]; then
+            log "${GREEN}Auto-running SSL setup for ${DOMAIN}...${RESET}"
+            ssl_log_file="$PROJECT_ROOT/logs/vps-install-ssl-${timestamp}.log"
+            {
+                echo "========================================"
+                echo "VPS SSL Auto-run Log"
+                echo "========================================"
+                echo "Date: $(date '+%Y-%m-%d %H:%M:%S')"
+                echo "Domain: $DOMAIN"
+                echo "========================================"
+                echo ""
+            } > "$ssl_log_file"
+            ansible-playbook "$PROJECT_ROOT/playbooks/ssl.yml" \
+                -e "domain=${DOMAIN}" -e "user=${USER}" \
+                $ASK_SSH_PASS $VAULT_OPTS 2>&1 | tee -a "$ssl_log_file"
+            ssl_exit_code=${PIPESTATUS[0]}
+            if [ $ssl_exit_code -eq 0 ]; then
+                log "${GREEN}SSL setup completed.${RESET}"
+                # Remind user to import CA cert for .test domains
+                tld="${DOMAIN##*.}"
+                if [[ "$tld" == "test" ]]; then
+                    ca_cert="$PROJECT_ROOT/temp/${DOMAIN}-local-ca.crt"
+                    log "${YELLOW}Dev domain detected — import the CA cert for green HTTPS in your browser:${RESET}"
+                    log "  ${BOLD}File: $ca_cert${RESET}"
+                    log "  ${BOLD}Windows:${RESET} Double-click → Install → Local Machine → Trusted Root Certification Authorities"
+                    log "  ${BOLD}Firefox:${RESET} Settings → Privacy & Security → View Certificates → Authorities → Import"
+                fi
+            else
+                log "${YELLOW}SSL setup failed (exit $ssl_exit_code). Run manually: ./vps.sh install ssl --domain=${DOMAIN}${RESET}"
+                log "${YELLOW}SSL log: $ssl_log_file${RESET}"
+            fi
+        fi
     else
         log "${RED}Operation failed with exit code $ansible_exit_code${RESET}"
         log "${RED}Check log for details: $log_file${RESET}"

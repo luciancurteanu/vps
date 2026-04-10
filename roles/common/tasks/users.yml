@@ -1,6 +1,14 @@
 ---
 # User management tasks
 
+- name: Install passlib on controller (needed for password_hash filter)
+  ansible.builtin.pip:
+    name: passlib
+    state: present
+  delegate_to: localhost
+  become: false
+  run_once: true
+
 - name: Install passlib for password hashing
   ansible.builtin.pip:
     name: passlib

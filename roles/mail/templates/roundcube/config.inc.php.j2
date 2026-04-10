@@ -23,6 +23,28 @@ $config['plugins'] = array(
     'archive',
     'zipdownload',
     'managesieve',
+    'jqueryui',
+    'contextmenu',
+    'contextmenu_folder',
+    'swipe',
+    'reconnect',
+    'userinfo',
+    'password',
+    'newmail_notifier',
+    'filters'
+);
+
+$config['swipe_actions'] = array(
+ 'messagelist' => array(
+   'left' => 'swipe-select',
+   'right' => 'delete',
+   'down' => 'checkmail'
+ ),
+ 'contactlist' => array(
+   'left' => 'compose',
+   'right' => 'compose',
+   'down' => 'vcard_attachments'
+ )
 );
 
 // User interface

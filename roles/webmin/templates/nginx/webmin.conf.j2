@@ -21,11 +21,13 @@ server {
     http2 on;
     server_name {{ webmin_subdomain }};
 
-    # SSL configuration (using existing domain certs)
-    ssl_certificate /etc/letsencrypt/live/{{ domain }}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/{{ domain }}/privkey.pem;
+    # SSL configuration
+    ssl_certificate {{ nginx_ssl_cert | default('/etc/letsencrypt/live/' + domain + '/fullchain.pem') }};
+    ssl_certificate_key {{ nginx_ssl_key | default('/etc/letsencrypt/live/' + domain + '/privkey.pem') }};
+{% if not (is_dev_domain | default(false)) %}
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+{% endif %}
 {% else %}
     # HTTP only (SSL not enabled)
 {% endif %}

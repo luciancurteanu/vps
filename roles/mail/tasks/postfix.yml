@@ -38,6 +38,122 @@
     force: false
   failed_when: false  # TODO: Add proper failure condition
 
+- name: Create Postfix SSL directory
+  ansible.builtin.file:
+    path: "{{ mail_ssl_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  when: not mail_use_letsencrypt
+
+- name: Generate local CA private key
+  ansible.builtin.command:
+    argv: [openssl, genrsa, -out, "{{ mail_ssl_dir }}/ca.key", "4096"]
+    creates: "{{ mail_ssl_dir }}/ca.key"
+  when: not mail_use_letsencrypt
+
+- name: Set permissions on CA private key
+  ansible.builtin.file:
+    path: "{{ mail_ssl_dir }}/ca.key"
+    owner: root
+    group: root
+    mode: '0600'
+  when: not mail_use_letsencrypt
+
+- name: Generate local CA certificate
+  ansible.builtin.command:
+    argv:
+      - openssl
+      - req
+      - -new
+      - -x509
+      - -days
+      - "3650"
+      - -key
+      - "{{ mail_ssl_dir }}/ca.key"
+      - -out
+      - "{{ mail_ssl_dir }}/ca.crt"
+      - -subj
+      - "/CN=Local Dev CA/O={{ domain }}"
+    creates: "{{ mail_ssl_dir }}/ca.crt"
+  when: not mail_use_letsencrypt
+
+- name: Generate server private key
+  ansible.builtin.command:
+    argv: [openssl, genrsa, -out, "{{ mail_ssl_dir }}/server.key", "2048"]
+    creates: "{{ mail_ssl_dir }}/server.key"
+  when: not mail_use_letsencrypt
+
+- name: Write OpenSSL SAN config for local cert
+  ansible.builtin.copy:
+    dest: "{{ mail_ssl_dir }}/san.cnf"
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      [req]
+      distinguished_name = req_distinguished_name
+      [req_distinguished_name]
+      [v3_req]
+      subjectAltName = DNS:{{ domain }},DNS:*.{{ domain }}
+  when: not mail_use_letsencrypt
+
+- name: Generate server CSR
+  ansible.builtin.command:
+    argv:
+      - openssl
+      - req
+      - -new
+      - -key
+      - "{{ mail_ssl_dir }}/server.key"
+      - -out
+      - "{{ mail_ssl_dir }}/server.csr"
+      - -subj
+      - "/CN={{ domain }}"
+    creates: "{{ mail_ssl_dir }}/server.csr"
+  when: not mail_use_letsencrypt
+
+- name: Sign server certificate with local CA
+  ansible.builtin.command:
+    argv:
+      - openssl
+      - x509
+      - -req
+      - -days
+      - "3650"
+      - -in
+      - "{{ mail_ssl_dir }}/server.csr"
+      - -CA
+      - "{{ mail_ssl_dir }}/ca.crt"
+      - -CAkey
+      - "{{ mail_ssl_dir }}/ca.key"
+      - -CAcreateserial
+      - -out
+      - "{{ mail_ssl_dir }}/server.crt"
+      - -extfile
+      - "{{ mail_ssl_dir }}/san.cnf"
+      - -extensions
+      - v3_req
+    creates: "{{ mail_ssl_dir }}/server.crt"
+  when: not mail_use_letsencrypt
+  notify: restart postfix
+
+- name: Set permissions on server private key
+  ansible.builtin.file:
+    path: "{{ mail_ssl_dir }}/server.key"
+    owner: root
+    group: root
+    mode: '0644'
+  when: not mail_use_letsencrypt
+
+- name: Fetch local CA certificate to controller
+  ansible.builtin.fetch:
+    src: "{{ mail_ssl_dir }}/ca.crt"
+    dest: "{{ playbook_dir }}/../temp/{{ domain }}-local-ca.crt"
+    flat: true
+  when: not mail_use_letsencrypt
+
 - name: Configure main Postfix configuration
   ansible.builtin.template:
     src: postfix/main.cf.j2
