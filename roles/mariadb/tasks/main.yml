@@ -141,13 +141,19 @@
     get_checksum: false
   register: mysql_setup_stat
  
-- name: Ensure MySQL root password is set (module)
-  ansible.builtin.shell:
-    cmd: mysql --protocol=socket --socket=/var/lib/mysql/mysql.sock
-    stdin: "ALTER USER 'root'@'localhost' IDENTIFIED BY '{{ db_root_password }}'; FLUSH PRIVILEGES;"
+- name: Set MariaDB root password
+  community.mysql.mysql_user:
+    name: root
+    host: localhost
+    password: "{{ db_root_password }}"
+    plugin: mysql_native_password
+    check_implicit_admin: yes
+    login_unix_socket: /var/lib/mysql/mysql.sock
+    state: present
   when: not mysql_setup_stat.stat.exists and db_root_password is defined and (db_root_password | length) > 0
+  no_log: true
   register: set_root_password
-  failed_when: set_root_password.rc != 0
+  failed_when: false
 
 - name: Create root credentials file (when password set)
   ansible.builtin.template:
@@ -157,17 +163,6 @@
     group: root
     mode: '0600'
   when: not mysql_setup_stat.stat.exists and db_root_password is defined and (db_root_password | length) > 0
-
-- name: Ensure root uses password auth plugin
-  community.mysql.mysql_user:
-    name: root
-    host: localhost
-    password: "{{ db_root_password }}"
-    plugin: mysql_native_password
-    check_implicit_admin: yes
-    login_unix_socket: /var/lib/mysql/mysql.sock
-  when: not mysql_setup_stat.stat.exists and db_root_password is defined and (db_root_password | length) > 0
-  failed_when: false
 
 - name: Secure MariaDB installation (module-based)
   block:
@@ -278,7 +273,7 @@
     name: "Database backup"
     hour: "3"
     minute: "0"
-    job: "mysqldump --defaults-file=/root/.my.cnf --all-databases | gzip > {{ db_backup_dir }}/mysql-all-`date +\\%Y\\%m\\%d`.sql.gz"
+    job: "mysqldump --defaults-file=/root/.my.cnf --all-databases | gzip > {{ db_backup_dir }}/mysql-all-`date +\\%Y\\%m\\%d-\\%H\\%M\\%S`.sql.gz"
     user: root
   when: setup_db_backups | default(true)
 

@@ -175,6 +175,23 @@
         - domain is defined
         - user is defined
 
+    - name: Configure SFTP group restrictions in SSH
+      tags: ['setup', 'sftp']
+      ansible.builtin.blockinfile:
+        path: /etc/ssh/sshd_config
+        insertafter: EOF
+        block: |
+          Match Group sftp
+            ForceCommand internal-sftp -u 0002
+            PasswordAuthentication no
+            PermitTunnel no
+            AllowAgentForwarding no
+            AllowTcpForwarding no
+            X11Forwarding no
+        marker: "# {mark} ANSIBLE MANAGED SFTP CONFIGURATION"
+      notify: Restart SSH
+      when: domain is defined
+
     - name: Configure per-user SFTP chroot in SSH
       tags: ['setup', 'sftp']
       ansible.builtin.blockinfile:
@@ -403,6 +420,29 @@
         state: directory
       when: domain is defined
 
+    - name: Configure log rotation for master domain
+      tags: ['setup', 'nginx']
+      ansible.builtin.copy:
+        dest: "/etc/logrotate.d/vhost-{{ domain | replace('.', '-') }}"
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          /home/{{ domain }}/logs/*.log {
+              daily
+              missingok
+              rotate 30
+              compress
+              delaycompress
+              notifempty
+              create 0664 nginx {{ user | default(domain.split('.')[-2]) }}
+              sharedscripts
+              postrotate
+                  [ -f /var/run/nginx.pid ] && kill -USR1 $(cat /var/run/nginx.pid) || true
+              endscript
+          }
+      when: domain is defined
+
     - name: Pre-create nginx log files for domain
       tags: ['setup', 'nginx']
       ansible.builtin.file:
@@ -430,6 +470,51 @@
         state: started
         enabled: true
       when: firewall_enabled | default(true)
+
+    - name: Deploy service health check script
+      tags: ['setup', 'monitoring']
+      ansible.builtin.copy:
+        dest: /usr/local/bin/vps-health-check.sh
+        owner: root
+        group: root
+        mode: '0750'
+        content: |
+          #!/bin/bash
+          ALERT_EMAIL="evpscloud@gmail.com"
+          SERVICES="nginx php-fpm mariadb postfix dovecot sshd fail2ban"
+          FAILED=()
+          for svc in $SERVICES; do
+              if ! systemctl is-active --quiet "$svc" 2>/dev/null; then
+                  FAILED+=("$svc")
+              fi
+          done
+          if [ ${#FAILED[@]} -gt 0 ]; then
+              {
+                  echo "From: root@$(hostname --fqdn)"
+                  echo "To: $ALERT_EMAIL"
+                  echo "Subject: [ALERT] Service Down on $(hostname)"
+                  echo ""
+                  echo "The following services are DOWN on $(hostname) at $(date):"
+                  printf '  - %s\n' "${FAILED[@]}"
+              } | /sbin/sendmail -t
+          fi
+
+    - name: Schedule service health check every 5 minutes
+      tags: ['setup', 'monitoring']
+      ansible.builtin.cron:
+        name: "VPS service health check"
+        minute: "*/5"
+        job: "/usr/local/bin/vps-health-check.sh"
+        user: root
+
+    - name: Schedule PHP session cleanup (daily)
+      tags: ['setup', 'php']
+      ansible.builtin.cron:
+        name: "PHP session cleanup"
+        minute: "30"
+        hour: "2"
+        job: "find /home/*/tmp/ -name 'sess_*' -type f -mtime +1 -delete 2>/dev/null; true"
+        user: root
 
     - name: Verify all services are running
       tags: ['setup']

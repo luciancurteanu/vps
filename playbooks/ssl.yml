@@ -92,7 +92,9 @@
     - name: Install cronjob for certificate renewal
       ansible.builtin.cron:
         name: "Certbot automatic renewal"
-        job: "certbot renew --quiet --non-interactive"
+        job: >-
+          certbot renew --quiet --non-interactive ||
+          { echo -e "From: root@$(hostname --fqdn)\nTo: evpscloud@gmail.com\nSubject: [ALERT] SSL Renewal Failed on $(hostname)\n\nCertbot renewal failed at $(date)" | /sbin/sendmail -t; }
         minute: "0"
         hour: "3"
         weekday: "1"  # Monday

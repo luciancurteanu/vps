@@ -392,7 +392,7 @@ run_ansible() {
     log "${GREEN}Starting operation: $ACTION $MODULE for domain $DOMAIN${RESET}"
     log "Command log: $log_file"
 
-    extra_vars="domain=$DOMAIN user=$USER"
+    extra_vars=(-e "domain=${DOMAIN}" -e "user=${USER}")
 
     case "$ACTION $MODULE" in
     "install core")
@@ -434,7 +434,7 @@ run_ansible() {
         echo "Action: $ACTION $MODULE"
         echo "Domain: $DOMAIN"
         echo "User: $USER"
-        echo "Command: ansible-playbook $playbook -e \"$extra_vars\" $ASK_SSH_PASS $VAULT_OPTS $TAGS_OPTS"
+        echo "Command: ansible-playbook $playbook ${extra_vars[*]} $ASK_SSH_PASS $VAULT_OPTS $TAGS_OPTS"
         echo "========================================"
         echo ""
     } > "$log_file"
@@ -442,7 +442,7 @@ run_ansible() {
     # Run ansible-playbook with output tee'd to log file
     # Use absolute playbook path so the script works regardless of current working directory
     playbook_path="$PROJECT_ROOT/$playbook"
-    ansible-playbook "$playbook_path" -e "$extra_vars" $ASK_SSH_PASS $VAULT_OPTS $TAGS_OPTS 2>&1 | tee -a "$log_file"
+    ansible-playbook "$playbook_path" "${extra_vars[@]}" $ASK_SSH_PASS $VAULT_OPTS $TAGS_OPTS 2>&1 | tee -a "$log_file"
     
     ansible_exit_code=${PIPESTATUS[0]}
 

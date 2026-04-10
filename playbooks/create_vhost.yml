@@ -128,6 +128,27 @@
         group: "{{ vhost_owner }}"
         mode: '0770'
 
+    - name: Configure log rotation for vhost
+      ansible.builtin.copy:
+        dest: "/etc/logrotate.d/vhost-{{ domain | replace('.', '-') }}"
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          /home/{{ domain }}/logs/*.log {
+              daily
+              missingok
+              rotate 30
+              compress
+              delaycompress
+              notifempty
+              create 0664 nginx {{ vhost_owner }}
+              sharedscripts
+              postrotate
+                  [ -f /var/run/nginx.pid ] && kill -USR1 $(cat /var/run/nginx.pid) || true
+              endscript
+          }
+
     - name: Set proper permissions for tmp directory
       ansible.builtin.file:
         path: "/home/{{ domain }}/tmp"
@@ -254,22 +275,6 @@
         name: "{{ sftp_group }}"
         gid: 222
         state: present
-      when: domain == master_domain
-
-    - name: Configure SSH for SFTP
-      ansible.builtin.blockinfile:
-        path: /etc/ssh/sshd_config
-        insertafter: EOF
-        block: |
-          Match Group {{ sftp_group }}
-          ForceCommand internal-sftp -u 0002
-          PasswordAuthentication yes
-          PermitTunnel no
-          AllowAgentForwarding no
-          AllowTcpForwarding no
-          X11Forwarding no
-        marker: "# {mark} ANSIBLE MANAGED SFTP CONFIGURATION"
-      notify: Restart SSH
       when: domain == master_domain
 
     - name: Add user to SFTP group
