@@ -182,7 +182,7 @@
         insertafter: EOF
         block: |
           Match User {{ user }}
-          ChrootDirectory /home/{{ domain }}
+          ChrootDirectory /home
           ForceCommand internal-sftp
         marker: "# {mark} ANSIBLE MANAGED SFTP CHROOT {{ domain }}"
       notify: Restart SSH
@@ -292,12 +292,12 @@
       when: domain is defined
       notify: Restart Nginx
 
-    - name: Create home directory with root ownership for SFTP chroot
+    - name: Create home directory owned by domain user
       tags: ['setup', 'nginx']
       ansible.builtin.file:
         path: "/home/{{ domain }}"
         state: directory
-        owner: root
+        owner: "{{ user | default(domain.split('.')[-2]) }}"
         group: "{{ user | default(domain.split('.')[-2]) }}"
         mode: '0750'
       when: domain is defined

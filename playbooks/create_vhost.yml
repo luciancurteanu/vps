@@ -84,11 +84,11 @@
         - admin_ssh_public_key != ''
         - domain.split('.')[0] != 'cpanel'
 
-    - name: Create home directory with root ownership for SFTP chroot
+    - name: Create home directory owned by domain user
       ansible.builtin.file:
         path: "/home/{{ domain }}"
         state: directory
-        owner: root
+        owner: "{{ vhost_owner }}"
         group: "{{ vhost_owner }}"
         mode: '0750'
       when: domain.split('.')[0] != 'cpanel'
@@ -285,7 +285,7 @@
         insertafter: EOF
         block: |
           Match User {{ user }}
-          ChrootDirectory /home/{{ domain }}
+          ChrootDirectory /home
           ForceCommand internal-sftp
         marker: "# {mark} ANSIBLE MANAGED SFTP CHROOT {{ domain }}"
       notify: Restart SSH
