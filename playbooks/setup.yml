@@ -479,7 +479,7 @@
         group: root
         mode: '0750'
         content: |
-          #!/bin/bash
+          {% raw %}#!/bin/bash
           ALERT_EMAIL="evpscloud@gmail.com"
           SERVICES="nginx php-fpm mariadb postfix dovecot sshd fail2ban"
           FAILED=()
@@ -497,7 +497,7 @@
                   echo "The following services are DOWN on $(hostname) at $(date):"
                   printf '  - %s\n' "${FAILED[@]}"
               } | /sbin/sendmail -t
-          fi
+          fi{% endraw %}
 
     - name: Schedule service health check every 5 minutes
       tags: ['setup', 'monitoring']
