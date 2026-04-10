@@ -112,10 +112,15 @@ class VMManager {
         }
     }
 
-    [void] ConvertQcowToVDI() {
+    [void] ConvertQcowToVDI([int]$diskSizeGB = 30) {
         if (-not (Test-Path -LiteralPath $this.VDIPath)) {
             Write-Host "Converting QCOW -> VDI" -ForegroundColor Yellow
             & $this.QemuImg convert -O vdi $this.QcowPath $this.VDIPath 2>$null | Out-Null
+        }
+        if ($diskSizeGB -gt 0) {
+            $targetMB = $diskSizeGB * 1024
+            Write-Host "Resizing VDI disk to ${diskSizeGB}GB (${targetMB}MB)" -ForegroundColor Cyan
+            & $this.VBoxManage modifymedium disk $this.VDIPath --resize $targetMB 2>$null | Out-Null
         }
     }
 

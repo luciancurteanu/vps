@@ -26,6 +26,7 @@ class VMConfig {
     [string]$VMDataRoot
     [int]$MemoryMB
     [int]$CPUs
+    [int]$DiskSizeGB
     [int]$HostSSHPort
     [int]$WaitSSHSeconds
 
@@ -89,6 +90,7 @@ class VMConfig {
         if (-not $this.VMDataRoot) { $this.VMDataRoot = "C:\VMData" }
         if ($this.MemoryMB -eq 0) { $this.MemoryMB = 4096 }
         if ($this.CPUs -eq 0) { $this.CPUs = 2 }
+        if ($this.DiskSizeGB -eq 0) { $this.DiskSizeGB = 30 }
         if ($this.HostSSHPort -eq 0) { $this.HostSSHPort = 22 }
         if ($this.WaitSSHSeconds -eq 0) { $this.WaitSSHSeconds = 180 }
         if (-not $this.SSHUser) { $this.SSHUser = 'admin' }
@@ -174,6 +176,7 @@ class VMConfig {
             VMDataRoot        = $this.VMDataRoot
             MemoryMB          = $this.MemoryMB
             CPUs              = $this.CPUs
+            DiskSizeGB        = $this.DiskSizeGB
             HostSSHPort       = $this.HostSSHPort
             WaitSSHSeconds    = $this.WaitSSHSeconds
             SSHUser           = $this.SSHUser

@@ -10,6 +10,9 @@ param(
     
     [Parameter(Mandatory = $false)]
     [int]$CPUs = 2,
+
+    [Parameter(Mandatory = $false)]
+    [int]$DiskSizeGB = 30,
     
     [Parameter(Mandatory = $false)]
     [int]$HostSSHPort = 22,
@@ -82,6 +85,7 @@ function Main {
                 VMDataRoot        = $VMDataRoot
                 MemoryMB          = $MemoryMB
                 CPUs              = $CPUs
+                DiskSizeGB        = $DiskSizeGB
                 HostSSHPort       = $HostSSHPort
                 WaitSSHSeconds    = $WaitSSHSeconds
                 SSHUser           = $SSHUser
@@ -226,7 +230,7 @@ function PerformInstallation([VMConfig]$config) {
 
     # Download and convert cloud image
     $vmManager.EnsureQcowImage($config.CloudImageUrl)
-    $vmManager.ConvertQcowToVDI()
+    $vmManager.ConvertQcowToVDI($config.DiskSizeGB)
 
     # Handle SSH keys
     $pubKey = $null

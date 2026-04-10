@@ -84,7 +84,7 @@ Then run:
 .\scripts\vm-launcher\run-vm.ps1
 
 # Create VM with custom configuration
-.\scripts\vm-launcher\run-vm.ps1 -VMName "AlmaLinux-9" -MemoryMB 4096 -CPUs 2
+.\scripts\vm-launcher\run-vm.ps1 -VMName "AlmaLinux-9" -MemoryMB 4096 -CPUs 2 -DiskSizeGB 50
 
 ### Advanced Usage
 
@@ -117,6 +117,7 @@ Then run:
 | `VMDataRoot`       | "C:\VMData"                  | Root directory for VM storage                                               |
 | `MemoryMB`         | 4096                         | RAM allocation in MB                                                        |
 | `CPUs`             | 2                            | Number of CPU cores                                                         |
+| `DiskSizeGB`       | 30                           | VDI disk size in GB (resized after QCOW2→VDI conversion)                    |
 | `HostSSHPort`      | 22                           | Host port for SSH forwarding                                                |
 | `WaitSSHSeconds`   | 180                          | Seconds to wait for SSH availability                                        |
 | `SSHUser`          | "admin"                      | SSH username                                                                |
@@ -451,6 +452,11 @@ The refactored version maintains full compatibility:
 
 ## Changelog
 
+### v2.4 - Disk Size Configuration (2026-04-10)
+- Added `-DiskSizeGB` parameter (default: 30 GB) to control VDI disk size
+- `ConvertQcowToVDI` now resizes the disk via `VBoxManage modifymedium --resize` after conversion
+- `VMConfig` and `VMManager` updated to propagate the setting end-to-end
+
 ### v2.3 - Test Workflow Improvements (2026-02-03)
 - **Removed automatic test execution from FullSetup** - tests now run separately on demand
 - **Added auto-install to run-test.sh** - automatically installs Molecule environment if missing
@@ -489,6 +495,6 @@ The refactored version maintains full compatibility:
 ---
 
 **Author**: VPS Setup Script Team
-**Version**: 2.2
+**Version**: 2.4
 **License**: MIT
 **Repository**: [vps](https://github.com/luciancurteanu/vps)
