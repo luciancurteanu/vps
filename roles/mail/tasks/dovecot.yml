@@ -172,15 +172,6 @@
     state: link
   notify: restart dovecot
 
-- name: Set permissions on mail directories
-  ansible.builtin.file:
-    path: /home/{{ domain }}/mail
-    owner: "{{ mail_user }}"
-    mode: '0755'
-    group: "{{ mail_group }}"
-    recurse: true
-  when: domain is defined
-
 - name: Ensure Dovecot service is running and enabled
   ansible.builtin.systemd:
     name: dovecot

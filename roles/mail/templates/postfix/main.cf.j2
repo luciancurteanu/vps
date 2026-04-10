@@ -21,7 +21,7 @@ virtual_alias_maps = mysql:/etc/postfix/mysql-virtual-alias-maps.cf
 virtual_transport = lmtp:unix:private/dovecot-lmtp
 mailbox_size_limit = 0
 recipient_delimiter = +
-virtual_mailbox_base = /home/{{ domain }}/mail/virtual
+virtual_mailbox_base = /var/vmail
 
 # TLS parameters
 smtp_use_tls = yes
