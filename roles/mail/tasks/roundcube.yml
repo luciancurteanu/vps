@@ -146,3 +146,23 @@
   args:
     creates: "{{ webmail_path }}/installer.disabled"
   when: roundcube_installed.stat.exists or not roundcube_installed.stat.exists
+
+- name: Check which bundled plugins are already installed
+  ansible.builtin.stat:
+    path: "{{ webmail_path }}/plugins/{{ item }}"
+  register: _bundled_plugin_stat
+  loop:
+    - contextmenu
+    - contextmenu_folder
+    - filters
+    - persistent_login
+    - swipe
+
+- name: Install bundled Roundcube plugins from storage
+  ansible.builtin.unarchive:
+    src: "{{ playbook_dir }}/../storage/roundcube/plugins/{{ item.item }}.zip"
+    dest: "{{ webmail_path }}/plugins/"
+    owner: nginx
+    group: nginx
+  loop: "{{ _bundled_plugin_stat.results }}"
+  when: not item.stat.exists

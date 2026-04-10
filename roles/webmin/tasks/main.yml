@@ -78,6 +78,28 @@
   when: webmin_nginx_proxy | default(false)
   notify: Reload nginx
 
+- name: Copy nginx Webmin module to remote
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../storage/nginx/nginx-0.11.wbm_.gz"
+    dest: /tmp/nginx-webmin.wbm_.gz
+    mode: '0644'
+  register: _nginx_wbm_copied
+
+- name: Install nginx Webmin module
+  ansible.builtin.command:
+    argv:
+      - perl
+      - /usr/share/webmin/install-module.pl
+      - /tmp/nginx-webmin.wbm_.gz
+    creates: /usr/share/webmin/nginx
+  when: _nginx_wbm_copied is not skipped
+  notify: Restart webmin
+
+- name: Remove nginx Webmin module temp file
+  ansible.builtin.file:
+    path: /tmp/nginx-webmin.wbm_.gz
+    state: absent
+
 - name: Pre-create Webmin log files
   ansible.builtin.file:
     path: "/home/{{ domain }}/logs/{{ item }}"
