@@ -395,7 +395,9 @@
           ansible.builtin.file:
             path: "/etc/opendkim/keys/{{ domain }}"
             state: directory
-            mode: '0700'
+            owner: opendkim
+            group: opendkim
+            mode: '0750'
 
         - name: Generate OpenDKIM keys
           ansible.builtin.command:
@@ -409,18 +411,15 @@
             chdir: "/etc/opendkim/keys/{{ domain }}"
             creates: "/etc/opendkim/keys/{{ domain }}/default.private"
 
-        - name: Set permissions for OpenDKIM directory
+        - name: Set ownership and permissions for OpenDKIM key files
           ansible.builtin.file:
-            path: "/etc/opendkim/keys/{{ domain }}"
-            mode: '0700'
-            recurse: true
-
-        - name: Set permissions for OpenDKIM key files
-          ansible.builtin.file:
-            path: "/etc/opendkim/keys/{{ domain }}/{{ item }}"
-            mode: '0600'
-          with_fileglob:
-            - "/etc/opendkim/keys/{{ domain }}/*"
+            path: "/etc/opendkim/keys/{{ domain }}/{{ item.name }}"
+            owner: opendkim
+            group: opendkim
+            mode: "{{ item.mode }}"
+          loop:
+            - { name: 'default.private', mode: '0640' }
+            - { name: 'default.txt',     mode: '0640' }
 
         - name: Add domain to OpenDKIM KeyTable
           ansible.builtin.lineinfile:

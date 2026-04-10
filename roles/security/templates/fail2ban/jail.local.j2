@@ -33,7 +33,7 @@ bantime = -1
 findtime = 86400
 
 [postfix]
-enabled = {{ stat_maillog.stat.exists | default(false) | ternary('true','false') }}
+enabled = {{ install_mail | default(true) | ternary('true','false') }}
 port = pop3,pop3s,imap,imaps,smtp,smtps,submission
 filter = postfix[mode=aggressive]
 logpath = /var/log/maillog
@@ -42,7 +42,7 @@ bantime = -1
 findtime = 86400
 
 [dovecot]
-enabled = {{ stat_maillog.stat.exists | default(false) | ternary('true','false') }}
+enabled = {{ install_mail | default(true) | ternary('true','false') }}
 port = pop3,pop3s,imap,imaps,smtp,smtps,submission
 filter = dovecot[mode=aggressive]
 logpath = /var/log/maillog
@@ -51,7 +51,7 @@ bantime = -1
 findtime = 86400
 
 [mariadb]
-enabled = {{ stat_mariadb_log.stat.exists | default(false) | ternary('true','false') }}
+enabled = {{ install_mariadb | default(false) | ternary('true','false') }}
 port = {{ db_port | default(3306) }}
 filter = mariadb
 logpath = /var/log/mariadb/error.log

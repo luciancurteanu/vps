@@ -210,13 +210,13 @@
     fail2ban-client set sshd banip 1.1.1.1 || true
     fail2ban-client reload --unban sshd || true
     {% endif %}
-    {% if stat_maillog.stat.exists %}
+    {% if install_mail | default(true) %}
     fail2ban-client set postfix banip 1.1.1.1 || true
     fail2ban-client reload --unban postfix || true
     fail2ban-client set dovecot banip 1.1.1.1 || true
     fail2ban-client reload --unban dovecot || true
     {% endif %}
-    {% if stat_mariadb_log.stat.exists %}
+    {% if install_mariadb | default(false) %}
     fail2ban-client set mariadb banip 1.1.1.1 || true
     fail2ban-client reload --unban mariadb || true
     {% endif %}

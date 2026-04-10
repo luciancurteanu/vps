@@ -7,6 +7,13 @@
     - ../vars/secrets.yml
 
   pre_tasks:
+    - name: Install passlib before password hashing tasks
+      tags: ['setup']
+      ansible.builtin.pip:
+        name: passlib
+        executable: pip3
+        state: present
+
     - name: Update package cache
       tags: ['setup']
       ansible.builtin.dnf:
