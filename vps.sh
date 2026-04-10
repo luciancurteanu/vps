@@ -320,8 +320,14 @@ PYEOF
 git_pull() {
     if git -C "$PROJECT_ROOT" rev-parse --git-dir &>/dev/null; then
         echo -e "${GREEN}Pulling latest code from git...${RESET}"
+        # Stash any local modifications (network-mount write-backs) so pull always succeeds
+        local stash_output
+        stash_output=$(git -C "$PROJECT_ROOT" stash 2>&1)
+        if echo "$stash_output" | grep -q "Saved working directory"; then
+            echo -e "${YELLOW}Stashed local changes: $stash_output${RESET}"
+        fi
         if ! git -C "$PROJECT_ROOT" pull --ff-only 2>&1; then
-            echo -e "${YELLOW}Warning: git pull failed (local changes or diverged branch). Continuing with current code.${RESET}"
+            echo -e "${YELLOW}Warning: git pull failed (diverged branch). Continuing with current code.${RESET}"
         fi
     fi
 }
