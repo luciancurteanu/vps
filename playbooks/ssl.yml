@@ -152,7 +152,7 @@
         mode: "{{ item.mode }}"
       loop:
         - { path: "{{ ssl_local_dir }}/server.crt", mode: '0644' }
-        - { path: "{{ ssl_local_dir }}/server.key", mode: '0644' }
+        - { path: "{{ ssl_local_dir }}/server.key", mode: '0640' }
         - { path: "{{ ssl_local_dir }}/ca.crt",     mode: '0644' }
       when: is_dev_domain
 
@@ -296,6 +296,7 @@
         webmin_ssl_enabled: true
         nginx_ssl_cert: "{{ ssl_cert_file }}"
         nginx_ssl_key: "{{ ssl_cert_key }}"
+        is_dev_domain: "{{ domain.split('.')[-1] == 'test' }}"
       when: install_webmin | default(true)
       notify: Reload Nginx
 

@@ -144,7 +144,7 @@
     path: "{{ mail_ssl_dir }}/server.key"
     owner: root
     group: root
-    mode: '0644'
+    mode: '0640'
   when: not mail_use_letsencrypt
 
 - name: Fetch local CA certificate to controller
