@@ -49,13 +49,13 @@
       ansible.builtin.file:
         path: "/etc/nginx/sites-available/{{ domain }}.conf"
         state: absent
-      notify: Restart Nginx
+      notify: Reload Nginx
 
     - name: Remove Nginx site symlink
       ansible.builtin.file:
         path: "/etc/nginx/sites-enabled/{{ domain }}.conf"
         state: absent
-      notify: Restart Nginx
+      notify: Reload Nginx
 
     - name: Remove PHP-FPM pool configuration
       ansible.builtin.file:
@@ -93,6 +93,11 @@
       ansible.builtin.service:
         name: nginx
         state: restarted
+
+    - name: Reload Nginx
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded
 
     - name: Restart PHP-FPM
       ansible.builtin.service:

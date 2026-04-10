@@ -323,14 +323,14 @@
             dest: "/etc/nginx/sites-available/{{ mail_subdomain }}.conf"
             owner: root
             group: root
-          notify: Restart Nginx
+          notify: Reload Nginx
 
         - name: Enable mail subdomain site
           ansible.builtin.file:
             src: "/etc/nginx/sites-available/{{ mail_subdomain }}.conf"
             dest: "/etc/nginx/sites-enabled/{{ mail_subdomain }}.conf"
             state: link
-          notify: Restart Nginx
+          notify: Reload Nginx
 
         - name: Create mail subdomain directories
           ansible.builtin.file:
@@ -452,6 +452,11 @@
       ansible.builtin.service:
         name: nginx
         state: restarted
+
+    - name: Reload Nginx
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded
 
     - name: Restart PHP-FPM
       ansible.builtin.service:

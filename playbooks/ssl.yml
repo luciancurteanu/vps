@@ -116,7 +116,7 @@
         group: root
       vars:
         nginx_ssl_enabled: true
-      notify: Restart Nginx
+      notify: Reload Nginx
 
     - name: Update mail subdomain nginx configuration with SSL enabled
       ansible.builtin.template:
@@ -127,7 +127,7 @@
       vars:
         mail_enable_ssl: true
       when: install_mail | default(true)
-      notify: Restart Nginx
+      notify: Reload Nginx
 
     - name: Update Roundcube configuration for HTTPS
       ansible.builtin.template:
@@ -149,7 +149,7 @@
       vars:
         webmin_ssl_enabled: true
       when: install_webmin | default(true)
-      notify: Restart Nginx
+      notify: Reload Nginx
 
     - name: Check if Webmin miniserv.conf exists
       ansible.builtin.stat:
@@ -173,6 +173,11 @@
       ansible.builtin.service:
         name: nginx
         state: restarted
+
+    - name: Reload Nginx
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded
 
     - name: Restart Webmin
       ansible.builtin.service:

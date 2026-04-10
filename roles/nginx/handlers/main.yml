@@ -7,3 +7,9 @@
     state: restarted
     daemon_reload: true
   listen: Restart Nginx
+
+- name: Reload Nginx
+  ansible.builtin.systemd:
+    name: nginx
+    state: reloaded
+  listen: Reload Nginx

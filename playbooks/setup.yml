@@ -298,7 +298,7 @@
         vhost_user: "{{ domain_user | default(domain.split('.')[0]) }}"
         nginx_ssl_enabled: false
       when: domain is defined
-      notify: Restart Nginx
+      notify: Reload Nginx
 
     - name: Enable main domain vhost
       tags: ['setup', 'nginx']
@@ -307,7 +307,7 @@
         dest: "/etc/nginx/sites-enabled/{{ domain }}.conf"
         state: link
       when: domain is defined
-      notify: Restart Nginx
+      notify: Reload Nginx
 
     - name: Create home directory owned by domain user
       tags: ['setup', 'nginx']
@@ -544,6 +544,11 @@
       ansible.builtin.service:
         name: nginx
         state: restarted
+
+    - name: Reload Nginx
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded
 
     - name: Restart SSH
       ansible.builtin.service:
