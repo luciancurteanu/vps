@@ -89,9 +89,9 @@
   ansible.builtin.command:
     argv:
       - perl
-      - /usr/share/webmin/install-module.pl
+      - /usr/libexec/webmin/install-module.pl
       - /tmp/nginx-webmin.wbm_.gz
-    creates: /usr/share/webmin/nginx
+    creates: /usr/libexec/webmin/nginx
   when: _nginx_wbm_copied is not skipped
   notify: Restart webmin
 

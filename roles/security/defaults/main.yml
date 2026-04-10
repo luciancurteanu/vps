@@ -49,7 +49,7 @@ fail2ban_services:
 
 security_fail2ban_enabled: "{{ fail2ban_enabled }}"
 security_fail2ban_services: "{{ fail2ban_services }}"
-security_fail2ban_socket_timeout: "{{ fail2ban_socket_timeout | default(30) }}"
+security_fail2ban_socket_timeout: "{{ fail2ban_socket_timeout | default(90) }}"
 
 # List of IPs to whitelist in fail2ban (override in all.yml or host_vars)
 allowed_ips: ""
