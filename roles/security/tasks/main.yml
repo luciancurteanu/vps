@@ -13,6 +13,18 @@
   when: ansible_os_family == 'RedHat' and security_firewall_service == "iptables"
   changed_when: not (ansible_virtualization_type | default('') == 'docker')
 
+- name: Mask firewalld to prevent it from starting on reboot
+  ansible.builtin.systemd:
+    name: firewalld
+    masked: true
+    enabled: false
+  when:
+    - ansible_os_family == 'RedHat'
+    - security_firewall_service == "iptables"
+    - ansible_virtualization_type | default('') != 'docker'
+  failed_when: false
+  tags: ['firewall', 'security']
+
 # Firewall configuration
 - name: Configure firewall
   ansible.builtin.include_tasks: firewall.yml
@@ -74,7 +86,7 @@
 
 - name: Check if MariaDB log exists
   ansible.builtin.stat:
-    path: /var/log/mariadb/error.log
+    path: /var/log/mariadb/mariadb.log
   register: stat_mariadb_log
   when: security_fail2ban_enabled | default(true)
   tags: ['fail2ban', 'security']
@@ -175,6 +187,31 @@
     - selinux_fail2ban_te is changed
   notify: restart fail2ban
   tags: ['fail2ban', 'selinux', 'security']
+
+- name: Create fail2ban systemd drop-in directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/fail2ban.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  when: security_fail2ban_enabled | default(true)
+  tags: ['fail2ban', 'security']
+
+- name: Configure fail2ban to start after MariaDB (prevents boot race with missing log)
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/fail2ban.service.d/after-mariadb.conf
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      [Unit]
+      After=mariadb.service
+  when: security_fail2ban_enabled | default(true)
+  notify:
+    - reload systemd
+    - restart fail2ban
+  tags: ['fail2ban', 'security']
 
 - name: Ensure fail2ban service is enabled and running
   ansible.builtin.service:
