@@ -467,37 +467,39 @@ run_ansible() {
         log "${GREEN}Operation completed successfully in ${minutes}m ${seconds}s${RESET}"
         log "${GREEN}Full log saved to: $log_file${RESET}"
 
-        # Auto-run SSL setup after install core or create host
+        # Auto-run SSL setup after install core or create host (only for .test dev domains)
         if [[ "$ACTION $MODULE" == "install core" || "$ACTION $MODULE" == "create host" ]] && [[ -n "$DOMAIN" ]]; then
-            log "${GREEN}Auto-running SSL setup for ${DOMAIN}...${RESET}"
-            ssl_log_file="$PROJECT_ROOT/logs/vps-install-ssl-${timestamp}.log"
-            {
-                echo "========================================"
-                echo "VPS SSL Auto-run Log"
-                echo "========================================"
-                echo "Date: $(date '+%Y-%m-%d %H:%M:%S')"
-                echo "Domain: $DOMAIN"
-                echo "========================================"
-                echo ""
-            } > "$ssl_log_file"
-            ansible-playbook "$PROJECT_ROOT/playbooks/ssl.yml" \
-                -e "domain=${DOMAIN}" -e "user=${USER}" \
-                $ASK_SSH_PASS $VAULT_OPTS 2>&1 | tee -a "$ssl_log_file"
-            ssl_exit_code=${PIPESTATUS[0]}
-            if [ $ssl_exit_code -eq 0 ]; then
-                log "${GREEN}SSL setup completed.${RESET}"
-                # Remind user to import CA cert for .test domains
-                tld="${DOMAIN##*.}"
-                if [[ "$tld" == "test" ]]; then
+            tld="${DOMAIN##*.}"
+            if [[ "$tld" == "test" ]]; then
+                log "${GREEN}Dev domain (.test) — auto-running SSL setup for ${DOMAIN}...${RESET}"
+                ssl_log_file="$PROJECT_ROOT/logs/vps-install-ssl-${timestamp}.log"
+                {
+                    echo "========================================"
+                    echo "VPS SSL Auto-run Log"
+                    echo "========================================"
+                    echo "Date: $(date '+%Y-%m-%d %H:%M:%S')"
+                    echo "Domain: $DOMAIN"
+                    echo "========================================"
+                    echo ""
+                } > "$ssl_log_file"
+                ansible-playbook "$PROJECT_ROOT/playbooks/ssl.yml" \
+                    -e "domain=${DOMAIN}" -e "user=${USER}" \
+                    $ASK_SSH_PASS $VAULT_OPTS 2>&1 | tee -a "$ssl_log_file"
+                ssl_exit_code=${PIPESTATUS[0]}
+                if [ $ssl_exit_code -eq 0 ]; then
+                    log "${GREEN}SSL setup completed.${RESET}"
                     ca_cert="$PROJECT_ROOT/temp/${DOMAIN}-local-ca.crt"
-                    log "${YELLOW}Dev domain detected — import the CA cert for green HTTPS in your browser:${RESET}"
+                    log "${YELLOW}CA cert fetched → import for green HTTPS in your browser:${RESET}"
                     log "  ${BOLD}File: $ca_cert${RESET}"
                     log "  ${BOLD}Windows:${RESET} Double-click → Install → Local Machine → Trusted Root Certification Authorities"
                     log "  ${BOLD}Firefox:${RESET} Settings → Privacy & Security → View Certificates → Authorities → Import"
+                else
+                    log "${YELLOW}SSL setup failed (exit $ssl_exit_code). Run manually: ./vps.sh install ssl --domain=${DOMAIN}${RESET}"
+                    log "${YELLOW}SSL log: $ssl_log_file${RESET}"
                 fi
             else
-                log "${YELLOW}SSL setup failed (exit $ssl_exit_code). Run manually: ./vps.sh install ssl --domain=${DOMAIN}${RESET}"
-                log "${YELLOW}SSL log: $ssl_log_file${RESET}"
+                log "${YELLOW}Production domain — run SSL separately when ready:${RESET}"
+                log "  ${BOLD}./vps.sh install ssl --domain=${DOMAIN}${RESET}"
             fi
         fi
     else
