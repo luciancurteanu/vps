@@ -24,6 +24,9 @@ common_admin_sudo_nopasswd: "{{ admin_sudo_nopasswd | default(true) }}"
 # Example: syslog_server: "192.168.1.10:514"
 syslog_server: ""
 
+# Automatic security updates via dnf-automatic (RedHat only)
+common_auto_updates_enabled: "{{ auto_updates_enabled | default(true) }}"
+
 # SSH configuration (from all.yml)
 common_ssh_port: "{{ ssh_port }}"
 common_ssh_service_name: "{{ ssh_service_name | default('sshd') }}"

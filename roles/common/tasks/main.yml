@@ -109,6 +109,38 @@
   tags:
     - swap
 
+- name: Install dnf-automatic for security updates
+  ansible.builtin.dnf:
+    name: dnf-automatic
+    state: present
+  when: ansible_os_family == 'RedHat' and common_auto_updates_enabled | default(true)
+  tags:
+    - packages
+    - auto-updates
+
+- name: Configure dnf-automatic (security updates only)
+  ansible.builtin.lineinfile:
+    path: /etc/dnf/automatic.conf
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - { regexp: '^upgrade_type', line: 'upgrade_type = security' }
+    - { regexp: '^apply_updates', line: 'apply_updates = yes' }
+    - { regexp: '^emit_via', line: 'emit_via = motd' }
+    - { regexp: '^reboot', line: 'reboot = never' }
+  when: ansible_os_family == 'RedHat' and common_auto_updates_enabled | default(true)
+  tags:
+    - auto-updates
+
+- name: Enable and start dnf-automatic timer
+  ansible.builtin.systemd:
+    name: dnf-automatic.timer
+    enabled: true
+    state: started
+  when: ansible_os_family == 'RedHat' and common_auto_updates_enabled | default(true)
+  tags:
+    - auto-updates
+
 - name: Include SSH hardening tasks
   ansible.builtin.include_tasks: ssh.yml
 
