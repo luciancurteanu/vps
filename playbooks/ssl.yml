@@ -300,6 +300,21 @@
       when: install_webmin | default(true)
       notify: Reload Nginx
 
+    - name: Update Dovecot SSL configuration
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../roles/mail/templates/dovecot/conf.d/10-ssl.conf.j2"
+        dest: /etc/dovecot/conf.d/10-ssl.conf
+        owner: root
+        group: root
+        mode: '0640'
+      vars:
+        mail_ssl_enabled: true
+        mail_ssl_cert: "{{ ssl_cert_file }}"
+        mail_ssl_key: "{{ ssl_cert_key }}"
+        mail_ssl_ca: "{{ ssl_ca_file }}"
+      when: install_mail | default(true)
+      notify: Restart Dovecot
+
     - name: Check if Webmin miniserv.conf exists
       ansible.builtin.stat:
         path: /etc/webmin/miniserv.conf
@@ -331,4 +346,9 @@
     - name: Restart Webmin
       ansible.builtin.service:
         name: webmin
+        state: restarted
+
+    - name: Restart Dovecot
+      ansible.builtin.service:
+        name: dovecot
         state: restarted

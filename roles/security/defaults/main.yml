@@ -30,10 +30,8 @@ mail_service_ports:
   - { proto: tcp, port: 25 }    # SMTP
   - { proto: tcp, port: 587 }   # SMTP (submission)
   - { proto: tcp, port: 465 }   # SMTPS
-  - { proto: tcp, port: 110 }   # POP3
-  - { proto: tcp, port: 995 }   # POP3S
-  - { proto: tcp, port: 143 }   # IMAP
-  - { proto: tcp, port: 993 }   # IMAPS
+  - { proto: tcp, port: 995 }   # POP3S (encrypted only)
+  - { proto: tcp, port: 993 }   # IMAPS (encrypted only)
 
 security_mail_service_ports: "{{ mail_service_ports }}"
 
