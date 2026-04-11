@@ -163,6 +163,27 @@ if ($IsDevDomain) {
         Write-Warn "CA cert not found on server - skipping auto-import."
         Write-Warn "Run ssl.yml first, then re-run this script."
     } else {
+        # Remove stale certs with same Subject (left over from previous installs/VMs)
+        try {
+            $newCert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 $CertFile
+            $store = New-Object System.Security.Cryptography.X509Certificates.X509Store(
+                'Root',
+                [System.Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser
+            )
+            $store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
+            $toRemove = @($store.Certificates | Where-Object {
+                $_.Subject -eq $newCert.Subject -and $_.Thumbprint -ne $newCert.Thumbprint
+            })
+            foreach ($old in $toRemove) {
+                $store.Remove($old)
+                Write-Warn "Removed stale CA cert (old install): $($old.Thumbprint)"
+            }
+            $store.Close()
+            $newCert.Dispose()
+        } catch {
+            # non-fatal - stale cert cleanup is best-effort
+        }
+
         # Try CurrentUser (no elevation, works for Chrome/Edge)
         $null = certutil -addstore -user Root $CertFile 2>&1
         if ($LASTEXITCODE -eq 0) {
