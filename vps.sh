@@ -186,6 +186,10 @@ parse_args() {
             ;;
         --domain=* | -d=*)
             DOMAIN="${1#*=}"
+            if [[ ! "$DOMAIN" =~ ^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$ ]]; then
+                echo -e "${RED}Error: Invalid domain name '${DOMAIN}'. Only letters, digits, dots, and hyphens are allowed.${RESET}"
+                exit 1
+            fi
             shift
             ;;
         --user=* | -u=*)
