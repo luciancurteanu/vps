@@ -25,6 +25,21 @@
   failed_when: false
   tags: ['firewall', 'security']
 
+- name: Disable rpcbind (not needed on a web server)
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+    masked: true
+  loop:
+    - rpcbind
+    - rpcbind.socket
+  failed_when: false
+  when:
+    - ansible_os_family == 'RedHat'
+    - ansible_virtualization_type | default('') != 'docker'
+  tags: ['security']
+
 # Firewall configuration
 - name: Configure firewall
   ansible.builtin.include_tasks: firewall.yml

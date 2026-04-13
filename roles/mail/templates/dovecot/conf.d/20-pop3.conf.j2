@@ -9,7 +9,7 @@ protocol pop3 {
 
 service pop3-login {
   inet_listener pop3 {
-    port = 110
+    port = 0  # disabled: plaintext POP3 not allowed (use POP3S on 995)
   }
   inet_listener pop3s {
     port = 995
