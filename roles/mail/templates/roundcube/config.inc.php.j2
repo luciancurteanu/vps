@@ -8,8 +8,8 @@ $config['db_dsnw'] = 'mysql://{{ roundcube_db_user }}:{{ roundcube_db_password |
 // Server settings
 $config['imap_host'] = 'ssl://localhost:993';
 $config['imap_conn_options'] = ['ssl' => ['verify_peer' => false, 'verify_peer_name' => false, 'allow_self_signed' => true]];
-$config['smtp_host'] = 'tls://localhost';
-$config['smtp_port'] = 587;
+$config['smtp_host'] = 'ssl://localhost';
+$config['smtp_port'] = 465;
 $config['smtp_conn_options'] = ['ssl' => ['verify_peer' => false, 'verify_peer_name' => false, 'allow_self_signed' => true]];
 $config['smtp_user'] = '%u';
 $config['smtp_pass'] = '%p';
