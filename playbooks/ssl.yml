@@ -312,7 +312,7 @@
         mail_ssl_cert: "{{ ssl_cert_file }}"
         mail_ssl_key: "{{ ssl_cert_key }}"
         mail_ssl_ca: "{{ ssl_ca_file }}"
-      when: install_mail | default(true)
+      when: install_mail | default(true) and domain == master_domain
       notify: Restart Dovecot
 
     - name: Check if Webmin miniserv.conf exists
