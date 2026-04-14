@@ -6,7 +6,7 @@
 $config['db_dsnw'] = 'mysql://{{ roundcube_db_user }}:{{ roundcube_db_password | urlencode }}@localhost/{{ roundcube_db_name }}';
 
 // Server settings
-$config['imap_host'] = 'localhost:143';
+$config['imap_host'] = 'ssl://localhost:993';
 $config['smtp_host'] = 'localhost:587';
 $config['smtp_port'] = 587;
 $config['smtp_user'] = '%u';
