@@ -71,15 +71,20 @@
     creates: /etc/opendkim/keys/{{ domain }}/mail.private
   when: domain is defined and not dkim_key.stat.exists
 
-- name: Set proper ownership for DKIM keys
+- name: Set proper ownership for DKIM private key
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: "/etc/opendkim/keys/{{ domain }}/mail.private"
+    owner: opendkim
+    mode: '0600'
+    group: opendkim
+  when: domain is defined
+
+- name: Set proper ownership for DKIM public key
+  ansible.builtin.file:
+    path: "/etc/opendkim/keys/{{ domain }}/mail.txt"
     owner: opendkim
     mode: '0640'
     group: opendkim
-  with_items:
-    - /etc/opendkim/keys/{{ domain }}/mail.private
-    - /etc/opendkim/keys/{{ domain }}/mail.txt
   when: domain is defined
 
 - name: Display DKIM DNS record information
