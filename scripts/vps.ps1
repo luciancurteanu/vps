@@ -118,8 +118,6 @@ $Domain = $null
 foreach ($arg in $VpsArgs) {
     if ($arg -match '^--domain=(.+)$') { $Domain = $Matches[1]; break }
 }
-$IsDevDomain = $Domain -and ($Domain -split '\.')[-1] -eq 'test'
-
 # --- build command string ----------------------------------------------------
 $ArgsStr   = ($VpsArgs | ForEach-Object { "'$_'" }) -join ' '
 $RemoteCmd = "cd $VpsDir && git pull --quiet && bash vps.sh $ArgsStr"
@@ -146,66 +144,112 @@ if ($ExitCode -ne 0) {
 Write-Host ""
 Write-Ok "Remote command finished successfully."
 
-# --- auto-import CA cert for .test domains -----------------------------------
-if ($IsDevDomain) {
-    $LocalTemp  = Join-Path $ProjectRoot 'temp'
-    $null       = New-Item -ItemType Directory -Force $LocalTemp
-    $CertFile   = Join-Path $LocalTemp "${Domain}-local-ca.crt"
-    $RemoteCert = "${VpsDir}/temp/${Domain}-local-ca.crt"
+# --- sync ALL dev CA certs from the server -----------------------------------
+# Discovers every *-local-ca.crt in the server's temp/ folder and ensures the
+# Windows trust store is up to date (removes stale, imports if thumbprint changed).
+function Sync-AllDevCerts {
+    param(
+        [string]$SSHUser, [string]$SSHHost, [string]$SSHKey,
+        [string[]]$SshPortArgs, [string[]]$ScpPortArgs,
+        [string]$VpsDir, [string]$LocalTemp
+    )
 
-    Write-Host ""
-    Write-Step "Dev domain - fetching CA cert for $Domain..."
+    # List CA cert filenames on the server
+    $remoteList = & ssh -o StrictHostKeyChecking=no -i $SSHKey @SshPortArgs `
+        "${SSHUser}@${SSHHost}" "ls ${VpsDir}/temp/*-local-ca.crt 2>/dev/null" 2>$null
+    if (-not $remoteList) { return }
 
-    $scpPortArgs = if ($SSHPort -ne '22') { @('-P', $SSHPort) } else { @() }
-    & scp -o StrictHostKeyChecking=no -i $SSHKey @scpPortArgs "${SSHUser}@${SSHHost}:${RemoteCert}" $CertFile 2>$null
+    $null = New-Item -ItemType Directory -Force $LocalTemp
 
-    if (-not (Test-Path $CertFile)) {
-        Write-Warn "CA cert not found on server - skipping auto-import."
-        Write-Warn "Run ssl.yml first, then re-run this script."
-    } else {
-        # Remove stale certs with same Subject (left over from previous installs/VMs)
+    $anyChanged = $false
+
+    foreach ($remotePath in $remoteList) {
+        $remotePath = $remotePath.Trim()
+        $certName   = Split-Path $remotePath -Leaf            # e.g. lucasvps.test-local-ca.crt
+        $domain     = $certName -replace '-local-ca\.crt$','' # e.g. lucasvps.test
+        $localFile  = Join-Path $LocalTemp $certName
+
+        # Download cert
+        & scp -o StrictHostKeyChecking=no -i $SSHKey @ScpPortArgs `
+            "${SSHUser}@${SSHHost}:${remotePath}" $localFile 2>$null
+
+        if (-not (Test-Path $localFile)) { continue }
+
         try {
-            $newCert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 $CertFile
-            $store = New-Object System.Security.Cryptography.X509Certificates.X509Store(
-                'Root',
-                [System.Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser
-            )
-            $store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
-            $toRemove = @($store.Certificates | Where-Object {
+            $newCert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 $localFile
+
+            # Check CurrentUser store — skip import if thumbprint already present
+            $cuStore = New-Object System.Security.Cryptography.X509Certificates.X509Store(
+                'Root', [System.Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser)
+            $cuStore.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
+
+            $alreadyTrusted = $cuStore.Certificates | Where-Object { $_.Thumbprint -eq $newCert.Thumbprint }
+            if ($alreadyTrusted) {
+                $cuStore.Close()
+                $newCert.Dispose()
+                continue   # cert is already correct — nothing to do
+            }
+
+            # Remove stale certs for this domain (wrong thumbprint)
+            $stale = @($cuStore.Certificates | Where-Object {
                 $_.Subject -eq $newCert.Subject -and $_.Thumbprint -ne $newCert.Thumbprint
             })
-            foreach ($old in $toRemove) {
-                $store.Remove($old)
-                Write-Warn "Removed stale CA cert (old install): $($old.Thumbprint)"
+            foreach ($old in $stale) {
+                $cuStore.Remove($old)
+                Write-Warn "Removed stale CA cert for ${domain}: $($old.Thumbprint)"
             }
-            $store.Close()
-            $newCert.Dispose()
-        } catch {
-            # non-fatal - stale cert cleanup is best-effort
-        }
+            $cuStore.Close()
 
-        # Try CurrentUser (no elevation, works for Chrome/Edge)
-        $null = certutil -addstore -user Root $CertFile 2>&1
-        if ($LASTEXITCODE -eq 0) {
-            Write-Ok "CA cert imported into CurrentUser\Root."
-            Write-Ok "Chrome/Edge will show green HTTPS for https://${Domain} immediately."
-            Write-Warn "Firefox: Settings > Privacy & Security > View Certificates > Authorities > Import"
-            Write-Warn "  File: $CertFile"
-        } else {
-            Write-Warn "certutil failed - trying elevated LocalMachine import..."
-            $AbsoluteCert = (Resolve-Path $CertFile).Path
-            $importScript = "Import-Certificate -FilePath `"$AbsoluteCert`" -CertStoreLocation Cert:\LocalMachine\Root | Out-Null"
-            Start-Process powershell -Verb RunAs -Wait -ArgumentList "-NoProfile", "-Command", $importScript
+            # Also clean LocalMachine store (stale only)
+            try {
+                $lmStore = New-Object System.Security.Cryptography.X509Certificates.X509Store(
+                    'Root', [System.Security.Cryptography.X509Certificates.StoreLocation]::LocalMachine)
+                $lmStore.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
+                $staleLocal = @($lmStore.Certificates | Where-Object {
+                    $_.Subject -eq $newCert.Subject -and $_.Thumbprint -ne $newCert.Thumbprint
+                })
+                foreach ($old in $staleLocal) { $lmStore.Remove($old) }
+                $lmStore.Close()
+            } catch { }   # needs elevation — best-effort
+
+            $newCert.Dispose()
+
+            # Import fresh cert into CurrentUser\Root
+            $null = certutil -addstore -user Root $localFile 2>&1
             if ($LASTEXITCODE -eq 0) {
-                Write-Ok "CA cert imported into LocalMachine\Root (elevated)."
+                Write-Ok "CA cert updated for ${domain} (Chrome/Edge will show green HTTPS)"
+                $anyChanged = $true
             } else {
-                Write-Fail "Auto-import failed. Import manually:"
-                Write-Host "  File   : $AbsoluteCert" -ForegroundColor Yellow
-                Write-Host "  Action : Double-click > Install Certificate > Local Machine > Trusted Root CA"
+                Write-Warn "certutil failed for ${domain} - trying elevated import..."
+                $abs = (Resolve-Path $localFile).Path
+                $cmd = "Import-Certificate -FilePath `"$abs`" -CertStoreLocation Cert:\LocalMachine\Root | Out-Null"
+                Start-Process powershell -Verb RunAs -Wait -ArgumentList "-NoProfile", "-Command", $cmd
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Ok "CA cert updated for ${domain} (LocalMachine, elevated)"
+                    $anyChanged = $true
+                } else {
+                    Write-Fail "Auto-import failed for ${domain}. Import manually:"
+                    Write-Host "  File   : $abs" -ForegroundColor Yellow
+                    Write-Host "  Action : Double-click > Install Certificate > Local Machine > Trusted Root CA"
+                }
             }
+        } catch {
+            Write-Warn "Could not process cert for ${domain}: $_"
         }
     }
+
+    if (-not $anyChanged) {
+        Write-Ok "All dev CA certs are already up to date."
+    }
 }
+
+Write-Host ""
+Write-Step "Syncing dev CA certs from server..."
+$scpPortArgs = if ($SSHPort -ne '22') { @('-P', $SSHPort) } else { @() }
+Sync-AllDevCerts `
+    -SSHUser $SSHUser -SSHHost $SSHHost -SSHKey $SSHKey `
+    -SshPortArgs $sshPortArgs -ScpPortArgs $scpPortArgs `
+    -VpsDir $VpsDir -LocalTemp (Join-Path $ProjectRoot 'temp')
 
 Write-Host ""
 exit 0
