@@ -25,7 +25,8 @@ fi
 if [ -n "${SUDO_USER:-}" ] && [ "${SUDO_USER}" != "root" ]; then
     USER_HOME=$(getent passwd "${SUDO_USER}" | cut -d: -f6 || echo "/home/${SUDO_USER}")
 else
-    USER_HOME="${HOME}"
+    # When running as root, always use /root (HOME may be unset or wrong in some environments e.g. Contabo)
+    USER_HOME="/root"
 fi
 
 REPO_DIR="${USER_HOME}/vps"
