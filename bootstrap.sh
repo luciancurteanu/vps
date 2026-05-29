@@ -23,9 +23,11 @@ if [ "$EUID" -eq 0 ] && [ -z "${SUDO_USER:-}" ]; then
 fi
 
 if [ -n "${SUDO_USER:-}" ] && [ "${SUDO_USER}" != "root" ]; then
+    # A human user exists (e.g. 'admin' on dev VM) — clone into their home directory
     USER_HOME=$(getent passwd "${SUDO_USER}" | cut -d: -f6 || echo "/home/${SUDO_USER}")
 else
-    # When running as root, always use /root (HOME may be unset or wrong in some environments e.g. Contabo)
+    # No human user yet (fresh prod server) — use /root explicitly.
+    # $HOME can be unset or '/' on some providers (e.g. Contabo), so never rely on it here.
     USER_HOME="/root"
 fi
 
