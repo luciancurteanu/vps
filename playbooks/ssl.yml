@@ -238,7 +238,7 @@
 
     - name: Obtain SSL certificate
       ansible.builtin.command: >
-        certbot certonly
+        /usr/local/bin/certbot certonly
         --authenticator dns-dynu
         --dns-dynu-credentials {{ dynu_credentials_file }}
         --dns-dynu-propagation-seconds 60
@@ -264,7 +264,7 @@
 
     - name: Display certificate information
       ansible.builtin.command:
-        argv: [certbot, certificates, --cert-name, "{{ domain }}"]
+        argv: [/usr/local/bin/certbot, certificates, --cert-name, "{{ domain }}"]
       register: cert_info
       changed_when: false
       when: not is_dev_domain
