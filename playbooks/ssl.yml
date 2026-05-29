@@ -179,6 +179,14 @@
 
     # ── PROD: Let's Encrypt via certbot + Dynu DNS ─────────────────────────────
 
+    - name: Assert vault_dynu_api_token is defined and non-empty
+      ansible.builtin.assert:
+        that:
+          - vault_dynu_api_token is defined
+          - vault_dynu_api_token | length > 0
+        fail_msg: "vault_dynu_api_token is missing or empty in vars/secrets.yml — cannot obtain Let's Encrypt certificate"
+      when: not is_dev_domain
+
     - name: Install Certbot (RedHat/CentOS)
       ansible.builtin.dnf:
         name: "{{ certbot_package }}"
@@ -191,17 +199,32 @@
         state: present
       when: not is_dev_domain and ansible_os_family == "Debian"
 
-    - name: Get certbot Python site-packages path
-      ansible.builtin.command: /usr/bin/python3 -s -c "import site; print(site.getsitepackages()[-1])"
-      register: certbot_site_packages
-      changed_when: false
-      when: not is_dev_domain
+    - name: Install python3-pip and venv (RedHat/CentOS)
+      ansible.builtin.dnf:
+        name: [python3-pip, python3-virtualenv]
+        state: present
+      when: not is_dev_domain and ansible_os_family == "RedHat"
 
-    - name: Install certbot-dns-dynu plugin
+    - name: Install python3-pip and venv (Debian/Ubuntu)
+      ansible.builtin.apt:
+        name: [python3-pip, python3-venv]
+        state: present
+      when: not is_dev_domain and ansible_os_family == "Debian"
+
+    - name: Install certbot-dns-dynu plugin into isolated virtualenv
       ansible.builtin.pip:
         name: "{{ certbot_dns_plugin }}"
         state: present
-        extra_args: "--target {{ certbot_site_packages.stdout }}"
+        virtualenv: /opt/certbot-venv
+        virtualenv_command: python3 -m venv
+      when: not is_dev_domain
+
+    - name: Ensure certbot-dns-dynu is on PATH via symlink
+      ansible.builtin.file:
+        src: /opt/certbot-venv/bin/certbot
+        dest: /usr/local/bin/certbot
+        state: link
+        force: true
       when: not is_dev_domain
 
     - name: Create Dynu credentials file
@@ -251,7 +274,8 @@
       when: not is_dev_domain
 
     - name: Display certificate information
-      shell: "certbot certificates --cert-name {{ domain }}"
+      ansible.builtin.command:
+        argv: [certbot, certificates, --cert-name, "{{ domain }}"]
       register: cert_info
       changed_when: false
       when: not is_dev_domain
