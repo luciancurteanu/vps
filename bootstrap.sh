@@ -15,8 +15,10 @@ REPO_URL="https://github.com/luciancurteanu/vps.git"
 # If SUDO_USER is not set (can happen when piping through sudo), attempt to find
 # the first non-system user from /etc/passwd as a fallback.
 if [ "$EUID" -eq 0 ] && [ -z "${SUDO_USER:-}" ]; then
-    # pick a likely human user (uid >= 1000)
-    fallback_user=$(awk -F: '($3>=1000)&&($1!="nfsnobody"){print $1; exit}' /etc/passwd 2>/dev/null || true)
+    # Pick a real human user: uid 1000–59999, home under /home/, not nfsnobody/nobody.
+    # Excludes system accounts like nobody (uid 65534) whose home is '/' which would
+    # cause REPO_DIR to resolve to /vps instead of /root/vps on fresh prod servers.
+    fallback_user=$(awk -F: '($3>=1000)&&($3<60000)&&($6~/^\/home\/)&&($1!="nfsnobody")&&($1!="nobody"){print $1; exit}' /etc/passwd 2>/dev/null || true)
     if [ -n "$fallback_user" ]; then
         SUDO_USER="$fallback_user"
     fi
