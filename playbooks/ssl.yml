@@ -102,7 +102,21 @@
           [req_distinguished_name]
           [v3_req]
           subjectAltName = DNS:{{ domain }},DNS:*.{{ domain }}
+          basicConstraints = CA:FALSE
+          keyUsage = critical, digitalSignature, keyEncipherment
+          extendedKeyUsage = serverAuth
+          authorityKeyIdentifier = keyid,issuer
       when: is_dev_domain
+      register: san_cnf_result
+
+    - name: Remove stale server cert when SAN config changes
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ ssl_local_dir }}/server.crt"
+        - "{{ ssl_local_dir }}/server.csr"
+      when: is_dev_domain and san_cnf_result.changed
 
     - name: Generate server CSR
       ansible.builtin.command:
