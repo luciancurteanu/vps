@@ -10,7 +10,6 @@
   vars:
     required_vars:
       - domain
-    certbot_package: "python3-certbot-nginx"
     certbot_dns_plugin: "certbot-dns-dynu"
     dynu_credentials_file: "/etc/letsencrypt/dynu-credentials.ini"
     force_renewal: false
@@ -187,18 +186,6 @@
         fail_msg: "vault_dynu_api_token is missing or empty in vars/secrets.yml — cannot obtain Let's Encrypt certificate"
       when: not is_dev_domain
 
-    - name: Install Certbot (RedHat/CentOS)
-      ansible.builtin.dnf:
-        name: "{{ certbot_package }}"
-        state: present
-      when: not is_dev_domain and ansible_os_family == "RedHat"
-
-    - name: Install Certbot (Debian/Ubuntu)
-      ansible.builtin.apt:
-        name: "{{ certbot_package }}"
-        state: present
-      when: not is_dev_domain and ansible_os_family == "Debian"
-
     - name: Install python3-pip and venv (RedHat/CentOS)
       ansible.builtin.dnf:
         name: [python3-pip, python3-virtualenv]
@@ -211,15 +198,17 @@
         state: present
       when: not is_dev_domain and ansible_os_family == "Debian"
 
-    - name: Install certbot-dns-dynu plugin into isolated virtualenv
+    - name: Install certbot and certbot-dns-dynu into isolated virtualenv
       ansible.builtin.pip:
-        name: "{{ certbot_dns_plugin }}"
+        name:
+          - certbot
+          - "{{ certbot_dns_plugin }}"
         state: present
         virtualenv: /opt/certbot-venv
         virtualenv_command: python3 -m venv
       when: not is_dev_domain
 
-    - name: Ensure certbot-dns-dynu is on PATH via symlink
+    - name: Symlink certbot from venv onto PATH
       ansible.builtin.file:
         src: /opt/certbot-venv/bin/certbot
         dest: /usr/local/bin/certbot
