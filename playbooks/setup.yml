@@ -154,7 +154,7 @@
     # 7. Control panels (depend on: nginx for proxy)
     - role: webmin
       tags: ['webmin', 'control_panel', 'setup']
-      when: install_webmin | default(true)
+      when: install_webmin | default(false)  # Enabled by default (webmin is primary control panel)
 
     - role: cockpit
       tags: ['cockpit', 'control_panel', 'setup']
@@ -166,7 +166,7 @@
 
     - role: goproxy
       tags: ['goproxy', 'proxy', 'setup']
-      when: install_goproxy | default(true)
+      when: install_goproxy | default(false)
 
     # 9. Development tools (optional, last)
     - role: development
@@ -496,7 +496,7 @@
         mode: '0750'
         content: |
           {% raw %}#!/bin/bash
-          ALERT_EMAIL="evpscloud@gmail.com"
+          ALERT_EMAIL="{% endraw %}{{ monitoring_alert_email }}{% raw %}"
           SERVICES="nginx php-fpm mariadb postfix dovecot sshd fail2ban"
           FAILED=()
           for svc in $SERVICES; do

@@ -4,6 +4,7 @@
 PROJECT_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 CONFIG_FILE="$PROJECT_ROOT/inventory/group_vars/all.yml"
 VAULT_FILE="$PROJECT_ROOT/vars/secrets.yml"
+HOSTS_FILE="$PROJECT_ROOT/inventory/hosts.yml"
 
 # Text formatting
 BOLD="\e[1m"
@@ -208,6 +209,56 @@ resolve_inventory_private_key() {
     chmod 600 "$expected_key_path" 2>/dev/null || true
 
     echo "$expected_key_path"
+    return 0
+}
+
+resolve_primary_ansible_host() {
+    local host_ip
+    host_ip=$(grep -E 'ansible_host:' "$HOSTS_FILE" 2>/dev/null | head -1 | awk '{print $2}' | tr -d '"')
+    echo "$host_ip"
+}
+
+ssh_port_reachable() {
+    local host="$1"
+    local port="$2"
+
+    if [ -z "$host" ] || [ -z "$port" ]; then
+        return 1
+    fi
+
+    if command -v timeout >/dev/null 2>&1; then
+        timeout 3 bash -c "</dev/tcp/${host}/${port}" >/dev/null 2>&1
+    else
+        bash -c "</dev/tcp/${host}/${port}" >/dev/null 2>&1
+    fi
+}
+
+resolve_effective_ssh_port() {
+    local configured_port="$1"
+    local host_for_probe="$2"
+
+    if [ -z "$configured_port" ]; then
+        configured_port="22"
+    fi
+
+    if [ -z "$host_for_probe" ]; then
+        echo "$configured_port"
+        return 0
+    fi
+
+    if ssh_port_reachable "$host_for_probe" "$configured_port"; then
+        echo "$configured_port"
+        return 0
+    fi
+
+    if [ "$configured_port" != "22" ] && ssh_port_reachable "$host_for_probe" "22"; then
+        echo -e "${YELLOW}Warning:${RESET} SSH port ${configured_port} is unreachable on ${host_for_probe}."
+        echo -e "${YELLOW}Using temporary fallback ssh_port=22 for this run to avoid lockout.${RESET}"
+        echo "22"
+        return 0
+    fi
+
+    echo "$configured_port"
     return 0
 }
 
@@ -874,7 +925,15 @@ run_ansible() {
     log "${GREEN}Starting operation: $ACTION $MODULE for domain $DOMAIN${RESET}"
     log "Command log: $log_file"
 
-    extra_vars=(-e "domain=${DOMAIN}" -e "user=${USER}")
+    local configured_ssh_port effective_ssh_port target_host
+    configured_ssh_port="$(read_yaml_scalar "$CONFIG_FILE" "ssh_port" "22")"
+    target_host="$(resolve_primary_ansible_host)"
+    if [ -z "$target_host" ]; then
+        target_host="$DOMAIN"
+    fi
+    effective_ssh_port="$(resolve_effective_ssh_port "$configured_ssh_port" "$target_host")"
+
+    extra_vars=(-e "domain=${DOMAIN}" -e "user=${USER}" -e "ssh_port=${effective_ssh_port}")
 
     case "$ACTION $MODULE" in
     "install core")
@@ -917,6 +976,9 @@ run_ansible() {
         echo "Domain: $DOMAIN"
         echo "User: $USER"
         echo "Command: ansible-playbook $playbook ${extra_vars[*]} $ASK_SSH_PASS $VAULT_OPTS $TAGS_OPTS"
+        echo "Configured ssh_port: ${configured_ssh_port}"
+        echo "Effective ssh_port for this run: ${effective_ssh_port}"
+        echo "Probe target host: ${target_host}"
         echo "========================================"
         echo ""
     } > "$log_file"
