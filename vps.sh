@@ -723,23 +723,23 @@ generate_ssh_keys() {
     echo "  ${DOMAIN} (id_rsa)"
     echo "  ${DOMAIN} (private_key)"
 
-    # Keep secrets.yml in sync only when vault_admin_ssh_public_key is currently empty.
-    # Do not overwrite existing user-provided control-host keys.
+    # Keep secrets.yml in sync with the newly generated admin key.
+    # Always replace vault_admin_ssh_public_key after successful key generation.
     local preferred_public_key=""
-    local existing_vault_key=""
     if [ -f "$ssh_dir/id_rsa.pub" ]; then
         preferred_public_key="$(cat "$ssh_dir/id_rsa.pub")"
     elif [ -f "$ssh_dir/private_key.pub" ]; then
         preferred_public_key="$(cat "$ssh_dir/private_key.pub")"
     fi
 
-    existing_vault_key="$(read_vault_admin_ssh_public_key)"
-
-    if [ -n "$preferred_public_key" ] && [ -z "$existing_vault_key" ]; then
-        write_vault_admin_ssh_public_key "$preferred_public_key" || return 1
-    elif [ -n "$existing_vault_key" ]; then
-        echo -e "${GREEN}Keeping existing vault_admin_ssh_public_key from $VAULT_FILE${RESET}"
+    if [ -z "$preferred_public_key" ]; then
+        echo -e "${RED}Error: Failed to determine generated public key for ${ADMIN_USER}.${RESET}"
+        echo -e "${YELLOW}Expected one of:${RESET} $ssh_dir/id_rsa.pub or $ssh_dir/private_key.pub"
+        return 1
     fi
+
+    write_vault_admin_ssh_public_key "$preferred_public_key" || return 1
+    echo -e "${GREEN}Replaced vault_admin_ssh_public_key in $VAULT_FILE with newly generated key${RESET}"
 
     return 0
 }
@@ -888,7 +888,7 @@ db_tunnel() {
 
 # Prepare SSH prerequisites for Ansible:
 # 1) ensure inventory-derived private key path exists
-# 2) optionally initialize vault_admin_ssh_public_key when currently empty
+# 2) keep vault_admin_ssh_public_key synced with selected key
 setup_ssh_config() {
     local ADMIN_USER
     ADMIN_USER="$(load_admin_user)"
@@ -901,8 +901,9 @@ setup_ssh_config() {
     selected_private_key="$(resolve_inventory_private_key "$DOMAIN" "$ADMIN_USER")" || return 1
     selected_public_key="$(public_key_line_from_private_key "$selected_private_key")" || return 1
 
-    if [ -n "$selected_public_key" ] && [ -z "$(read_vault_admin_ssh_public_key)" ]; then
+    if [ -n "$selected_public_key" ]; then
         write_vault_admin_ssh_public_key "$selected_public_key" || return 1
+        echo -e "${GREEN}Replaced vault_admin_ssh_public_key in $VAULT_FILE from setup_ssh_config${RESET}"
     fi
 
     echo -e "${GREEN}SSH config prepared:${RESET} $selected_private_key"
@@ -1069,7 +1070,7 @@ main() {
     generate_ssh_keys || exit 1
     setup_ssh_config || exit 1
     check_ansible
-    git_pull
+    # git_pull
     run_ansible
 }
 
