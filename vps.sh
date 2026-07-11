@@ -23,6 +23,194 @@ if [ -f "$HOME/molecule-env/bin/activate" ]; then
     . "$HOME/molecule-env/bin/activate"
 fi
 
+# -----------------------------------------------------------------------------
+# YAML helper utilities
+# -----------------------------------------------------------------------------
+# Read a scalar value from a simple YAML key-value line.
+# Supports lines like: key: value  # comment
+# Returns an empty string when not found (or default value when provided).
+read_yaml_scalar() {
+    local file_path="$1"
+    local key_name="$2"
+    local default_value="${3:-}"
+
+    python3 - "$file_path" "$key_name" "$default_value" <<'PYEOF'
+import re
+import sys
+
+file_path, key_name, default_value = sys.argv[1:4]
+pattern = re.compile(r'^\s*' + re.escape(key_name) + r'\s*:\s*(.*?)\s*(?:#.*)?$')
+
+try:
+    with open(file_path, encoding='utf-8') as handle:
+        for line in handle:
+            match = pattern.match(line)
+            if not match:
+                continue
+            value = match.group(1).strip()
+            if value.startswith(('"', "'")) and value.endswith(('"', "'")) and len(value) >= 2:
+                value = value[1:-1]
+            print(value)
+            raise SystemExit(0)
+except FileNotFoundError:
+    pass
+
+if default_value:
+    print(default_value)
+PYEOF
+}
+
+load_admin_user() {
+    local admin_user
+    admin_user="$(read_yaml_scalar "$CONFIG_FILE" "admin_user")"
+
+    if [ -z "$admin_user" ]; then
+        echo -e "${RED}Error: admin_user is missing from $CONFIG_FILE.${RESET}"
+        exit 1
+    fi
+
+    echo "$admin_user"
+}
+
+read_vault_admin_ssh_public_key() {
+    local vault_key
+    vault_key="$(read_yaml_scalar "$VAULT_FILE" "vault_admin_ssh_public_key")"
+    echo "$vault_key"
+}
+
+public_key_line_from_private_key() {
+    local private_key_path="$1"
+
+    if [ -f "${private_key_path}.pub" ]; then
+        cat "${private_key_path}.pub"
+        return 0
+    fi
+
+    if command -v ssh-keygen >/dev/null 2>&1; then
+        ssh-keygen -y -f "$private_key_path" 2>/dev/null
+        return $?
+    fi
+
+    return 1
+}
+
+private_key_for_public_blob() {
+    local target_blob="$1"
+    local admin_user_home="$2"
+    local candidate_dir candidate_pub candidate_private candidate_blob
+
+    for candidate_dir in "$HOME/.ssh" "$admin_user_home"; do
+        [ -d "$candidate_dir" ] || continue
+
+        for candidate_pub in "$candidate_dir"/*.pub; do
+            [ -f "$candidate_pub" ] || continue
+            candidate_private="${candidate_pub%.pub}"
+            [ -f "$candidate_private" ] || continue
+            candidate_blob="$(awk '{print $1" "$2}' "$candidate_pub" 2>/dev/null)"
+            if [ -n "$target_blob" ] && [ "$candidate_blob" = "$target_blob" ]; then
+                echo "$candidate_private"
+                return 0
+            fi
+        done
+    done
+
+    return 1
+}
+
+write_vault_admin_ssh_public_key() {
+    local public_key_line="$1"
+
+    if [ -z "$public_key_line" ]; then
+        return 1
+    fi
+
+    if [ ! -f "$VAULT_FILE" ]; then
+        echo -e "${RED}Error: $VAULT_FILE not found.${RESET}"
+        return 1
+    fi
+
+    if head -1 "$VAULT_FILE" | grep -q '^\$ANSIBLE_VAULT'; then
+        echo -e "${YELLOW}Vault file is encrypted; skipping automatic write to $VAULT_FILE.${RESET}"
+        return 0
+    fi
+
+    python3 - "$VAULT_FILE" "$public_key_line" <<'PYEOF'
+import re
+import sys
+
+vault_file = sys.argv[1]
+public_key_line = sys.argv[2]
+replacement = 'vault_admin_ssh_public_key: "{}"  # auto-synced from ~/.ssh'.format(public_key_line)
+
+with open(vault_file, encoding='utf-8') as handle:
+    content = handle.read()
+
+pattern = re.compile(r'^\s*vault_admin_ssh_public_key\s*:\s*.*$', re.MULTILINE)
+if pattern.search(content):
+    content = pattern.sub(replacement, content, count=1)
+else:
+    if not content.endswith('\n'):
+        content += '\n'
+    content += '\n' + replacement + '\n'
+
+with open(vault_file, 'w', encoding='utf-8') as handle:
+    handle.write(content)
+
+print('Updated vault_admin_ssh_public_key in {}'.format(vault_file))
+PYEOF
+}
+
+resolve_inventory_private_key() {
+    local domain_name="$1"
+    local admin_user="$2"
+    local expected_key_path="$HOME/.ssh/${domain_name//./_}"
+    local admin_user_home="/home/${admin_user}/.ssh"
+    local target_blob source_private_key
+
+    if [ -e "$expected_key_path" ] || [ -L "$expected_key_path" ]; then
+        echo "$expected_key_path"
+        return 0
+    fi
+
+    target_blob="$(read_vault_admin_ssh_public_key)"
+    if [ -n "$target_blob" ]; then
+        source_private_key="$(private_key_for_public_blob "$target_blob" "$admin_user_home")"
+    fi
+
+    if [ -z "$source_private_key" ] && [ -f "$admin_user_home/id_ed25519" ]; then
+        source_private_key="$admin_user_home/id_ed25519"
+    fi
+    if [ -z "$source_private_key" ] && [ -f "$admin_user_home/id_rsa" ]; then
+        source_private_key="$admin_user_home/id_rsa"
+    fi
+    if [ -z "$source_private_key" ] && [ -f "$admin_user_home/private_key" ]; then
+        source_private_key="$admin_user_home/private_key"
+    fi
+    if [ -z "$source_private_key" ] && [ -f "$HOME/.ssh/id_ed25519" ]; then
+        source_private_key="$HOME/.ssh/id_ed25519"
+    fi
+    if [ -z "$source_private_key" ] && [ -f "$HOME/.ssh/id_rsa" ]; then
+        source_private_key="$HOME/.ssh/id_rsa"
+    fi
+    if [ -z "$source_private_key" ] && [ -f "$HOME/.ssh/ansible_id" ]; then
+        source_private_key="$HOME/.ssh/ansible_id"
+    fi
+
+    if [ -z "$source_private_key" ]; then
+        echo -e "${RED}Error: No usable SSH private key found for domain '${domain_name}'.${RESET}"
+        echo -e "${YELLOW}Expected inventory key path: ${expected_key_path}${RESET}"
+        echo -e "${YELLOW}Checked: ${HOME}/.ssh and /home/${admin_user}/.ssh${RESET}"
+        return 1
+    fi
+
+    mkdir -p "$HOME/.ssh"
+    ln -sfn "$source_private_key" "$expected_key_path"
+    chmod 600 "$expected_key_path" 2>/dev/null || true
+
+    echo "$expected_key_path"
+    return 0
+}
+
 # Display usage information
 show_help() {
     echo -e "${BOLD}Usage:${RESET} $0 command module [options]"
@@ -241,6 +429,270 @@ parse_args() {
     fi
 }
 
+# Create an admin user with passwordless sudo privileges
+create_admin_user() {
+
+    local ADMIN_USER
+    ADMIN_USER="$(load_admin_user)"
+    local sudoers_file="/etc/sudoers.d/${ADMIN_USER}"
+    local sudoers_rule="${ADMIN_USER} ALL=(ALL) NOPASSWD:ALL"
+
+    echo -e "${YELLOW}Creating admin user...${RESET}"
+
+    #
+    # Create the user if it doesn't exist
+    #
+    if ! id "$ADMIN_USER" &>/dev/null; then
+        if ! sudo useradd -m -s /bin/bash "$ADMIN_USER"; then
+            echo -e "${RED}Error: Failed to create user '${ADMIN_USER}'.${RESET}"
+            return 1
+        fi
+
+        echo -e "${GREEN}User '${ADMIN_USER}' created.${RESET}"
+    else
+        echo -e "${GREEN}User '${ADMIN_USER}' already exists.${RESET}"
+    fi
+
+    #
+    # Add to sudo group (Ubuntu / Debian)
+    #
+    if getent group sudo >/dev/null; then
+        if ! id -nG "$ADMIN_USER" | grep -qw sudo; then
+            if ! sudo usermod -aG sudo "$ADMIN_USER"; then
+                echo -e "${RED}Error: Failed to add '${ADMIN_USER}' to sudo group.${RESET}"
+                return 1
+            fi
+        fi
+    fi
+
+    #
+    # Add to wheel group (CentOS / Rocky / Alma / RHEL)
+    #
+    if getent group wheel >/dev/null; then
+        if ! id -nG "$ADMIN_USER" | grep -qw wheel; then
+            if ! sudo usermod -aG wheel "$ADMIN_USER"; then
+                echo -e "${RED}Error: Failed to add '${ADMIN_USER}' to wheel group.${RESET}"
+                return 1
+            fi
+        fi
+    fi
+
+    #
+    # Configure passwordless sudo
+    #
+    if [[ ! -f "$sudoers_file" ]]; then
+
+        echo "$sudoers_rule" | sudo tee "$sudoers_file" >/dev/null
+
+        if ! sudo visudo -cf "$sudoers_file" >/dev/null; then
+            echo -e "${RED}Error: Invalid sudoers configuration.${RESET}"
+            sudo rm -f "$sudoers_file"
+            return 1
+        fi
+
+        sudo chmod 440 "$sudoers_file"
+
+    elif ! sudo grep -qxF "$sudoers_rule" "$sudoers_file"; then
+
+        echo -e "${YELLOW}Warning:${RESET} ${sudoers_file} already exists with different contents."
+        echo -e "${YELLOW}Leaving existing sudoers configuration unchanged.${RESET}"
+
+    fi
+
+    #
+    # Verify sudo works
+    #
+    if ! sudo -l -U "$ADMIN_USER" >/dev/null 2>&1; then
+        echo -e "${RED}Error: Failed to verify sudo access for '${ADMIN_USER}'.${RESET}"
+        return 1
+    fi
+
+    echo -e "${GREEN}Admin user '${ADMIN_USER}' is ready.${RESET}"
+
+    return 0
+}
+
+# Generate SSH keys for the configured admin user and ensure authorized_keys
+# includes all required public keys without duplicates.
+generate_ssh_keys() {
+
+    local ADMIN_USER
+    ADMIN_USER="$(load_admin_user)"
+
+    #
+    # Validate required variables
+    #
+    if [[ -z "$DOMAIN" ]]; then
+        echo -e "${RED}Error: DOMAIN variable is required.${RESET}"
+        return 1
+    fi
+
+    #
+    # Ensure admin user exists
+    #
+    if ! id "$ADMIN_USER" &>/dev/null; then
+        echo -e "${RED}Error: Admin user '${ADMIN_USER}' does not exist.${RESET}"
+        echo -e "${YELLOW}Run create_admin_user first.${RESET}"
+        return 1
+    fi
+
+    local target_dir="/home/$ADMIN_USER"
+    local ssh_dir="$target_dir/.ssh"
+
+    echo -e "${YELLOW}Generating SSH keys for '${ADMIN_USER}'...${RESET}"
+
+    #
+    # Create .ssh directory
+    #
+    if ! sudo mkdir -p "$ssh_dir"; then
+        echo -e "${RED}Error: Failed to create ${ssh_dir}.${RESET}"
+        return 1
+    fi
+
+    sudo chmod 700 "$ssh_dir"
+    sudo chown "$ADMIN_USER:$ADMIN_USER" "$ssh_dir"
+
+    #
+    # Generate id_rsa only when missing so repeated runs stay idempotent.
+    if [ ! -f "$ssh_dir/id_rsa" ]; then
+        if ! sudo ssh-keygen \
+            -q \
+            -t rsa \
+            -b 4096 \
+            -N "" \
+            -C "${DOMAIN} (id_rsa)" \
+            -f "$ssh_dir/id_rsa"; then
+
+            echo -e "${RED}Error: Failed to generate id_rsa.${RESET}"
+            return 1
+        fi
+    fi
+
+    # Generate private_key only when missing so repeated runs stay idempotent.
+    if [ ! -f "$ssh_dir/private_key" ]; then
+        if ! sudo ssh-keygen \
+            -q \
+            -t rsa \
+            -b 4096 \
+            -N "" \
+            -C "${DOMAIN} (private_key)" \
+            -f "$ssh_dir/private_key"; then
+
+            echo -e "${RED}Error: Failed to generate private_key.${RESET}"
+            return 1
+        fi
+    fi
+
+    if [ -f "$ssh_dir/id_rsa" ] && [ ! -f "$ssh_dir/id_rsa.pub" ]; then
+        sudo ssh-keygen -y -f "$ssh_dir/id_rsa" | sudo tee "$ssh_dir/id_rsa.pub" >/dev/null || {
+            echo -e "${RED}Error: Failed to regenerate id_rsa.pub.${RESET}"
+            return 1
+        }
+    fi
+
+    if [ -f "$ssh_dir/private_key" ] && [ ! -f "$ssh_dir/private_key.pub" ]; then
+        sudo ssh-keygen -y -f "$ssh_dir/private_key" | sudo tee "$ssh_dir/private_key.pub" >/dev/null || {
+            echo -e "${RED}Error: Failed to regenerate private_key.pub.${RESET}"
+            return 1
+        }
+    fi
+
+    #
+    # Create authorized_keys
+    #
+    sudo touch "$ssh_dir/authorized_keys"
+
+    # Keep existing authorized keys and only add generated keys if missing.
+    for pub_file in "$ssh_dir/id_rsa.pub" "$ssh_dir/private_key.pub"; do
+        if [ -f "$pub_file" ]; then
+            while IFS= read -r key_line; do
+                [ -n "$key_line" ] || continue
+                grep -qxF "$key_line" "$ssh_dir/authorized_keys" || echo "$key_line" >> "$ssh_dir/authorized_keys"
+            done < "$pub_file"
+        fi
+    done
+
+    # Normalize authorized_keys: remove blank lines and duplicate entries while
+    # preserving original order.
+    local auth_tmp
+    auth_tmp=$(mktemp)
+    awk 'NF && !seen[$0]++' "$ssh_dir/authorized_keys" > "$auth_tmp"
+    cat "$auth_tmp" > "$ssh_dir/authorized_keys"
+    rm -f "$auth_tmp"
+
+    #
+    # Permissions
+    #
+    sudo chmod 700 "$ssh_dir"
+    sudo chmod 600 \
+        "$ssh_dir/id_rsa" \
+        "$ssh_dir/private_key" \
+        "$ssh_dir/authorized_keys"
+
+    sudo chmod 644 \
+        "$ssh_dir/id_rsa.pub" \
+        "$ssh_dir/private_key.pub"
+
+    sudo chown -R "$ADMIN_USER:$ADMIN_USER" "$ssh_dir"
+
+    #
+    # Verify generated files
+    #
+    for file in \
+        "$ssh_dir/id_rsa" \
+        "$ssh_dir/id_rsa.pub" \
+        "$ssh_dir/private_key" \
+        "$ssh_dir/private_key.pub" \
+        "$ssh_dir/authorized_keys"
+    do
+        if [[ ! -f "$file" ]]; then
+            echo -e "${RED}Error: Missing file: $file${RESET}"
+            return 1
+        fi
+    done
+
+    echo
+    echo -e "${GREEN}SSH keys generated successfully.${RESET}"
+    echo
+    echo "Location:"
+    echo "  $ssh_dir"
+    echo
+    echo "Generated files:"
+    echo "  id_rsa"
+    echo "  id_rsa.pub"
+    echo "  private_key"
+    echo "  private_key.pub"
+    echo "  authorized_keys"
+    echo
+    echo "Private keys (copy one of these to your PC):"
+    echo "  $ssh_dir/id_rsa"
+    echo "  $ssh_dir/private_key"
+    echo
+    echo "SSH key comments:"
+    echo "  ${DOMAIN} (id_rsa)"
+    echo "  ${DOMAIN} (private_key)"
+
+    # Keep secrets.yml in sync only when vault_admin_ssh_public_key is currently empty.
+    # Do not overwrite existing user-provided control-host keys.
+    local preferred_public_key=""
+    local existing_vault_key=""
+    if [ -f "$ssh_dir/id_rsa.pub" ]; then
+        preferred_public_key="$(cat "$ssh_dir/id_rsa.pub")"
+    elif [ -f "$ssh_dir/private_key.pub" ]; then
+        preferred_public_key="$(cat "$ssh_dir/private_key.pub")"
+    fi
+
+    existing_vault_key="$(read_vault_admin_ssh_public_key)"
+
+    if [ -n "$preferred_public_key" ] && [ -z "$existing_vault_key" ]; then
+        write_vault_admin_ssh_public_key "$preferred_public_key" || return 1
+    elif [ -n "$existing_vault_key" ]; then
+        echo -e "${GREEN}Keeping existing vault_admin_ssh_public_key from $VAULT_FILE${RESET}"
+    fi
+
+    return 0
+}
+
 # Sync SSH public keys from ~/.ssh/*.pub into vault_admin_ssh_public_key in secrets.yml
 sync_keys() {
     local secrets_file="$PROJECT_ROOT/vars/secrets.yml"
@@ -378,6 +830,32 @@ db_tunnel() {
     log ""
     log "${YELLOW}Note: SSH TCP forwarding must be enabled (AllowTcpForwarding local/yes in sshd_config).${RESET}"
     log "${YELLOW}      Current setting: $(grep AllowTcpForwarding /etc/ssh/sshd_config 2>/dev/null | head -1 | awk '{print $2}')${RESET}"
+}
+
+
+
+
+# Prepare SSH prerequisites for Ansible:
+# 1) ensure inventory-derived private key path exists
+# 2) optionally initialize vault_admin_ssh_public_key when currently empty
+setup_ssh_config() {
+    local ADMIN_USER
+    ADMIN_USER="$(load_admin_user)"
+
+    if [[ -z "$DOMAIN" ]]; then
+        return 0
+    fi
+
+    local selected_private_key selected_public_key
+    selected_private_key="$(resolve_inventory_private_key "$DOMAIN" "$ADMIN_USER")" || return 1
+    selected_public_key="$(public_key_line_from_private_key "$selected_private_key")" || return 1
+
+    if [ -n "$selected_public_key" ] && [ -z "$(read_vault_admin_ssh_public_key)" ]; then
+        write_vault_admin_ssh_public_key "$selected_public_key" || return 1
+    fi
+
+    echo -e "${GREEN}SSH config prepared:${RESET} $selected_private_key"
+    return 0
 }
 
 # Run the appropriate Ansible playbook
@@ -525,6 +1003,9 @@ main() {
         db_tunnel
         exit 0
     fi
+    create_admin_user || exit 1
+    generate_ssh_keys || exit 1
+    setup_ssh_config || exit 1
     check_ansible
     git_pull
     run_ansible

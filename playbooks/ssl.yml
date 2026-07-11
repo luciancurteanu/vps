@@ -16,11 +16,12 @@
     email: "webmaster@{{ domain }}"
     # Detect dev (.test) vs prod domain automatically
     is_dev_domain: "{{ domain.split('.')[-1] == 'test' }}"
+    is_dev_domain_bool: "{{ is_dev_domain | bool }}"
     ssl_local_dir: "/etc/ssl/local/{{ domain }}"
     # Cert paths — resolved based on domain TLD
-    ssl_cert_file: "{{ ssl_local_dir + '/server.crt' if is_dev_domain else '/etc/letsencrypt/live/' + domain + '/fullchain.pem' }}"
-    ssl_cert_key: "{{ ssl_local_dir + '/server.key' if is_dev_domain else '/etc/letsencrypt/live/' + domain + '/privkey.pem' }}"
-    ssl_ca_file: "{{ ssl_local_dir + '/ca.crt' if is_dev_domain else '/etc/letsencrypt/live/' + domain + '/chain.pem' }}"
+    ssl_cert_file: "{{ ssl_local_dir + '/server.crt' if is_dev_domain_bool else '/etc/letsencrypt/live/' + domain + '/fullchain.pem' }}"
+    ssl_cert_key: "{{ ssl_local_dir + '/server.key' if is_dev_domain_bool else '/etc/letsencrypt/live/' + domain + '/privkey.pem' }}"
+    ssl_ca_file: "{{ ssl_local_dir + '/ca.crt' if is_dev_domain_bool else '/etc/letsencrypt/live/' + domain + '/chain.pem' }}"
 
   pre_tasks:
     - name: Verify required variables are defined
@@ -49,13 +50,13 @@
         owner: root
         group: root
         mode: '0755'
-      when: is_dev_domain
+      when: is_dev_domain_bool
 
     - name: Generate local CA private key
       ansible.builtin.command:
         argv: [openssl, genrsa, -out, "{{ ssl_local_dir }}/ca.key", "4096"]
         creates: "{{ ssl_local_dir }}/ca.key"
-      when: is_dev_domain
+      when: is_dev_domain_bool
 
     - name: Protect CA private key
       ansible.builtin.file:
@@ -63,7 +64,7 @@
         owner: root
         group: root
         mode: '0600'
-      when: is_dev_domain
+      when: is_dev_domain_bool
 
     - name: Generate local CA certificate
       ansible.builtin.command:
@@ -81,13 +82,13 @@
           - -subj
           - "/CN=Local Dev CA/O={{ domain }}"
         creates: "{{ ssl_local_dir }}/ca.crt"
-      when: is_dev_domain
+      when: is_dev_domain_bool
 
     - name: Generate server private key
       ansible.builtin.command:
         argv: [openssl, genrsa, -out, "{{ ssl_local_dir }}/server.key", "2048"]
         creates: "{{ ssl_local_dir }}/server.key"
-      when: is_dev_domain
+      when: is_dev_domain_bool
 
     - name: Write OpenSSL SAN config
       ansible.builtin.copy:
@@ -105,7 +106,7 @@
           keyUsage = critical, digitalSignature, keyEncipherment
           extendedKeyUsage = serverAuth
           authorityKeyIdentifier = keyid,issuer
-      when: is_dev_domain
+      when: is_dev_domain_bool
       register: san_cnf_result
 
     - name: Remove stale server cert when SAN config changes
@@ -115,7 +116,7 @@
       loop:
         - "{{ ssl_local_dir }}/server.crt"
         - "{{ ssl_local_dir }}/server.csr"
-      when: is_dev_domain and san_cnf_result.changed
+      when: is_dev_domain_bool and san_cnf_result.changed
 
     - name: Generate server CSR
       ansible.builtin.command:
@@ -130,7 +131,7 @@
           - -subj
           - "/CN={{ domain }}"
         creates: "{{ ssl_local_dir }}/server.csr"
-      when: is_dev_domain
+      when: is_dev_domain_bool
 
     - name: Sign server certificate with local CA
       ansible.builtin.command:
@@ -154,7 +155,7 @@
           - -extensions
           - v3_req
         creates: "{{ ssl_local_dir }}/server.crt"
-      when: is_dev_domain
+      when: is_dev_domain_bool
       notify: Reload Nginx
 
     - name: Set permissions on server cert and key
@@ -167,14 +168,14 @@
         - { path: "{{ ssl_local_dir }}/server.crt", mode: '0644' }
         - { path: "{{ ssl_local_dir }}/server.key", mode: '0640' }
         - { path: "{{ ssl_local_dir }}/ca.crt",     mode: '0644' }
-      when: is_dev_domain
+      when: is_dev_domain_bool
 
     - name: Fetch local CA cert to controller (import into browser/OS to get green HTTPS)
       ansible.builtin.fetch:
         src: "{{ ssl_local_dir }}/ca.crt"
         dest: "{{ playbook_dir }}/../temp/{{ domain }}-local-ca.crt"
         flat: true
-      when: is_dev_domain
+      when: is_dev_domain_bool
 
     # ── PROD: Let's Encrypt via certbot + Dynu DNS ─────────────────────────────
 
@@ -184,19 +185,19 @@
           - vault_dynu_api_token is defined
           - vault_dynu_api_token | length > 0
         fail_msg: "vault_dynu_api_token is missing or empty in vars/secrets.yml — cannot obtain Let's Encrypt certificate"
-      when: not is_dev_domain
+      when: not is_dev_domain_bool
 
     - name: Install python3-pip and venv (RedHat/CentOS)
       ansible.builtin.dnf:
         name: [python3-pip, python3-virtualenv]
         state: present
-      when: not is_dev_domain and ansible_os_family == "RedHat"
+      when: not is_dev_domain_bool and ansible_os_family == "RedHat"
 
     - name: Install python3-pip and venv (Debian/Ubuntu)
       ansible.builtin.apt:
         name: [python3-pip, python3-venv]
         state: present
-      when: not is_dev_domain and ansible_os_family == "Debian"
+      when: not is_dev_domain_bool and ansible_os_family == "Debian"
 
     - name: Install certbot and certbot-dns-dynu into isolated virtualenv
       ansible.builtin.pip:
@@ -206,7 +207,7 @@
         state: present
         virtualenv: /opt/certbot-venv
         virtualenv_command: python3 -m venv
-      when: not is_dev_domain
+      when: not is_dev_domain_bool
 
     - name: Symlink certbot from venv onto PATH
       ansible.builtin.file:
@@ -214,7 +215,7 @@
         dest: /usr/local/bin/certbot
         state: link
         force: true
-      when: not is_dev_domain
+      when: not is_dev_domain_bool
 
     - name: Create Dynu credentials file
       ansible.builtin.copy:
@@ -223,18 +224,18 @@
         owner: root
         group: root
         mode: '0600'
-      when: not is_dev_domain
+      when: not is_dev_domain_bool
 
     - name: Check if certificate already exists
       ansible.builtin.stat:
         path: "/etc/letsencrypt/live/{{ domain }}/fullchain.pem"
       register: cert_file
-      when: not is_dev_domain
+      when: not is_dev_domain_bool
 
     - name: Build certbot domain list
       ansible.builtin.set_fact:
         certbot_domains: "{{ domain }},*.{{ domain }}"
-      when: not is_dev_domain
+      when: not is_dev_domain_bool
 
     - name: Obtain SSL certificate
       ansible.builtin.command: >
@@ -249,7 +250,7 @@
         {{ '--force-renewal' if force_renewal else '' }}
       register: certbot_result
       changed_when: "'Congratulations! Your certificate and chain have been saved' in certbot_result.stdout"
-      when: not is_dev_domain and (not cert_file.stat.exists or force_renewal)
+      when: not is_dev_domain_bool and (not cert_file.stat.exists or force_renewal)
 
     - name: Install cronjob for certificate renewal
       ansible.builtin.cron:
@@ -260,19 +261,34 @@
         minute: "0"
         hour: "3"
         weekday: "1"  # Monday
-      when: not is_dev_domain
+      when: not is_dev_domain_bool
 
     - name: Display certificate information
       ansible.builtin.command:
         argv: [/usr/local/bin/certbot, certificates, --cert-name, "{{ domain }}"]
       register: cert_info
       changed_when: false
-      when: not is_dev_domain
+      when: not is_dev_domain_bool
 
     - name: Output certificate information
       ansible.builtin.debug:
         msg: "{{ cert_info.stdout_lines }}"
-      when: not is_dev_domain
+      when: not is_dev_domain_bool
+
+    - name: Check selected SSL certificate files exist
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - "{{ ssl_cert_file }}"
+        - "{{ ssl_cert_key }}"
+      register: ssl_required_files
+
+    - name: Fail when required SSL files are missing
+      ansible.builtin.assert:
+        that:
+          - item.stat.exists
+        fail_msg: "Required SSL file is missing: {{ item.stat.path }}"
+      loop: "{{ ssl_required_files.results }}"
 
     # ── Shared: enable SSL in all nginx/app configs ─────────────────────────────
 
@@ -323,7 +339,7 @@
         webmin_ssl_enabled: true
         nginx_ssl_cert: "{{ ssl_cert_file }}"
         nginx_ssl_key: "{{ ssl_cert_key }}"
-        is_dev_domain: "{{ domain.split('.')[-1] == 'test' }}"
+        is_dev_domain: "{{ is_dev_domain_bool }}"
       when: install_webmin | default(true)
       notify: Reload Nginx
 

@@ -39,7 +39,7 @@ mail_enable_roundcube: true   # Enabled: Roundcube webmail installation
 mail_enable_nginx: true
 # Use /var/vmail for virtual mail storage by default
 mail_use_var_vmail: true
-mail_ssl_enabled: false  # Dovecot SSL — disabled until certificates are provisioned; ssl.yml sets to true
+mail_ssl_enabled: true   # Keep IMAPS/POP3S available; cert files come from Let's Encrypt or local self-signed paths
 mail_ssl_cert: "{{ mail_tls_cert_file }}"  # Reuse Postfix cert path (set by mail_use_letsencrypt)
 mail_ssl_key: "{{ mail_tls_key_file }}"   # Reuse Postfix key path
 mail_ssl_ca: "{{ mail_tls_ca_file }}"     # Reuse Postfix CA path
