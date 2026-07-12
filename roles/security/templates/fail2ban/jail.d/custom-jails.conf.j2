@@ -14,7 +14,7 @@ action_lc = %(action_)s
 
 [sshd]
 enabled = {% if stat_secure_log.stat.exists %}true{% else %}false{% endif %}
-port = ssh,sftp,{{ security_ssh_port }}
+port = ssh,sftp,{{ ssh_port }}
 filter = sshd[mode=aggressive]
 action = %(action_lc)s
 logpath = /var/log/secure
