@@ -252,8 +252,8 @@ resolve_effective_ssh_port() {
     fi
 
     if [ "$configured_port" != "22" ] && ssh_port_reachable "$host_for_probe" "22"; then
-        echo -e "${YELLOW}Warning:${RESET} SSH port ${configured_port} is unreachable on ${host_for_probe}."
-        echo -e "${YELLOW}Using temporary fallback ssh_port=22 for this run to avoid lockout.${RESET}"
+        echo -e "${YELLOW}Warning:${RESET} SSH port ${configured_port} is unreachable on ${host_for_probe}." >&2
+        echo -e "${YELLOW}Using temporary fallback ansible_port=22 for this run to avoid lockout.${RESET}" >&2
         echo "22"
         return 0
     fi
@@ -934,7 +934,14 @@ run_ansible() {
     fi
     effective_ssh_port="$(resolve_effective_ssh_port "$configured_ssh_port" "$target_host")"
 
-    extra_vars=(-e "domain=${DOMAIN}" -e "user=${USER}" -e "ssh_port=${effective_ssh_port}")
+    # Keep server SSH configuration aligned with inventory ssh_port, but use
+    # ansible_port for temporary controller connectivity fallback.
+    extra_vars=(
+        -e "domain=${DOMAIN}"
+        -e "user=${USER}"
+        -e "ssh_port=${configured_ssh_port}"
+        -e "ansible_port=${effective_ssh_port}"
+    )
 
     case "$ACTION $MODULE" in
     "install core")
@@ -978,7 +985,7 @@ run_ansible() {
         echo "User: $USER"
         echo "Command: ansible-playbook $playbook ${extra_vars[*]} $ASK_SSH_PASS $VAULT_OPTS $TAGS_OPTS"
         echo "Configured ssh_port: ${configured_ssh_port}"
-        echo "Effective ssh_port for this run: ${effective_ssh_port}"
+        echo "Effective ansible_port for this run: ${effective_ssh_port}"
         echo "Probe target host: ${target_host}"
         echo "========================================"
         echo ""

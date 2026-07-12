@@ -10,7 +10,7 @@ server {
     listen [::]:80;
     server_name {{ webmin_subdomain }};
 
-{% if webmin_ssl_enabled | default(false) %}
+{% if webmin_ssl_enabled_effective | default(webmin_ssl_enabled | default(false)) %}
     # Redirect to HTTPS
     return 301 https://$host$request_uri;
 }
@@ -59,30 +59,28 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+        proxy_set_header X-Forwarded-Server $host;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header Host localhost:{{ webmin_port }};
+        proxy_set_header Host $http_host;
+        proxy_hide_header Strict-Transport-Security;
         
         # Proxy request to webmin server (HTTP when SSL disabled, HTTPS when enabled)
-        {% if webmin_ssl_enabled | default(false) %}
+        {% if webmin_ssl_enabled_effective | default(webmin_ssl_enabled | default(false)) %}
         proxy_pass https://webmin-upstream/;
         proxy_ssl_verify off;
-        proxy_redirect https://localhost:{{ webmin_port }}/ $scheme://$http_host/;
-        proxy_redirect https://$host:{{ webmin_port }}/ $scheme://$http_host/;
+        proxy_redirect ~^https?://[^/]+:{{ webmin_port }}(/.*)$ $scheme://$http_host$1;
+        proxy_redirect ~^https?://[^/]+:{{ webmin_port }}$ $scheme://$http_host/;
+        proxy_redirect / /;
         {% else %}
         proxy_pass https://webmin-upstream/;
         proxy_ssl_verify off;
         proxy_ssl_server_name on;
         proxy_ssl_name localhost;
         proxy_ssl_session_reuse on;
-        # Rewrite all redirects from localhost to external URL
-        proxy_redirect https://localhost:{{ webmin_port }}/ $scheme://$http_host/;
-        proxy_redirect https://127.0.0.1:{{ webmin_port }}/ $scheme://$http_host/;
-        proxy_redirect https://$host:{{ webmin_port }}/ $scheme://$http_host/;
-        proxy_redirect https://{{ webmin_subdomain }}:{{ webmin_port }}/ $scheme://$http_host/;
-        proxy_redirect http://localhost:{{ webmin_port }}/ $scheme://$http_host/;
-        proxy_redirect http://127.0.0.1:{{ webmin_port }}/ $scheme://$http_host/;
-        proxy_redirect http://$host:{{ webmin_port }}/ $scheme://$http_host/;
-        proxy_redirect http://{{ webmin_subdomain }}:{{ webmin_port }}/ $scheme://$http_host/;
+        # Rewrite all backend absolute redirects to the public host without backend port.
+        proxy_redirect ~^https?://[^/]+:{{ webmin_port }}(/.*)$ $scheme://$http_host$1;
+        proxy_redirect ~^https?://[^/]+:{{ webmin_port }}$ $scheme://$http_host/;
         proxy_redirect / /;
         {% endif %}
         

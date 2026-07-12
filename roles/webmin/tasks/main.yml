@@ -59,6 +59,51 @@
     enabled: true
     state: started
 
+- name: Determine effective Webmin admin user
+  ansible.builtin.set_fact:
+    webmin_admin_user_effective: "{{ admin_user | default('admin') }}"
+  when: webmin_manage_admin_user | default(true)
+
+- name: Read root Webmin ACL modules
+  ansible.builtin.command: "awk -F: '/^root:/{print $2; exit}' /etc/webmin/webmin.acl"
+  register: webmin_root_acl_modules
+  changed_when: false
+  failed_when: false
+  when:
+    - webmin_manage_admin_user | default(true)
+    - create_admin_user | default(true) | bool
+    - webmin_admin_user_effective != 'root'
+
+- name: Ensure Linux admin user exists in Webmin users file
+  ansible.builtin.lineinfile:
+    path: /etc/webmin/miniserv.users
+    regexp: "^{{ webmin_admin_user_effective }}:"
+    line: "{{ webmin_admin_user_effective }}:x:0"
+    create: true
+    owner: root
+    group: bin
+    mode: '0600'
+  when:
+    - webmin_manage_admin_user | default(true)
+    - create_admin_user | default(true) | bool
+    - webmin_admin_user_effective != 'root'
+  notify: Restart webmin
+
+- name: Ensure Linux admin user has root-equivalent Webmin ACLs
+  ansible.builtin.lineinfile:
+    path: /etc/webmin/webmin.acl
+    regexp: "^{{ webmin_admin_user_effective }}:"
+    line: "{{ webmin_admin_user_effective }}:{{ (webmin_root_acl_modules.stdout | trim) if (webmin_root_acl_modules.stdout | trim | length > 0) else 'webmin' }}"
+    create: true
+    owner: root
+    group: root
+    mode: '0600'
+  when:
+    - webmin_manage_admin_user | default(true)
+    - create_admin_user | default(true) | bool
+    - webmin_admin_user_effective != 'root'
+  notify: Restart webmin
+
 - name: Configure firewall for Webmin (iptables)
   ansible.builtin.shell: |
     iptables -C INPUT -p tcp --dport {{ webmin_port }} -j ACCEPT || iptables -A INPUT -p tcp --dport {{ webmin_port }} -j ACCEPT
@@ -68,6 +113,70 @@
   notify: Save iptables rules
   changed_when: false
 
+- name: Resolve expected TLS asset paths for Webmin proxy
+  ansible.builtin.set_fact:
+    webmin_ssl_cert_path_effective: "{{ nginx_ssl_cert | default('/etc/letsencrypt/live/' + domain + '/fullchain.pem') }}"
+    webmin_ssl_key_path_effective: "{{ nginx_ssl_key | default('/etc/letsencrypt/live/' + domain + '/privkey.pem') }}"
+  when: webmin_nginx_proxy | default(false)
+
+- name: Check Webmin proxy TLS certificate file
+  ansible.builtin.stat:
+    path: "{{ webmin_ssl_cert_path_effective }}"
+  register: webmin_proxy_ssl_cert_stat
+  when: webmin_nginx_proxy | default(false)
+
+- name: Check Webmin proxy TLS private key file
+  ansible.builtin.stat:
+    path: "{{ webmin_ssl_key_path_effective }}"
+  register: webmin_proxy_ssl_key_stat
+  when: webmin_nginx_proxy | default(false)
+
+- name: Check Let's Encrypt shared SSL options include
+  ansible.builtin.stat:
+    path: /etc/letsencrypt/options-ssl-nginx.conf
+  register: webmin_proxy_ssl_options_stat
+  when:
+    - webmin_nginx_proxy | default(false)
+    - not (is_dev_domain | default(false))
+
+- name: Check Let's Encrypt DH params file
+  ansible.builtin.stat:
+    path: /etc/letsencrypt/ssl-dhparams.pem
+  register: webmin_proxy_ssl_dhparam_stat
+  when:
+    - webmin_nginx_proxy | default(false)
+    - not (is_dev_domain | default(false))
+
+- name: Determine effective Webmin proxy SSL mode
+  ansible.builtin.set_fact:
+    webmin_ssl_enabled_effective: >-
+      {{
+        (webmin_ssl_enabled | default(false) | bool)
+        and (webmin_proxy_ssl_cert_stat.stat.exists | default(false))
+        and (webmin_proxy_ssl_key_stat.stat.exists | default(false))
+        and (
+          (is_dev_domain | default(false) | bool)
+          or (
+            (webmin_proxy_ssl_options_stat.stat.exists | default(false))
+            and (webmin_proxy_ssl_dhparam_stat.stat.exists | default(false))
+          )
+        )
+      }}
+  when: webmin_nginx_proxy | default(false)
+
+- name: Warn when Webmin SSL requested but TLS assets are missing
+  ansible.builtin.debug:
+    msg: >-
+      webmin_ssl_enabled=true but TLS assets are incomplete; serving Webmin proxy over HTTP for this run.
+      cert={{ webmin_proxy_ssl_cert_stat.stat.exists | default(false) }},
+      key={{ webmin_proxy_ssl_key_stat.stat.exists | default(false) }},
+      le_opts={{ webmin_proxy_ssl_options_stat.stat.exists | default(true) }},
+      dhparam={{ webmin_proxy_ssl_dhparam_stat.stat.exists | default(true) }}.
+  when:
+    - webmin_nginx_proxy | default(false)
+    - webmin_ssl_enabled | default(false) | bool
+    - not (webmin_ssl_enabled_effective | default(false) | bool)
+
 - name: Create Webmin nginx proxy configuration
   ansible.builtin.template:
     src: nginx/webmin.conf.j2
@@ -76,7 +185,7 @@
     group: root
     mode: '0644'
   when: webmin_nginx_proxy | default(false)
-  notify: Reload nginx
+  notify: Reload nginx (webmin)
 
 - name: Copy nginx Webmin module to remote
   ansible.builtin.copy:
@@ -120,7 +229,7 @@
     dest: "/etc/nginx/sites-enabled/{{ webmin_subdomain }}.conf"
     state: link
   when: webmin_nginx_proxy | default(false)
-  notify: Reload nginx
+  notify: Reload nginx (webmin)
 
 - name: Ensure Webmin listens on configured port
   ansible.builtin.lineinfile:

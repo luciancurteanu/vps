@@ -6,11 +6,10 @@
     name: webmin
     state: restarted
 
-- name: Reload nginx
+- name: Reload nginx (webmin)
   ansible.builtin.systemd:
     name: nginx
     state: reloaded
-  when: nginx_installed is defined and nginx_installed
 
 - name: Save iptables rules
   shell: iptables-save > /etc/sysconfig/iptables

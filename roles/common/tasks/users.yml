@@ -27,10 +27,19 @@
     system: no  # Regular user, not system user (needed for SSH login)
     home: "/home/{{ common_admin_user }}"
     createhome: true
+    update_password: on_create
+
+- name: Ensure admin user password is set and account is unlocked
+  ansible.builtin.user:
+    name: "{{ common_admin_user }}"
     # Use SHA512 which is widely supported on target systems. bcrypt may not be
     # supported by the system crypt implementation and caused failures.
-    password: "{{ common_admin_password | password_hash('sha512') if common_admin_password is defined else omit }}"
-    update_password: on_create
+    password: "{{ common_admin_password | password_hash('sha512') }}"
+    update_password: always
+    password_lock: false
+  when:
+    - common_admin_password is defined
+    - common_admin_password not in [omit, '', None]
 
 - name: Set up authorized keys for admin user
   ansible.builtin.authorized_key:

@@ -324,7 +324,6 @@
         webmin_ssl_enabled: true
         nginx_ssl_cert: "{{ ssl_cert_file }}"
         nginx_ssl_key: "{{ ssl_cert_key }}"
-        is_dev_domain: "{{ is_dev_domain }}"
       when: install_webmin | default(true)
       notify: Reload Nginx
 

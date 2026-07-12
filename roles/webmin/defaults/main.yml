@@ -19,3 +19,7 @@ webmin_ssl_enabled: false
 webmin_theme: "authentic-theme"
 webmin_authentic_version: ""  # Empty = auto-resolve latest stable release from GitHub
 
+# Webmin user mapping
+# When enabled, ensure the Linux admin_user is also a Webmin user with root-equivalent ACLs.
+webmin_manage_admin_user: true
+

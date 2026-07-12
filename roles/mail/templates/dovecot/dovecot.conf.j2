@@ -1,8 +1,9 @@
 # {{ ansible_managed }}
 # Dovecot configuration file
 
-# Base protocols and listeners — only encrypted variants; plaintext imap/pop3 disabled
-protocols = imaps pop3s lmtp
+# Base protocols and listeners.
+# Modern Dovecot expects imap/pop3 protocol names; plaintext listeners are disabled in login service config.
+protocols = imap pop3 lmtp
 listen = *, ::
 
 # Mail location
