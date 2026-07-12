@@ -28,16 +28,17 @@ server {
     }
     
     # Only redirect to HTTPS if SSL certificate exists
-    {% if mail_enable_ssl | default(false) %}
+    {% if mail_enable_ssl_effective | default(mail_enable_ssl | default(false)) %}
     location / {
         return 301 https://$host$request_uri;
     }
     {% endif %}
 }
 
-{% if mail_enable_ssl | default(false) %}
+{% if mail_enable_ssl_effective | default(mail_enable_ssl | default(false)) %}
 server {
     listen 443 ssl;
+    listen [::]:443 ssl;
     http2 on;
     server_name {{ mail_subdomain }};
     

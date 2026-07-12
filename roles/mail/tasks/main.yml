@@ -210,10 +210,65 @@
   when: ansible_selinux.status == "enabled"
   changed_when: false
 
+- name: Set SELinux context for domain logs used by nginx
+  community.general.sefcontext:
+    target: '/home/{{ domain }}/logs(/.*)?'
+    setype: httpd_log_t
+    state: present
+  when: ansible_selinux.status == "enabled"
+
 - name: Apply SELinux context to domain logs after creating mail log files
   ansible.builtin.command: restorecon -Rv /home/{{ domain }}/logs
   when: ansible_selinux.status == "enabled"
   changed_when: false
+
+- name: Resolve expected TLS asset paths for mail web vhost
+  ansible.builtin.set_fact:
+    mail_ssl_cert_path_effective: "{{ nginx_ssl_cert | default('/etc/letsencrypt/live/' + domain + '/fullchain.pem') }}"
+    mail_ssl_key_path_effective: "{{ nginx_ssl_key | default('/etc/letsencrypt/live/' + domain + '/privkey.pem') }}"
+    mail_ssl_chain_path_effective: "{{ nginx_ssl_ca | default('/etc/letsencrypt/live/' + domain + '/chain.pem') }}"
+  when: mail_enable_nginx | default(true)
+
+- name: Check mail web TLS certificate file
+  ansible.builtin.stat:
+    path: "{{ mail_ssl_cert_path_effective }}"
+  register: mail_web_ssl_cert_stat
+  when: mail_enable_nginx | default(true)
+
+- name: Check mail web TLS private key file
+  ansible.builtin.stat:
+    path: "{{ mail_ssl_key_path_effective }}"
+  register: mail_web_ssl_key_stat
+  when: mail_enable_nginx | default(true)
+
+- name: Check mail web TLS chain file
+  ansible.builtin.stat:
+    path: "{{ mail_ssl_chain_path_effective }}"
+  register: mail_web_ssl_chain_stat
+  when: mail_enable_nginx | default(true)
+
+- name: Determine effective SSL mode for mail web vhost
+  ansible.builtin.set_fact:
+    mail_enable_ssl_effective: >-
+      {{
+        (mail_enable_ssl | default(mail_use_letsencrypt | default(false)) | bool)
+        and (mail_web_ssl_cert_stat.stat.exists | default(false))
+        and (mail_web_ssl_key_stat.stat.exists | default(false))
+        and (mail_web_ssl_chain_stat.stat.exists | default(false))
+      }}
+  when: mail_enable_nginx | default(true)
+
+- name: Warn when mail SSL requested but TLS assets are missing
+  ansible.builtin.debug:
+    msg: >-
+      mail_enable_ssl requested but TLS assets are incomplete; keeping mail vhost on HTTP for this run.
+      cert={{ mail_web_ssl_cert_stat.stat.exists | default(false) }},
+      key={{ mail_web_ssl_key_stat.stat.exists | default(false) }},
+      chain={{ mail_web_ssl_chain_stat.stat.exists | default(false) }}.
+  when:
+    - mail_enable_nginx | default(true)
+    - mail_enable_ssl | default(mail_use_letsencrypt | default(false)) | bool
+    - not (mail_enable_ssl_effective | default(false) | bool)
 
 - name: Configure Nginx for mail services
   ansible.builtin.template:
