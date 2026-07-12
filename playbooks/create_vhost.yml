@@ -296,6 +296,11 @@
       notify: Restart SSH
       when: domain.split('.')[0] != 'cpanel'
 
+    - name: Determine host IP for /etc/hosts entries
+      ansible.builtin.set_fact:
+        vhost_ip: "{{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address) }}"
+      when: domain == master_domain
+
     - name: Configure hosts file for master domain
       ansible.builtin.lineinfile:
         path: /etc/hosts
@@ -303,15 +308,15 @@
         state: present
       with_items:
         - "127.0.0.1 localhost.localdomain localhost"
-        - "{{ ansible_default_ipv4.address }} {{ domain }} www.{{ domain }}"
-        - "{{ ansible_default_ipv4.address }} mail.{{ domain }}"
-        - "{{ ansible_default_ipv4.address }} cpanel.{{ domain }}"
+        - "{{ vhost_ip }} {{ domain }} www.{{ domain }}"
+        - "{{ vhost_ip }} mail.{{ domain }}"
+        - "{{ vhost_ip }} cpanel.{{ domain }}"
       when: domain == master_domain
 
     - name: Configure hosts file for regular domain
       ansible.builtin.lineinfile:
         path: /etc/hosts
-        line: "{{ ansible_default_ipv4.address }} {{ domain }} www.{{ domain }}"
+        line: "{{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address) }} {{ domain }} www.{{ domain }}"
         state: present
       when: domain != master_domain
 
