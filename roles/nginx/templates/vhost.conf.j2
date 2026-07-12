@@ -1,6 +1,11 @@
 # {{ ansible_managed }}
 # Virtual host configuration for {{ domain }}
 
+{% set site_ssl_enabled = nginx_ssl_enabled_effective | default(nginx_ssl_enabled | default(false)) | bool %}
+{% set site_ssl_cert = nginx_site_ssl_cert_path_effective | default('/etc/letsencrypt/live/' + domain + '/fullchain.pem') %}
+{% set site_ssl_key = nginx_site_ssl_key_path_effective | default('/etc/letsencrypt/live/' + domain + '/privkey.pem') %}
+{% set site_fastcgi_socket = fastcgi_socket | default(php_fpm_listen | default('/run/php-fpm/' ~ (domain | replace('.', '_')) ~ '.sock')) %}
+
 # Example: Conditional logging mapping (add to http block in nginx.conf if needed)
 # map $remote_addr $log_ip {
 #     "192.168.0.1" 0; # Internal network IPs to exclude from logging
@@ -17,7 +22,7 @@
 #     default $log_ip;         # Use $log_ip variable for default (combines with IP filtering)
 # }
 
-{% if nginx_ssl_enabled %}
+{% if site_ssl_enabled %}
 # HTTP server - redirect to HTTPS
 server {
     listen 80;
@@ -43,8 +48,8 @@ server {
     error_log /home/{{ domain }}/logs/error.log;
 
     # SSL Configuration
-    ssl_certificate /etc/letsencrypt/live/{{ domain }}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/{{ domain }}/privkey.pem;
+    ssl_certificate {{ site_ssl_cert }};
+    ssl_certificate_key {{ site_ssl_key }};
 
     # Improve HTTPS performance with session resumption
   	ssl_session_cache shared:SSL:10m;
@@ -134,7 +139,7 @@ server {
     # PHP handler
     location ~ \.php$ {
         try_files $uri =404;
-        fastcgi_pass unix:{{ fastcgi_socket | default(php_fpm_listen | default('/run/php-fpm/' ~ (domain | replace('.', '_')) ~ '.sock')) }};
+        fastcgi_pass unix:{{ site_fastcgi_socket }};
         fastcgi_index index.php;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         include fastcgi_params;
@@ -223,7 +228,7 @@ server {
     # PHP handler
     location ~ \.php$ {
         try_files $uri =404;
-        fastcgi_pass unix:{{ fastcgi_socket | default(php_fpm_listen | default('/run/php-fpm/' ~ (domain | replace('.', '_')) ~ '.sock')) }};
+        fastcgi_pass unix:{{ site_fastcgi_socket }};
         fastcgi_index index.php;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         include fastcgi_params;

@@ -1,7 +1,48 @@
 ---
 # Nginx site management tasks for sites-available/sites-enabled pattern
 
-# Site Creation and Management
+# Runtime TLS resolution
+- name: Resolve expected TLS asset paths for site vhost
+  ansible.builtin.set_fact:
+    nginx_vhost_domain_effective: "{{ domain | default(nginx_site_name) }}"
+    nginx_site_ssl_cert_path_effective: "{{ nginx_ssl_cert | default('/etc/letsencrypt/live/' + (domain | default(nginx_site_name)) + '/fullchain.pem') }}"
+    nginx_site_ssl_key_path_effective: "{{ nginx_ssl_key | default('/etc/letsencrypt/live/' + (domain | default(nginx_site_name)) + '/privkey.pem') }}"
+  when: nginx_site_name is defined
+
+- name: Check site vhost TLS certificate file
+  ansible.builtin.stat:
+    path: "{{ nginx_site_ssl_cert_path_effective }}"
+  register: nginx_site_ssl_cert_stat
+  when: nginx_site_name is defined
+
+- name: Check site vhost TLS private key file
+  ansible.builtin.stat:
+    path: "{{ nginx_site_ssl_key_path_effective }}"
+  register: nginx_site_ssl_key_stat
+  when: nginx_site_name is defined
+
+- name: Determine effective SSL mode for site vhost
+  ansible.builtin.set_fact:
+    nginx_ssl_enabled_effective: >-
+      {{
+        (nginx_ssl_enabled | default(false) | bool)
+        and (nginx_site_ssl_cert_stat.stat.exists | default(false))
+        and (nginx_site_ssl_key_stat.stat.exists | default(false))
+      }}
+  when: nginx_site_name is defined
+
+- name: Warn when site vhost SSL requested but TLS assets are missing
+  ansible.builtin.debug:
+    msg: >-
+      nginx_ssl_enabled requested for {{ nginx_site_name }}, but TLS assets are incomplete; rendering HTTP-only vhost for this run.
+      cert={{ nginx_site_ssl_cert_stat.stat.exists | default(false) }},
+      key={{ nginx_site_ssl_key_stat.stat.exists | default(false) }}.
+  when:
+    - nginx_site_name is defined
+    - nginx_ssl_enabled | default(false) | bool
+    - not (nginx_ssl_enabled_effective | default(false) | bool)
+
+# Site creation and enablement
 - name: Create virtual host configuration in sites-available
   ansible.builtin.template:
     src: "{{ nginx_vhost_template | default('vhost.conf.j2') }}"
@@ -20,6 +61,7 @@
     mode: '0644'
     owner: root
     group: root
+  when:
     - nginx_site_name is defined
     - nginx_site_enabled | default(true)
   notify: restart_nginx_service
@@ -42,8 +84,8 @@
     - nginx_site_remove | default(false)
   notify: restart_nginx_service
 
-- # Configuration Testing
-  name: Test nginx configuration after site changes
+# Configuration testing
+- name: Test nginx configuration after site changes
   ansible.builtin.command: nginx -t
   register: nginx_config_test
   changed_when: false

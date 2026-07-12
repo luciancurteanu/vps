@@ -314,6 +314,110 @@
         mail_enable_ssl: true
       when: install_mail | default(true) and domain == master_domain
 
+    - name: Check if Postfix main.cf exists
+      ansible.builtin.stat:
+        path: /etc/postfix/main.cf
+      register: postfix_maincf_stat
+      when: install_mail | default(true) and domain == master_domain
+
+    - name: Check if Postfix header_checks exists
+      ansible.builtin.stat:
+        path: /etc/postfix/header_checks
+      register: postfix_header_checks_stat
+      when:
+        - install_mail | default(true)
+        - domain == master_domain
+        - postfix_maincf_stat.stat.exists | default(false)
+
+    - name: Backup original Postfix header_checks
+      ansible.builtin.copy:
+        src: /etc/postfix/header_checks
+        dest: /etc/postfix/header_checks.bak
+        remote_src: true
+        mode: '0644'
+        force: false
+      when:
+        - install_mail | default(true)
+        - domain == master_domain
+        - postfix_maincf_stat.stat.exists | default(false)
+        - postfix_header_checks_stat.stat.exists | default(false)
+
+    - name: Create Postfix header_checks when missing
+      ansible.builtin.copy:
+        dest: /etc/postfix/header_checks
+        content: ""
+        owner: root
+        group: root
+        mode: '0644'
+        force: false
+      when:
+        - install_mail | default(true)
+        - domain == master_domain
+        - postfix_maincf_stat.stat.exists | default(false)
+
+    - name: Add custom spam header/body checks
+      ansible.builtin.blockinfile:
+        path: /etc/postfix/header_checks
+        marker: "# {mark} ANSIBLE MANAGED CUSTOM HEADER CHECKS"
+        insertafter: EOF
+        block: |
+          #/^X-Mailer:/    IGNORE
+          #/^From:.*name@.*/ REJECT
+          #/^Subject:.*Re: your photos.*/ REJECT
+          #/^Subject:.*Re: Special invitation.*/ REJECT
+          #/^Received:.*(\(unknown).*/ REJECT
+          #body
+          #/(crypto|bit coin|hаckеr|malwаre|bitcоin|\.jp(?!g)|\.ru)/gi REJECT
+          # regexp-table active equivalents (Postfix without pcre support)
+          /^Received:.*\(unknown.*/ REJECT
+          /(crypto|bit coin|hаckеr|malwаre|bitcоin|\.jp([^g]|$)|\.ru)/i REJECT
+      when:
+        - install_mail | default(true)
+        - domain == master_domain
+        - postfix_maincf_stat.stat.exists | default(false)
+      notify: Restart Postfix
+
+    - name: Remove malformed Postfix nheader_checks entry if present
+      ansible.builtin.lineinfile:
+        path: /etc/postfix/main.cf
+        regexp: '^nheader_checks\s*='
+        state: absent
+      when:
+        - install_mail | default(true)
+        - domain == master_domain
+        - postfix_maincf_stat.stat.exists | default(false)
+
+    - name: Ensure Postfix main.cf has trailing blank line before postconf edits
+      ansible.builtin.lineinfile:
+        path: /etc/postfix/main.cf
+        insertafter: EOF
+        line: ""
+      when:
+        - install_mail | default(true)
+        - domain == master_domain
+        - postfix_maincf_stat.stat.exists | default(false)
+
+    - name: Enforce canonical smtp TLS settings in Postfix
+      ansible.builtin.command:
+        argv:
+          - postconf
+          - -e
+          - "{{ item }}"
+      loop:
+        - "smtp_use_tls=yes"
+        - "smtp_tls_security_level=may"
+        - "smtp_tls_loglevel=1"
+        - "smtp_tls_session_cache_database=btree:${data_directory}/smtp_scache"
+        - "smtp_tls_cert_file={{ ssl_cert_file }}"
+        - "smtp_tls_key_file={{ ssl_cert_key }}"
+        - "smtp_tls_CAfile={{ ssl_ca_file }}"
+        - "header_checks=regexp:/etc/postfix/header_checks"
+      when:
+        - install_mail | default(true)
+        - domain == master_domain
+        - postfix_maincf_stat.stat.exists | default(false)
+      notify: Restart Postfix
+
     - name: Update Webmin nginx proxy configuration with SSL enabled
       ansible.builtin.template:
         src: "{{ playbook_dir }}/../roles/webmin/templates/nginx/webmin.conf.j2"
@@ -378,4 +482,9 @@
     - name: Restart Dovecot
       ansible.builtin.service:
         name: dovecot
+        state: restarted
+
+    - name: Restart Postfix
+      ansible.builtin.service:
+        name: postfix
         state: restarted

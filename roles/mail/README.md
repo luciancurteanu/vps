@@ -13,6 +13,49 @@ This role installs and configures a complete mail server stack with Postfix, Dov
 - Proper mail directories and permissions
 - Integration with Let's Encrypt for SSL certificates
 
+## Effective SSL behavior
+
+This role now distinguishes between **requested SSL mode** and **effective SSL mode** at runtime.
+
+### Mail protocols: Postfix and Dovecot
+
+If `mail_use_letsencrypt: true` is set, the role checks whether these files actually exist:
+
+- `/etc/letsencrypt/live/{{ domain }}/fullchain.pem`
+- `/etc/letsencrypt/live/{{ domain }}/privkey.pem`
+- `/etc/letsencrypt/live/{{ domain }}/chain.pem`
+
+Behavior:
+
+- **Files exist** → Postfix and Dovecot use the Let's Encrypt certificate paths.
+- **Files missing** → the role falls back to local certificate paths under `mail_ssl_dir` instead of rendering broken LE references.
+
+This prevents Dovecot/Postfix from failing just because a variable requested Let's Encrypt before certificates had been issued.
+
+### Webmail vhost: `mail.{{ domain }}`
+
+The nginx webmail vhost also uses an effective SSL check:
+
+- **Web TLS assets exist** → HTTP redirects to HTTPS and a 443 server block is rendered.
+- **Web TLS assets missing** → only the HTTP server block is used for that run.
+
+## SSL-related variables
+
+Useful variables for this behavior include:
+
+```yaml
+mail_use_letsencrypt: false
+mail_ssl_dir: "/etc/ssl/local/{{ domain }}"
+mail_ssl_enabled: true
+mail_enable_ssl: false
+```
+
+- `mail_use_letsencrypt` controls whether LE is preferred for mail services.
+- `mail_ssl_enabled` controls whether Dovecot SSL services should be enabled.
+- `mail_enable_ssl` controls whether the webmail nginx vhost should redirect/render HTTPS.
+
+Even when these are `true`, the role only enables the SSL path if the required files are present.
+
 ## Requirements
 
 - Ansible 2.9 or higher
@@ -80,6 +123,15 @@ The role sets up and configures:
 - **OpenDKIM** - DKIM email authentication
 - **Roundcube** - Webmail interface
 - **MySQL Database** - Backend storage for mail accounts
+
+### Roundcube user behavior
+
+Roundcube does **not** create mailbox accounts in `mailserver.users`.
+
+- Mailboxes are created and managed by the mail role / database provisioning.
+- Roundcube stores its own webmail preferences and session/user metadata in the `roundcube` database.
+
+So a user appearing in Roundcube is not the same thing as provisioning a new mail account.
 
 ## Password Management
 

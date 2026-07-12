@@ -1,41 +1,47 @@
 # Mail server Nginx configuration for {{ mail_subdomain }}
+{% set mail_ssl_enabled = mail_enable_ssl_effective | default(mail_enable_ssl | default(false)) | bool %}
+{% set mail_log_prefix = mail_subdomain.split('.')[0] %}
+{% set mail_fastcgi_socket = '/run/php-fpm/' + (mail_subdomain | replace('.', '_')) + '.sock' %}
+
 server {
     listen 80;
+    listen [::]:80;
     server_name {{ mail_subdomain }};
-    
+
     root {{ webmail_path }}/public_html;
     index index.php index.html;
-    
-    access_log /home/{{ domain }}/logs/{{ mail_subdomain.split('.')[0] }}-access.log;
-    error_log /home/{{ domain }}/logs/{{ mail_subdomain.split('.')[0] }}-error.log;
+
+    access_log /home/{{ domain }}/logs/{{ mail_log_prefix }}-access.log;
+    error_log /home/{{ domain }}/logs/{{ mail_log_prefix }}-error.log;
+
+    location / {
+{% if mail_ssl_enabled %}
+        return 301 https://$host$request_uri;
+{% else %}
+        try_files $uri $uri/ /index.php?$args;
+{% endif %}
+    }
 
     # PHP handling
     location ~ \.php$ {
         try_files $uri =404;
         fastcgi_split_path_info ^(.+\.php)(/.+)$;
-        fastcgi_pass unix:/run/php-fpm/{{ mail_subdomain | replace('.', '_') }}.sock;
+        fastcgi_pass unix:{{ mail_fastcgi_socket }};
         fastcgi_index index.php;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         include fastcgi_params;
         fastcgi_intercept_errors on;
     }
-    
+
     # Deny access to dotfiles
     location ~ /\. {
         deny all;
         access_log off;
         log_not_found off;
     }
-    
-    # Only redirect to HTTPS if SSL certificate exists
-    {% if mail_enable_ssl_effective | default(mail_enable_ssl | default(false)) %}
-    location / {
-        return 301 https://$host$request_uri;
-    }
-    {% endif %}
 }
 
-{% if mail_enable_ssl_effective | default(mail_enable_ssl | default(false)) %}
+{% if mail_ssl_enabled %}
 server {
     listen 443 ssl;
     listen [::]:443 ssl;
@@ -45,24 +51,28 @@ server {
     root {{ webmail_path }}/public_html;
     index index.php index.html;
     
-    access_log /home/{{ domain }}/logs/{{ mail_subdomain.split('.')[0] }}-access.log;
-    error_log /home/{{ domain }}/logs/{{ mail_subdomain.split('.')[0] }}-error.log;
+    access_log /home/{{ domain }}/logs/{{ mail_log_prefix }}-access.log;
+    error_log /home/{{ domain }}/logs/{{ mail_log_prefix }}-error.log;
 
     # SSL configuration
-    ssl_certificate {{ nginx_ssl_cert | default('/etc/letsencrypt/live/' + domain + '/fullchain.pem') }};
-    ssl_certificate_key {{ nginx_ssl_key | default('/etc/letsencrypt/live/' + domain + '/privkey.pem') }};
-    ssl_trusted_certificate {{ nginx_ssl_ca | default('/etc/letsencrypt/live/' + domain + '/chain.pem') }};
+    ssl_certificate {{ mail_ssl_cert_path_effective | default(nginx_ssl_cert | default('/etc/letsencrypt/live/' + domain + '/fullchain.pem')) }};
+    ssl_certificate_key {{ mail_ssl_key_path_effective | default(nginx_ssl_key | default('/etc/letsencrypt/live/' + domain + '/privkey.pem')) }};
+    ssl_trusted_certificate {{ mail_ssl_chain_path_effective | default(nginx_ssl_ca | default('/etc/letsencrypt/live/' + domain + '/chain.pem')) }};
     
     # Security headers
     add_header X-Content-Type-Options nosniff;
     add_header X-XSS-Protection "1; mode=block";
     add_header X-Frame-Options SAMEORIGIN;
+
+    location / {
+        try_files $uri $uri/ /index.php?$args;
+    }
     
     # PHP handling
     location ~ \.php$ {
         try_files $uri =404;
         fastcgi_split_path_info ^(.+\.php)(/.+)$;
-        fastcgi_pass unix:/run/php-fpm/{{ mail_subdomain | replace('.', '_') }}.sock;
+        fastcgi_pass unix:{{ mail_fastcgi_socket }};
         fastcgi_index index.php;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         include fastcgi_params;

@@ -1,6 +1,8 @@
 # {{ ansible_managed }}
 # Nginx reverse proxy configuration for Webmin
 
+{% set webmin_ssl_enabled = webmin_ssl_enabled_effective | default(webmin_ssl_enabled | default(false)) | bool %}
+
 upstream webmin-upstream {
     server localhost:{{ webmin_port }};
 }
@@ -10,7 +12,7 @@ server {
     listen [::]:80;
     server_name {{ webmin_subdomain }};
 
-{% if webmin_ssl_enabled_effective | default(webmin_ssl_enabled | default(false)) %}
+{% if webmin_ssl_enabled %}
     # Redirect to HTTPS
     return 301 https://$host$request_uri;
 }
@@ -22,8 +24,8 @@ server {
     server_name {{ webmin_subdomain }};
 
     # SSL configuration
-    ssl_certificate {{ nginx_ssl_cert | default('/etc/letsencrypt/live/' + domain + '/fullchain.pem') }};
-    ssl_certificate_key {{ nginx_ssl_key | default('/etc/letsencrypt/live/' + domain + '/privkey.pem') }};
+    ssl_certificate {{ webmin_ssl_cert_path_effective | default(nginx_ssl_cert | default('/etc/letsencrypt/live/' + domain + '/fullchain.pem')) }};
+    ssl_certificate_key {{ webmin_ssl_key_path_effective | default(nginx_ssl_key | default('/etc/letsencrypt/live/' + domain + '/privkey.pem')) }};
 {% if not (is_dev_domain | default(false)) %}
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
@@ -66,15 +68,13 @@ server {
         proxy_hide_header Strict-Transport-Security;
         
         # Proxy request to webmin server (HTTP when SSL disabled, HTTPS when enabled)
-        {% if webmin_ssl_enabled_effective | default(webmin_ssl_enabled | default(false)) %}
         proxy_pass https://webmin-upstream/;
         proxy_ssl_verify off;
+        {% if webmin_ssl_enabled %}
         proxy_redirect ~^https?://[^/]+:{{ webmin_port }}(/.*)$ $scheme://$http_host$1;
         proxy_redirect ~^https?://[^/]+:{{ webmin_port }}$ $scheme://$http_host/;
         proxy_redirect / /;
         {% else %}
-        proxy_pass https://webmin-upstream/;
-        proxy_ssl_verify off;
         proxy_ssl_server_name on;
         proxy_ssl_name localhost;
         proxy_ssl_session_reuse on;

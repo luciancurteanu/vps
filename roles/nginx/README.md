@@ -85,6 +85,17 @@ These are set per-vhost by `create_vhost.yml` and `ssl.yml` playbooks:
 | `domain` | **Required** | Domain name for virtual host |
 | `nginx_ssl_enabled` | `false`/`true` | HTTP-only vs HTTPS mode |
 
+### Effective virtual host SSL behavior
+
+`nginx_ssl_enabled` describes the **requested** vhost mode. The site-management tasks now also verify that the referenced certificate and key files actually exist before rendering an HTTPS server block.
+
+Behavior:
+
+- **TLS files exist** → `nginx_ssl_enabled_effective` becomes `true`, and the HTTPS server block is rendered.
+- **TLS files missing** → `nginx_ssl_enabled_effective` becomes `false`, and the vhost is rendered as HTTP-only for that run.
+
+This avoids broken nginx reloads when a site is marked for SSL before the certificate has been installed.
+
 ## Dependencies
 
 None. This role can be used standalone or integrated with other roles.
@@ -255,6 +266,8 @@ This adds:
 - HTTP → HTTPS redirect
 - OCSP stapling, HSTS preload
 - Security headers (CSP, X-Content-Type-Options, etc.)
+
+If the certificate files are not yet present, the generic vhost template will remain on HTTP until a later run when the TLS assets exist.
 
 ### Removing a Virtual Host
 
@@ -628,6 +641,7 @@ Virtual host template with:
 - Security headers
 - PHP-FPM integration
 - SSL/TLS configuration (when enabled)
+- Effective SSL fallback based on actual certificate presence
 - OCSP stapling
 - HSTS preload
 - try_files fallback

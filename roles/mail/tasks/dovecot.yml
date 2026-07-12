@@ -18,6 +18,102 @@
   with_items:
     - /etc/dovecot/conf.d
 
+- name: Check Let's Encrypt cert file for Dovecot TLS
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ domain }}/fullchain.pem"
+  register: dovecot_le_cert_stat
+  when: mail_use_letsencrypt | default(false)
+
+- name: Check Let's Encrypt key file for Dovecot TLS
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ domain }}/privkey.pem"
+  register: dovecot_le_key_stat
+  when: mail_use_letsencrypt | default(false)
+
+- name: Check Let's Encrypt chain file for Dovecot TLS
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ domain }}/chain.pem"
+  register: dovecot_le_chain_stat
+  when: mail_use_letsencrypt | default(false)
+
+- name: Determine effective Dovecot TLS source and paths
+  ansible.builtin.set_fact:
+    mail_use_letsencrypt_effective: >-
+      {{
+        (mail_use_letsencrypt | default(false) | bool)
+        and (dovecot_le_cert_stat.stat.exists | default(false))
+        and (dovecot_le_key_stat.stat.exists | default(false))
+        and (dovecot_le_chain_stat.stat.exists | default(false))
+      }}
+    mail_tls_cert_file_effective: >-
+      {{
+        ('/etc/letsencrypt/live/' + domain + '/fullchain.pem')
+        if (
+          (mail_use_letsencrypt | default(false) | bool)
+          and (dovecot_le_cert_stat.stat.exists | default(false))
+          and (dovecot_le_key_stat.stat.exists | default(false))
+          and (dovecot_le_chain_stat.stat.exists | default(false))
+        )
+        else (mail_ssl_dir + '/server.crt')
+      }}
+    mail_tls_key_file_effective: >-
+      {{
+        ('/etc/letsencrypt/live/' + domain + '/privkey.pem')
+        if (
+          (mail_use_letsencrypt | default(false) | bool)
+          and (dovecot_le_cert_stat.stat.exists | default(false))
+          and (dovecot_le_key_stat.stat.exists | default(false))
+          and (dovecot_le_chain_stat.stat.exists | default(false))
+        )
+        else (mail_ssl_dir + '/server.key')
+      }}
+    mail_tls_ca_file_effective: >-
+      {{
+        ('/etc/letsencrypt/live/' + domain + '/chain.pem')
+        if (
+          (mail_use_letsencrypt | default(false) | bool)
+          and (dovecot_le_cert_stat.stat.exists | default(false))
+          and (dovecot_le_key_stat.stat.exists | default(false))
+          and (dovecot_le_chain_stat.stat.exists | default(false))
+        )
+        else (mail_ssl_dir + '/ca.crt')
+      }}
+
+- name: Check effective Dovecot TLS certificate file
+  ansible.builtin.stat:
+    path: "{{ mail_tls_cert_file_effective }}"
+  register: dovecot_ssl_cert_stat
+
+- name: Check effective Dovecot TLS private key file
+  ansible.builtin.stat:
+    path: "{{ mail_tls_key_file_effective }}"
+  register: dovecot_ssl_key_stat
+
+- name: Check effective Dovecot TLS CA file
+  ansible.builtin.stat:
+    path: "{{ mail_tls_ca_file_effective }}"
+  register: dovecot_ssl_ca_stat
+
+- name: Determine effective Dovecot SSL mode
+  ansible.builtin.set_fact:
+    mail_ssl_enabled_effective: >-
+      {{
+        (mail_ssl_enabled | default(false) | bool)
+        and (dovecot_ssl_cert_stat.stat.exists | default(false))
+        and (dovecot_ssl_key_stat.stat.exists | default(false))
+      }}
+
+- name: Warn when Dovecot SSL requested but TLS assets are missing
+  ansible.builtin.debug:
+    msg: >-
+      mail_ssl_enabled requested but Dovecot TLS assets are incomplete; disabling Dovecot SSL for this run.
+      cert={{ dovecot_ssl_cert_stat.stat.exists | default(false) }},
+      key={{ dovecot_ssl_key_stat.stat.exists | default(false) }},
+      ca={{ dovecot_ssl_ca_stat.stat.exists | default(false) }}.
+  when:
+    - mail_ssl_enabled | default(false) | bool
+    - not (mail_ssl_enabled_effective | default(false) | bool)
+
 - name: Backup Dovecot main configuration
   ansible.builtin.copy:
     src: /etc/dovecot/dovecot.conf

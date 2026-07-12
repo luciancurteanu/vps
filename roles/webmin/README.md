@@ -52,7 +52,21 @@ All variables are defined in [defaults/main.yml](defaults/main.yml):
 | `webmin_subdomain` | `cpanel.{{ domain }}` | Subdomain for nginx proxy access |
 | `webmin_ssl_enabled` | `false` | SSL configuration status (for nginx proxy) |
 
-**Note**: `webmin_ssl_enabled` indicates whether SSL termination is handled by nginx. Webmin itself runs on HTTP when using reverse proxy.
+**Note**: `webmin_ssl_enabled` indicates the **requested** nginx SSL mode. Webmin itself still runs on its own service port, while the proxy decides at runtime whether it can safely expose HTTPS.
+
+### Effective proxy SSL behavior
+
+When `webmin_nginx_proxy: true`, the role now checks the required TLS files before enabling HTTPS on the proxy.
+
+- **Certificates present** → nginx proxy serves `https://{{ webmin_subdomain }}`.
+- **Certificates missing** → nginx proxy stays on HTTP for that run.
+
+For non-dev domains, the proxy also checks for:
+
+- `/etc/letsencrypt/options-ssl-nginx.conf`
+- `/etc/letsencrypt/ssl-dhparams.pem`
+
+If those shared nginx TLS files are missing, HTTPS is not enabled yet even if `webmin_ssl_enabled: true` is requested.
 
 ## Dependencies
 
@@ -191,6 +205,8 @@ Example configuration matching your old server setup:
 ```
 
 This allows access via `https://cpanel.yourdomain.com` instead of `http://server-ip:10000`.
+
+If the certificate files do not exist yet, the template still renders a working HTTP proxy instead of pointing nginx at broken Let's Encrypt paths.
 
 ## Testing
 
