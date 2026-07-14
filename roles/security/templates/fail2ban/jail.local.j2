@@ -51,7 +51,7 @@ bantime = -1
 findtime = 86400
 
 [mariadb]
-enabled = {{ install_mariadb | default(false) | ternary('true','false') }}
+enabled = {{ (install_mariadb | default(false) and stat_mariadb_log.stat.exists) | ternary('true','false') }}
 backend = polling
 ignorelogfail = true
 port = {{ db_port | default(3306) }}

@@ -15,6 +15,7 @@
     state: directory
     owner: dovecot
     group: dovecot
+    mode: '0755'
   loop:
     - /etc/dovecot/conf.d
 
@@ -33,10 +34,115 @@
     path: /etc/pki/dovecot/certs/ca.pem
   register: dovecot_system_ca
 
-- name: Fail if Dovecot cert or key missing
+- name: Ensure /etc/pki/dovecot directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: dovecot
+    group: dovecot
+    mode: "0755"
+  loop:
+    - /etc/pki/dovecot
+    - /etc/pki/dovecot/certs
+    - /etc/pki/dovecot/private
+
+- name: Use locally generated certs if available (from /etc/ssl/local/{{ domain }})
+  block:
+    - name: Stat local generated cert
+      ansible.builtin.stat:
+        path: "/etc/ssl/local/{{ domain | default(mail_domain | default(domain)) }}/server.crt"
+      register: local_server_crt
+
+    - name: Stat local generated key
+      ansible.builtin.stat:
+        path: "/etc/ssl/local/{{ domain | default(mail_domain | default(domain)) }}/server.key"
+      register: local_server_key
+
+    - name: Copy local generated cert to Dovecot path
+      ansible.builtin.copy:
+        src: "/etc/ssl/local/{{ domain | default(mail_domain | default(domain)) }}/server.crt"
+        dest: /etc/pki/dovecot/certs/dovecot.pem
+        owner: dovecot
+        group: dovecot
+        mode: '0644'
+        remote_src: true
+      when: local_server_crt.stat.exists and local_server_key.stat.exists
+
+    - name: Copy local generated key to Dovecot path
+      ansible.builtin.copy:
+        src: "/etc/ssl/local/{{ domain | default(mail_domain | default(domain)) }}/server.key"
+        dest: /etc/pki/dovecot/private/dovecot.pem
+        owner: dovecot
+        group: dovecot
+        mode: '0600'
+        remote_src: true
+      when: local_server_crt.stat.exists and local_server_key.stat.exists
+  when: not (dovecot_system_cert.stat.exists and dovecot_system_key.stat.exists)
+
+- name: Try to deploy Let's Encrypt certs for Dovecot if available
+  block:
+    - name: Stat Let's Encrypt fullchain
+      ansible.builtin.stat:
+        path: "/etc/letsencrypt/live/{{ domain | default(mail_domain | default(domain)) }}/fullchain.pem"
+      register: le_fullchain_stat
+
+    - name: Stat Let's Encrypt privkey
+      ansible.builtin.stat:
+        path: "/etc/letsencrypt/live/{{ domain | default(mail_domain | default(domain)) }}/privkey.pem"
+      register: le_privkey_stat
+
+    - name: Copy Let's Encrypt fullchain to Dovecot cert
+      ansible.builtin.copy:
+        src: "/etc/letsencrypt/live/{{ domain | default(mail_domain | default(domain)) }}/fullchain.pem"
+        dest: /etc/pki/dovecot/certs/dovecot.pem
+        owner: dovecot
+        group: dovecot
+        mode: '0644'
+        remote_src: true
+      when: le_fullchain_stat.stat.exists and le_privkey_stat.stat.exists
+
+    - name: Copy Let's Encrypt privkey to Dovecot key
+      ansible.builtin.copy:
+        src: "/etc/letsencrypt/live/{{ domain | default(mail_domain | default(domain)) }}/privkey.pem"
+        dest: /etc/pki/dovecot/private/dovecot.pem
+        owner: dovecot
+        group: dovecot
+        mode: '0600'
+        remote_src: true
+      when: le_fullchain_stat.stat.exists and le_privkey_stat.stat.exists
+  when: mail_use_letsencrypt | default(false)
+
+- name: Generate self-signed Dovecot cert if system PKI missing
+  block:
+    - name: Ensure openssl is installed
+      ansible.builtin.package:
+        name: openssl
+        state: present
+
+    - name: Create self-signed cert and key for Dovecot (idempotent)
+      ansible.builtin.command: >-
+        /usr/bin/openssl req -x509 -nodes -days 365 -newkey rsa:2048
+        -subj "/CN={{ mail_hostname | default(domain | default('localhost')) }}"
+        -keyout /etc/pki/dovecot/private/dovecot.pem
+        -out /etc/pki/dovecot/certs/dovecot.pem
+      args:
+        creates: /etc/pki/dovecot/certs/dovecot.pem
+  when: not (dovecot_system_cert.stat.exists and dovecot_system_key.stat.exists)
+
+- name: Re-stat Dovecot cert and key after potential provisioning
+  ansible.builtin.stat:
+    path: /etc/pki/dovecot/certs/dovecot.pem
+  register: dovecot_system_cert_after
+
+- name: Re-stat Dovecot key after potential provisioning
+  ansible.builtin.stat:
+    path: /etc/pki/dovecot/private/dovecot.pem
+  register: dovecot_system_key_after
+
+- name: Fail if Dovecot cert or key missing after provisioning attempts
   ansible.builtin.fail:
     msg: "Dovecot TLS cert or key missing at /etc/pki/dovecot. Ensure /etc/pki/dovecot/certs/dovecot.pem and /etc/pki/dovecot/private/dovecot.pem exist."
-  when: not (dovecot_system_cert.stat.exists and dovecot_system_key.stat.exists)
+  when: not (dovecot_system_cert_after.stat.exists and dovecot_system_key_after.stat.exists)
 
 - name: Backup Dovecot SSL config
   ansible.builtin.copy:
