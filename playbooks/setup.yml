@@ -7,6 +7,15 @@
     - ../vars/secrets.yml
 
   pre_tasks:
+    - name: Ensure cloud-init will not overwrite /etc/hosts
+      tags: ['setup']
+      ansible.builtin.copy:
+        dest: /etc/cloud/cloud.cfg.d/99-disable-manage-hosts.cfg
+        content: "manage_etc_hosts: false\n"
+        owner: root
+        group: root
+        mode: '0644'
+
     - name: Install passlib on controller (needed for password_hash filter)
       tags: ['setup']
       ansible.builtin.pip:

@@ -64,11 +64,11 @@ Pick one option below and follow the steps exactly.
 
 Option 1 - Interactive (recommended for manual use)
 ```bash
-# Run setup (no --vault-password-file needed anymore — ansible.cfg handles it):
-# Copy ssh keys, encrypt secrets.yml and run install:
-./vps.sh sync keys
-ansible-vault encrypt vars/secrets.yml
+
 ./vps.sh install core --domain=yourdomain.com
+ 
+ansible-vault encrypt vars/secrets.yml
+
 ```
 ---
 Option 2 - Password file (plain text, convenient)
@@ -129,6 +129,16 @@ Option 3 - encrypt-vault.sh helper (recommended for scripted use / automation)
 - `http://mail.yourdomain.com` - Roundcube webmail
 - `http://cpanel.yourdomain.com` - Webmin control panel
 
+### Effective SSL behavior
+
+SSL-related variables express the **desired** mode, but the playbooks now also verify that the required TLS assets actually exist before enabling HTTPS or binding services to Let's Encrypt paths.
+
+- **Nginx/Web vhosts**: if certificates are missing, the site stays on HTTP for that run.
+- **Webmin proxy**: if certificates or shared LE nginx files are missing, the proxy stays on HTTP for that run.
+- **Postfix/Dovecot**: if Let's Encrypt files are missing, they fall back to local self-signed paths instead of referencing broken `/etc/letsencrypt/live/...` paths.
+
+This prevents partial SSL configuration from breaking services when `mail_use_letsencrypt`, `webmin_ssl_enabled`, or `nginx_ssl_enabled` are set before certificate files are actually present.
+
 **To enable HTTPS:**
 ```bash
 ./vps.sh install ssl --domain=yourdomain.com
@@ -144,6 +154,8 @@ After SSL installation, all sites automatically switch to:
 - `https://yourdomain.com`
 - `https://mail.yourdomain.com`
 - `https://cpanel.yourdomain.com`
+
+If Let's Encrypt files already exist before `install ssl` runs, the effective SSL checks will allow the related services to use them immediately.
 
 ### Domain Management
 
