@@ -33,12 +33,13 @@ smtp_tls_key_file = {{ mail_tls_key_file_effective | default(mail_tls_key_file) 
 smtp_tls_CAfile = {{ mail_tls_ca_file_effective | default(mail_tls_ca_file) }}
 
 smtpd_use_tls = yes
-smtpd_tls_security_level = may
-smtpd_tls_loglevel = 1
-smtpd_tls_session_cache_database = btree:${data_directory}/smtpd_scache
-smtpd_tls_cert_file = {{ mail_tls_cert_file_effective | default(mail_tls_cert_file) }}
-smtpd_tls_key_file = {{ mail_tls_key_file_effective | default(mail_tls_key_file) }}
-smtpd_tls_CAfile = {{ mail_tls_ca_file_effective | default(mail_tls_ca_file) }}
+# Commented out: manage TLS settings elsewhere or via Dovecot; disabling smtpd_tls_* here
+# smtpd_tls_security_level = may
+# smtpd_tls_loglevel = 1
+# smtpd_tls_session_cache_database = btree:${data_directory}/smtpd_scache
+# smtpd_tls_cert_file = {{ mail_tls_cert_file_effective | default(mail_tls_cert_file) }}
+# smtpd_tls_key_file = {{ mail_tls_key_file_effective | default(mail_tls_key_file) }}
+# smtpd_tls_CAfile = {{ mail_tls_ca_file_effective | default(mail_tls_ca_file) }}
 
 # SMTP restrictions
 smtpd_helo_required = yes

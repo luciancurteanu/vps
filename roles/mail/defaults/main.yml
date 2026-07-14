@@ -49,6 +49,6 @@ mail_ssl_ca: "{{ mail_tls_ca_file }}"     # Reuse Postfix CA path
 # When false (default), a self-signed cert is auto-generated under mail_ssl_dir.
 mail_use_letsencrypt: false
 mail_ssl_dir: "/etc/ssl/local/{{ domain }}"
-mail_tls_cert_file: "{{ '/etc/letsencrypt/live/' + domain + '/fullchain.pem' if mail_use_letsencrypt else mail_ssl_dir + '/server.crt' }}"
-mail_tls_key_file: "{{ '/etc/letsencrypt/live/' + domain + '/privkey.pem' if mail_use_letsencrypt else mail_ssl_dir + '/server.key' }}"
-mail_tls_ca_file: "{{ '/etc/letsencrypt/live/' + domain + '/chain.pem' if mail_use_letsencrypt else mail_ssl_dir + '/ca.crt' }}"
+mail_tls_cert_file: "{{ '/etc/letsencrypt/live/' + domain + '/fullchain.pem' if mail_use_letsencrypt else '/etc/pki/dovecot/certs/dovecot.pem' }}"
+mail_tls_key_file: "{{ '/etc/letsencrypt/live/' + domain + '/privkey.pem' if mail_use_letsencrypt else '/etc/pki/dovecot/private/dovecot.pem' }}"
+mail_tls_ca_file: "{{ '/etc/letsencrypt/live/' + domain + '/chain.pem' if mail_use_letsencrypt else '/etc/pki/dovecot/certs/dovecot.pem' }}"

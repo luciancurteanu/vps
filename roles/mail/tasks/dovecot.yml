@@ -46,7 +46,7 @@
         and (dovecot_le_chain_stat.stat.exists | default(false))
       }}
     mail_tls_cert_file_effective: >-
-      {{
+      {
         ('/etc/letsencrypt/live/' + domain + '/fullchain.pem')
         if (
           (mail_use_letsencrypt | default(false) | bool)
@@ -54,10 +54,10 @@
           and (dovecot_le_key_stat.stat.exists | default(false))
           and (dovecot_le_chain_stat.stat.exists | default(false))
         )
-        else (mail_ssl_dir + '/server.crt')
-      }}
+        else '/etc/pki/dovecot/certs/dovecot.pem'
+      }
     mail_tls_key_file_effective: >-
-      {{
+      {
         ('/etc/letsencrypt/live/' + domain + '/privkey.pem')
         if (
           (mail_use_letsencrypt | default(false) | bool)
@@ -65,10 +65,10 @@
           and (dovecot_le_key_stat.stat.exists | default(false))
           and (dovecot_le_chain_stat.stat.exists | default(false))
         )
-        else (mail_ssl_dir + '/server.key')
-      }}
+        else '/etc/pki/dovecot/private/dovecot.pem'
+      }
     mail_tls_ca_file_effective: >-
-      {{
+      {
         ('/etc/letsencrypt/live/' + domain + '/chain.pem')
         if (
           (mail_use_letsencrypt | default(false) | bool)
@@ -76,8 +76,8 @@
           and (dovecot_le_key_stat.stat.exists | default(false))
           and (dovecot_le_chain_stat.stat.exists | default(false))
         )
-        else (mail_ssl_dir + '/ca.crt')
-      }}
+        else '/etc/pki/dovecot/certs/dovecot.pem'
+      }
 
 - name: Check effective Dovecot TLS certificate file
   ansible.builtin.stat:
