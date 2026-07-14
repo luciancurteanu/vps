@@ -16,35 +16,6 @@
         group: root
         mode: '0644'
 
-    - name: Comment out default_user block in /etc/cloud/cloud.cfg
-      tags: ['setup']
-      ansible.builtin.replace:
-        path: /etc/cloud/cloud.cfg
-        regexp: '(?ms)^default_user:.*?\n\s*name:.*?\n'
-        replace: '#default_user:\n#  name: almalinux\n'
-        backup: yes
-      failed_when: false
-
-    - name: Ensure cloud-init does not create a default user (cloud.cfg.d)
-      tags: ['setup']
-      ansible.builtin.copy:
-        dest: /etc/cloud/cloud.cfg.d/99-disable-default-user.cfg
-        content: |
-          # Prevent cloud-init from creating the distro default user
-          users: []
-        owner: root
-        group: root
-        mode: '0644'
-      failed_when: false
-
-    - name: Ensure unwanted 'almalinux' user is absent
-      tags: ['setup']
-      ansible.builtin.user:
-        name: almalinux
-        state: absent
-        remove: yes
-      failed_when: false
-
     - name: Ensure /etc/hosts has an entry for the domain
       tags: ['setup']
       ansible.builtin.lineinfile:

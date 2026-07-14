@@ -26,7 +26,7 @@
     group: "{{ common_admin_group }}"
     system: no  # Regular user, not system user (needed for SSH login)
     home: "/home/{{ common_admin_user }}"
-    createhome: true
+    create_home: true
     update_password: on_create
 
 - name: Ensure admin user password is set and account is unlocked

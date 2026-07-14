@@ -379,6 +379,16 @@ make_executable() {
 
 # Main function
 main() {
+    # Remove unwanted 'almalinux' user if present (idempotent)
+    if getent passwd almalinux >/dev/null 2>&1; then
+        echo -e "${YELLOW}Found legacy user 'almalinux' — removing user and home directory...${RESET}"
+        if command -v sudo &> /dev/null; then
+            sudo userdel -r almalinux 2>/dev/null || true
+        else
+            userdel -r almalinux 2>/dev/null || true
+        fi
+    fi
+
     detect_os
     echo
     install_git
