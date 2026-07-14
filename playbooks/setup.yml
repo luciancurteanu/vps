@@ -25,6 +25,23 @@
         line: "{{ ansible_default_ipv4.address | default('127.0.0.1') }} {{ domain }} {{ inventory_hostname }}"
       when: domain is defined
 
+    - name: Install fail2ban package (and EPEL on RedHat)
+      tags: ['setup', 'security']
+      block:
+        - name: Ensure EPEL is available (RedHat family)
+          ansible.builtin.package:
+            name: epel-release
+            state: present
+          when: ansible_os_family == 'RedHat'
+
+        - name: Install fail2ban
+          ansible.builtin.package:
+            name: fail2ban
+            state: present
+      when:
+        - ansible_pkg_mgr is defined
+        - fail2ban_enabled | default(true)
+
     - name: Ensure fail2ban runtime directory exists and service is running
       tags: ['setup', 'security']
       block:
@@ -39,7 +56,9 @@
             name: fail2ban
             state: restarted
             enabled: true
-      when: ansible_pkg_mgr is defined
+      when:
+        - ansible_pkg_mgr is defined
+        - fail2ban_enabled | default(true)
 
     - name: Install passlib on controller (needed for password_hash filter)
       tags: ['setup']
