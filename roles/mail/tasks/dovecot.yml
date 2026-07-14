@@ -77,6 +77,21 @@
         mode: '0600'
         remote_src: true
       when: local_server_crt.stat.exists and local_server_key.stat.exists
+
+    - name: Stat local generated CA
+      ansible.builtin.stat:
+        path: "/etc/ssl/local/{{ domain | default(mail_domain | default(domain)) }}/ca.crt"
+      register: local_ca_crt
+
+    - name: Copy local generated CA to Dovecot path
+      ansible.builtin.copy:
+        src: "/etc/ssl/local/{{ domain | default(mail_domain | default(domain)) }}/ca.crt"
+        dest: /etc/pki/dovecot/certs/ca.pem
+        owner: dovecot
+        group: dovecot
+        mode: '0644'
+        remote_src: true
+      when: local_ca_crt.stat.exists and not (dovecot_system_ca.stat.exists)
   when: not (dovecot_system_cert.stat.exists and dovecot_system_key.stat.exists)
 
 - name: Try to deploy Let's Encrypt certs for Dovecot if available

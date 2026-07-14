@@ -46,8 +46,8 @@
   ansible.builtin.file:
     path: /var/log/mariadb
     state: directory
-    owner: mysql
-    group: mysql
+    owner: root
+    group: root
 
 - name: Create MariaDB configuration directory
   ansible.builtin.file:
@@ -126,6 +126,21 @@
     name: mariadb
     state: started
     enabled: true
+
+- name: Check if mysql user exists
+  ansible.builtin.command: id -u mysql
+  register: mysql_user_check
+  changed_when: false
+  failed_when: false
+
+- name: Ensure MariaDB log directory ownership is mysql:mysql when mysql user exists
+  ansible.builtin.file:
+    path: /var/log/mariadb
+    state: directory
+    owner: mysql
+    group: mysql
+    mode: '0755'
+  when: mysql_user_check.rc == 0
 
 - name: Run mariadb-upgrade after version change
   ansible.builtin.command: mariadb-upgrade --skip-version-check
