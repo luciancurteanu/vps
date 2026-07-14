@@ -140,6 +140,7 @@
     owner: mysql
     group: mysql
     mode: '0755'
+    recurse: yes
   when: mysql_user_check.rc == 0
 
 - name: Run mariadb-upgrade after version change
@@ -198,7 +199,7 @@
     - name: Try remove test database via socket
       community.mysql.mysql_query:
         login_unix_socket: /var/lib/mysql/mysql.sock
-        query: "DROP DATABASE IF EXISTS Test;"
+        query: "DROP DATABASE IF EXISTS test; DROP DATABASE IF EXISTS Test;"
       register: remove_test_socket
       failed_when: false
 
@@ -206,8 +207,10 @@
       community.mysql.mysql_query:
         login_user: root
         login_password: "{{ db_root_password }}"
-        query: "DROP DATABASE IF EXISTS Test;"
+        query: "DROP DATABASE IF EXISTS test; DROP DATABASE IF EXISTS Test;"
       when: (remove_test_socket is defined and (remove_test_socket.failed | default(false))) and db_root_password is defined and (db_root_password | length) > 0
+      failed_when: false
+      changed_when: false
 
     - name: Try disallow root login remotely via socket
       community.mysql.mysql_query:
