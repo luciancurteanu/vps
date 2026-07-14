@@ -46,6 +46,30 @@
     - /etc/pki/dovecot/certs
     - /etc/pki/dovecot/private
 
+- name: Stat local generated CA for Dovecot (global check)
+  ansible.builtin.stat:
+    path: "/etc/ssl/local/{{ domain | default(mail_domain | default(domain)) }}/ca.crt"
+  register: local_ca_for_dovecot_ca
+
+- name: Deploy local generated CA to Dovecot certs if present and missing
+  ansible.builtin.copy:
+    src: "/etc/ssl/local/{{ domain | default(mail_domain | default(domain)) }}/ca.crt"
+    dest: /etc/pki/dovecot/certs/ca.pem
+    owner: root
+    group: root
+    mode: '0644'
+    remote_src: true
+  when: local_ca_for_dovecot_ca.stat.exists and not dovecot_system_ca.stat.exists
+  notify: restart dovecot
+
+- name: Restore SELinux context for Dovecot CA if present
+  ansible.builtin.command: restorecon -v /etc/pki/dovecot/certs/ca.pem
+  args:
+    warn: false
+  when: local_ca_for_dovecot_ca.stat.exists and not dovecot_system_ca.stat.exists
+  changed_when: false
+  failed_when: false
+
 - name: Use locally generated certs if available (from /etc/ssl/local/{{ domain }})
   block:
     - name: Stat local generated cert

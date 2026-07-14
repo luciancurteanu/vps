@@ -110,8 +110,6 @@
   ansible.builtin.file:
     path: /var/log/mariadb
     state: directory
-    owner: root
-    group: root
     mode: '0755'
   when:
     - security_fail2ban_enabled | default(true)
@@ -122,8 +120,6 @@
   ansible.builtin.file:
     path: /var/log/mariadb/mariadb.log
     state: touch
-    owner: root
-    group: root
     mode: '0644'
   when:
     - security_fail2ban_enabled | default(true)
