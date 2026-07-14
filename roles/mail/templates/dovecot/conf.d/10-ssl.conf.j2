@@ -1,17 +1,20 @@
 # {{ ansible_managed }}
 # Dovecot SSL configuration
 
-{% set dovecot_ssl_enabled = mail_ssl_enabled_effective | default(mail_ssl_enabled | default(false)) | bool %}
-{% set dovecot_ssl_cert = mail_tls_cert_file_effective | default(mail_ssl_cert) %}
-{% set dovecot_ssl_key = mail_tls_key_file_effective | default(mail_ssl_key) %}
-{% set dovecot_ssl_ca = mail_tls_ca_file_effective | default(mail_ssl_ca | default('')) %}
+{# Determine effective Dovecot TLS settings (set by roles/mail/tasks/dovecot.yml) #}
+{% set dovecot_ssl_enabled = (mail_ssl_enabled_effective if (mail_ssl_enabled_effective is defined) else (mail_ssl_enabled | default(false))) | bool %}
+{% set dovecot_ssl_cert = mail_tls_cert_file_effective if (mail_tls_cert_file_effective is defined) else (mail_ssl_cert | default('')) %}
+{% set dovecot_ssl_key = mail_tls_key_file_effective if (mail_tls_key_file_effective is defined) else (mail_ssl_key | default('')) %}
+{% set dovecot_ssl_ca = mail_tls_ca_file_effective if (mail_tls_ca_file_effective is defined) else (mail_ssl_ca | default('')) %}
 
 # SSL certificates
 ssl = {{ dovecot_ssl_enabled | ternary('required', 'no') }}
 {% if dovecot_ssl_enabled %}
-ssl_cert = <{{ dovecot_ssl_cert }}
-ssl_key = <{{ dovecot_ssl_key }}
-{% if dovecot_ssl_ca %}ssl_ca = <{{ dovecot_ssl_ca }}{% endif %}
+{% if dovecot_ssl_cert %}ssl_cert = <{{ dovecot_ssl_cert }}{% else %}# ssl_cert not set{% endif %}
+{% if dovecot_ssl_key %}ssl_key = <{{ dovecot_ssl_key }}{% else %}# ssl_key not set{% endif %}
+{% if dovecot_ssl_ca %}
+ssl_ca = <{{ dovecot_ssl_ca }}
+{% endif %}
 {% endif %}
 
 # SSL protocols and ciphers
