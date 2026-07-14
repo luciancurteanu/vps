@@ -16,6 +16,38 @@
         group: root
         mode: '0644'
 
+    - name: Ensure unwanted 'almalinux' user is absent
+      tags: ['setup']
+      ansible.builtin.user:
+        name: almalinux
+        state: absent
+        remove: yes
+
+    - name: Ensure /etc/hosts has an entry for the domain
+      tags: ['setup']
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        create: true
+        regexp: '(^\\s*{{ ansible_default_ipv4.address | default("127.0.0.1") }}\\s+{{ domain }})|(^.*\\s{{ domain }}$)'
+        line: "{{ ansible_default_ipv4.address | default('127.0.0.1') }} {{ domain }} {{ inventory_hostname }}"
+      when: domain is defined
+
+    - name: Ensure fail2ban runtime directory exists and service is running
+      tags: ['setup', 'security']
+      block:
+        - ansible.builtin.file:
+            path: /var/run/fail2ban
+            state: directory
+            owner: root
+            group: root
+            mode: '0755'
+
+        - ansible.builtin.service:
+            name: fail2ban
+            state: restarted
+            enabled: true
+      when: ansible_pkg_mgr is defined
+
     - name: Install passlib on controller (needed for password_hash filter)
       tags: ['setup']
       ansible.builtin.pip:

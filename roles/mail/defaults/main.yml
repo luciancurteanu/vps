@@ -39,16 +39,24 @@ mail_enable_roundcube: true   # Enabled: Roundcube webmail installation
 mail_enable_nginx: true
 # Use /var/vmail for virtual mail storage by default
 mail_use_var_vmail: true
-mail_ssl_enabled: true   # Keep IMAPS/POP3S available; cert files come from Let's Encrypt or local self-signed paths
-mail_ssl_cert: "{{ mail_tls_cert_file_effective | default(mail_tls_cert_file) }}"  # Reuse effective Dovecot/Postfix cert path
-mail_ssl_key: "{{ mail_tls_key_file_effective | default(mail_tls_key_file) }}"   # Reuse effective Dovecot/Postfix key path
-mail_ssl_ca: "{{ mail_tls_ca_file_effective | default(mail_tls_ca_file) }}"     # Reuse effective Dovecot/Postfix CA path
 
 # Postfix TLS certificate paths
 # Set mail_use_letsencrypt: true in inventory/group_vars when Let's Encrypt certs are available.
 # When false (default), a self-signed cert is auto-generated under mail_ssl_dir.
 mail_use_letsencrypt: false
 mail_ssl_dir: "/etc/ssl/local/{{ domain }}"
-mail_tls_cert_file: "{{ '/etc/letsencrypt/live/' + domain + '/fullchain.pem' if mail_use_letsencrypt else '/etc/pki/dovecot/certs/dovecot.pem' }}"
-mail_tls_key_file: "{{ '/etc/letsencrypt/live/' + domain + '/privkey.pem' if mail_use_letsencrypt else '/etc/pki/dovecot/private/dovecot.pem' }}"
-mail_tls_ca_file: "{{ '/etc/letsencrypt/live/' + domain + '/chain.pem' if mail_use_letsencrypt else '/etc/pki/dovecot/certs/dovecot.pem' }}"
+mail_ssl_enabled: true   # Keep IMAPS/POP3S available; cert files come from system PKI or local self-signed paths
+mail_ssl_cert: ""  # Leave blank by default; set per-inventory or ensure system PKI at /etc/pki/dovecot/
+mail_ssl_key: ""   # Leave blank by default
+mail_ssl_ca: ""    # Leave blank by default
+
+# Service-specific defaults (can be overridden per-inventory)
+# Dovecot: use system PKI by default
+dovecot_cert: "/etc/pki/dovecot/certs/dovecot.pem"
+dovecot_key:  "/etc/pki/dovecot/private/dovecot.pem"
+dovecot_ca:   "/etc/pki/dovecot/certs/ca.pem"
+
+# Postfix: service-specific locations (recommended via deploy-hook copy)
+postfix_cert: "{{ mail_ssl_dir }}/server.crt"
+postfix_key:  "{{ mail_ssl_dir }}/server.key"
+postfix_ca:   "{{ mail_ssl_dir }}/ca.crt"

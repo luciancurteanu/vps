@@ -1,5 +1,5 @@
 ---
-# Dovecot configuration tasks
+# Dovecot configuration tasks (simplified)
 
 - name: Install Dovecot packages
   ansible.builtin.package:
@@ -15,113 +15,45 @@
     state: directory
     owner: dovecot
     group: dovecot
-  with_items:
+  loop:
     - /etc/dovecot/conf.d
 
-- name: Check Let's Encrypt cert file for Dovecot TLS
+- name: Ensure system Dovecot TLS cert exists
   ansible.builtin.stat:
-    path: "/etc/letsencrypt/live/{{ domain }}/fullchain.pem"
-  register: dovecot_le_cert_stat
-  when: mail_use_letsencrypt | default(false)
+    path: /etc/pki/dovecot/certs/dovecot.pem
+  register: dovecot_system_cert
 
-- name: Check Let's Encrypt key file for Dovecot TLS
+- name: Ensure system Dovecot TLS key exists
   ansible.builtin.stat:
-    path: "/etc/letsencrypt/live/{{ domain }}/privkey.pem"
-  register: dovecot_le_key_stat
-  when: mail_use_letsencrypt | default(false)
+    path: /etc/pki/dovecot/private/dovecot.pem
+  register: dovecot_system_key
 
-- name: Check Let's Encrypt chain file for Dovecot TLS
+- name: Ensure optional Dovecot CA exists
   ansible.builtin.stat:
-    path: "/etc/letsencrypt/live/{{ domain }}/chain.pem"
-  register: dovecot_le_chain_stat
-  when: mail_use_letsencrypt | default(false)
+    path: /etc/pki/dovecot/certs/ca.pem
+  register: dovecot_system_ca
 
-- name: Determine effective Dovecot TLS source and paths
-  ansible.builtin.set_fact:
-    mail_use_letsencrypt_effective: >-
-      {{
-        (mail_use_letsencrypt | default(false) | bool)
-        and (dovecot_le_cert_stat.stat.exists | default(false))
-        and (dovecot_le_key_stat.stat.exists | default(false))
-        and (dovecot_le_chain_stat.stat.exists | default(false))
-      }}
-    mail_tls_cert_file_effective: >-
-      {
-        ('/etc/letsencrypt/live/' + domain + '/fullchain.pem')
-        if (
-          (mail_use_letsencrypt | default(false) | bool)
-          and (dovecot_le_cert_stat.stat.exists | default(false))
-          and (dovecot_le_key_stat.stat.exists | default(false))
-          and (dovecot_le_chain_stat.stat.exists | default(false))
-        )
-        else '/etc/pki/dovecot/certs/dovecot.pem'
-      }
-    mail_tls_key_file_effective: >-
-      {
-        ('/etc/letsencrypt/live/' + domain + '/privkey.pem')
-        if (
-          (mail_use_letsencrypt | default(false) | bool)
-          and (dovecot_le_cert_stat.stat.exists | default(false))
-          and (dovecot_le_key_stat.stat.exists | default(false))
-          and (dovecot_le_chain_stat.stat.exists | default(false))
-        )
-        else '/etc/pki/dovecot/private/dovecot.pem'
-      }
-    mail_tls_ca_file_effective: >-
-      {
-        ('/etc/letsencrypt/live/' + domain + '/chain.pem')
-        if (
-          (mail_use_letsencrypt | default(false) | bool)
-          and (dovecot_le_cert_stat.stat.exists | default(false))
-          and (dovecot_le_key_stat.stat.exists | default(false))
-          and (dovecot_le_chain_stat.stat.exists | default(false))
-        )
-        else '/etc/pki/dovecot/certs/dovecot.pem'
-      }
+- name: Fail if Dovecot cert or key missing
+  ansible.builtin.fail:
+    msg: "Dovecot TLS cert or key missing at /etc/pki/dovecot. Ensure /etc/pki/dovecot/certs/dovecot.pem and /etc/pki/dovecot/private/dovecot.pem exist."
+  when: not (dovecot_system_cert.stat.exists and dovecot_system_key.stat.exists)
 
-- name: Check effective Dovecot TLS certificate file
-  ansible.builtin.stat:
-    path: "{{ mail_tls_cert_file_effective }}"
-  register: dovecot_ssl_cert_stat
-
-- name: Check effective Dovecot TLS private key file
-  ansible.builtin.stat:
-    path: "{{ mail_tls_key_file_effective }}"
-  register: dovecot_ssl_key_stat
-
-- name: Check effective Dovecot TLS CA file
-  ansible.builtin.stat:
-    path: "{{ mail_tls_ca_file_effective }}"
-  register: dovecot_ssl_ca_stat
-
-- name: Determine effective Dovecot SSL mode
-  ansible.builtin.set_fact:
-    mail_ssl_enabled_effective: >-
-      {{
-        (mail_ssl_enabled | default(false) | bool)
-        and (dovecot_ssl_cert_stat.stat.exists | default(false))
-        and (dovecot_ssl_key_stat.stat.exists | default(false))
-      }}
-
-- name: Warn when Dovecot SSL requested but TLS assets are missing
-  ansible.builtin.debug:
-    msg: >-
-      mail_ssl_enabled requested but Dovecot TLS assets are incomplete; disabling Dovecot SSL for this run.
-      cert={{ dovecot_ssl_cert_stat.stat.exists | default(false) }},
-      key={{ dovecot_ssl_key_stat.stat.exists | default(false) }},
-      ca={{ dovecot_ssl_ca_stat.stat.exists | default(false) }}.
-  when:
-    - mail_ssl_enabled | default(false) | bool
-    - not (mail_ssl_enabled_effective | default(false) | bool)
-
-- name: Backup Dovecot main configuration
+- name: Backup Dovecot SSL config
   ansible.builtin.copy:
-    src: /etc/dovecot/dovecot.conf
-    mode: '0644'
-    dest: /etc/dovecot/dovecot.conf.bak
+    src: /etc/dovecot/conf.d/10-ssl.conf
+    dest: /etc/dovecot/conf.d/10-ssl.conf.bak
     remote_src: true
+    mode: '0644'
     force: false
-  failed_when: false  # TODO: Add proper failure condition
+  failed_when: false
+
+- name: Deploy simplified Dovecot SSL config
+  ansible.builtin.template:
+    src: dovecot/conf.d/10-ssl.conf.j2
+    dest: /etc/dovecot/conf.d/10-ssl.conf
+    owner: root
+    group: root
+  notify: restart dovecot
 
 - name: Configure Dovecot main configuration
   ansible.builtin.template:
@@ -131,141 +63,12 @@
     group: root
   notify: restart dovecot
 
-- name: Backup Dovecot authentication config
-  ansible.builtin.copy:
-    src: /etc/dovecot/conf.d/10-auth.conf
-    mode: '0644'
-    dest: /etc/dovecot/conf.d/10-auth.conf.bak
-    remote_src: true
-    force: false
-  failed_when: false  # TODO: Add proper failure condition
-
 - name: Configure Dovecot authentication
   ansible.builtin.template:
     src: dovecot/conf.d/10-auth.conf.j2
     dest: /etc/dovecot/conf.d/10-auth.conf
     owner: root
     group: root
-  notify: restart dovecot
-
-- name: Backup Dovecot mail locations config
-  ansible.builtin.copy:
-    src: /etc/dovecot/conf.d/10-mail.conf
-    mode: '0644'
-    dest: /etc/dovecot/conf.d/10-mail.conf.bak
-    remote_src: true
-    force: false
-  failed_when: false  # TODO: Add proper failure condition
-
-- name: Configure Dovecot mail locations
-  ansible.builtin.template:
-    src: dovecot/conf.d/10-mail.conf.j2
-    dest: /etc/dovecot/conf.d/10-mail.conf
-    owner: root
-    group: root
-  notify: restart dovecot
-
-- name: Backup Dovecot SSL config
-  ansible.builtin.copy:
-    src: /etc/dovecot/conf.d/10-ssl.conf
-    mode: '0644'
-    dest: /etc/dovecot/conf.d/10-ssl.conf.bak
-    remote_src: true
-    force: false
-  failed_when: false  # TODO: Add proper failure condition
-
-- name: Configure Dovecot SSL settings
-  ansible.builtin.template:
-    src: dovecot/conf.d/10-ssl.conf.j2
-    dest: /etc/dovecot/conf.d/10-ssl.conf
-    owner: root
-    group: root
-  notify: restart dovecot
-
-- name: Backup Dovecot IMAP config
-  ansible.builtin.copy:
-    src: /etc/dovecot/conf.d/20-imap.conf
-    mode: '0644'
-    dest: /etc/dovecot/conf.d/20-imap.conf.bak
-    remote_src: true
-    force: false
-  failed_when: false  # TODO: Add proper failure condition
-
-- name: Configure Dovecot IMAP settings
-  ansible.builtin.template:
-    src: dovecot/conf.d/20-imap.conf.j2
-    dest: /etc/dovecot/conf.d/20-imap.conf
-    owner: root
-    group: root
-  notify: restart dovecot
-
-- name: Backup Dovecot POP3 config
-  ansible.builtin.copy:
-    src: /etc/dovecot/conf.d/20-pop3.conf
-    mode: '0644'
-    dest: /etc/dovecot/conf.d/20-pop3.conf.bak
-    remote_src: true
-    force: false
-  failed_when: false  # TODO: Add proper failure condition
-
-- name: Configure Dovecot POP3 settings
-  ansible.builtin.template:
-    src: dovecot/conf.d/20-pop3.conf.j2
-    dest: /etc/dovecot/conf.d/20-pop3.conf
-    owner: root
-    group: root
-  notify: restart dovecot
-
-- name: Backup Dovecot LDA config
-  ansible.builtin.copy:
-    src: /etc/dovecot/conf.d/15-lda.conf
-    mode: '0644'
-    dest: /etc/dovecot/conf.d/15-lda.conf.bak
-    remote_src: true
-    force: false
-  failed_when: false  # TODO: Add proper failure condition
-
-- name: Configure Dovecot LDA settings
-  ansible.builtin.template:
-    src: dovecot/conf.d/15-lda.conf.j2
-    dest: /etc/dovecot/conf.d/15-lda.conf
-    owner: root
-    group: root
-  notify: restart dovecot
-
-- name: Check if Dovecot MySQL config exists
-  ansible.builtin.stat:
-    path: /etc/dovecot/dovecot-mysql.conf.ext
-  register: dovecot_mysql_conf
-
-- name: Check if Dovecot MySQL backup exists
-  ansible.builtin.stat:
-    path: /etc/dovecot/dovecot-mysql.conf.ext.bak
-  register: dovecot_mysql_backup
-
-- name: Backup Dovecot MySQL config
-  ansible.builtin.copy:
-    src: /etc/dovecot/dovecot-mysql.conf.ext
-    mode: '0644'
-    dest: /etc/dovecot/dovecot-mysql.conf.ext.bak
-    remote_src: true
-  changed_when: false
-  when: dovecot_mysql_conf.stat.exists and not dovecot_mysql_backup.stat.exists
-
-- name: Configure Dovecot MySQL settings
-  ansible.builtin.template:
-    src: dovecot/dovecot-mysql.conf.ext.j2
-    dest: /etc/dovecot/dovecot-mysql.conf.ext
-    owner: root
-    group: root
-  notify: restart dovecot
-
-- name: Create symlink for dovecot-sql.conf.ext
-  ansible.builtin.file:
-    src: /etc/dovecot/dovecot-mysql.conf.ext
-    mode: '0644'
-    dest: /etc/dovecot/dovecot-sql.conf.ext
-    state: link
   notify: restart dovecot
 
 - name: Ensure Dovecot service is running and enabled
@@ -276,16 +79,9 @@
   register: dovecot_service
   failed_when: false
 
-- name: Show Dovecot service status when start fails
+- name: Show Dovecot status on failure
   ansible.builtin.command: systemctl status dovecot --no-pager
   register: dovecot_status
-  changed_when: false
-  failed_when: false
-  when: dovecot_service is failed or dovecot_service.rc | default(0) != 0
-
-- name: Show Dovecot journal tail when start fails
-  ansible.builtin.command: journalctl -u dovecot --no-pager -n 50
-  register: dovecot_journal
   changed_when: false
   failed_when: false
   when: dovecot_service is failed or dovecot_service.rc | default(0) != 0

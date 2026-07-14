@@ -9,66 +9,9 @@
       - cyrus-sasl-plain
     state: present
 
-- name: Check Let's Encrypt cert file for mail TLS
-  ansible.builtin.stat:
-    path: "/etc/letsencrypt/live/{{ domain }}/fullchain.pem"
-  register: mail_le_cert_stat
-  when: mail_use_letsencrypt | default(false)
-
-- name: Check Let's Encrypt key file for mail TLS
-  ansible.builtin.stat:
-    path: "/etc/letsencrypt/live/{{ domain }}/privkey.pem"
-  register: mail_le_key_stat
-  when: mail_use_letsencrypt | default(false)
-
-- name: Check Let's Encrypt chain file for mail TLS
-  ansible.builtin.stat:
-    path: "/etc/letsencrypt/live/{{ domain }}/chain.pem"
-  register: mail_le_chain_stat
-  when: mail_use_letsencrypt | default(false)
-
-- name: Determine effective mail TLS source and paths
+- name: Set mail_use_letsencrypt_effective (simplified)
   ansible.builtin.set_fact:
-    mail_use_letsencrypt_effective: >-
-      {{
-        (mail_use_letsencrypt | default(false) | bool)
-        and (mail_le_cert_stat.stat.exists | default(false))
-        and (mail_le_key_stat.stat.exists | default(false))
-        and (mail_le_chain_stat.stat.exists | default(false))
-      }}
-    mail_tls_cert_file_effective: >-
-      {{
-        ('/etc/letsencrypt/live/' + domain + '/fullchain.pem')
-        if (
-          (mail_use_letsencrypt | default(false) | bool)
-          and (mail_le_cert_stat.stat.exists | default(false))
-          and (mail_le_key_stat.stat.exists | default(false))
-          and (mail_le_chain_stat.stat.exists | default(false))
-        )
-        else (mail_ssl_dir + '/server.crt')
-      }}
-    mail_tls_key_file_effective: >-
-      {{
-        ('/etc/letsencrypt/live/' + domain + '/privkey.pem')
-        if (
-          (mail_use_letsencrypt | default(false) | bool)
-          and (mail_le_cert_stat.stat.exists | default(false))
-          and (mail_le_key_stat.stat.exists | default(false))
-          and (mail_le_chain_stat.stat.exists | default(false))
-        )
-        else (mail_ssl_dir + '/server.key')
-      }}
-    mail_tls_ca_file_effective: >-
-      {{
-        ('/etc/letsencrypt/live/' + domain + '/chain.pem')
-        if (
-          (mail_use_letsencrypt | default(false) | bool)
-          and (mail_le_cert_stat.stat.exists | default(false))
-          and (mail_le_key_stat.stat.exists | default(false))
-          and (mail_le_chain_stat.stat.exists | default(false))
-        )
-        else (mail_ssl_dir + '/ca.crt')
-      }}
+    mail_use_letsencrypt_effective: "{{ mail_use_letsencrypt | default(false) | bool }}"
 
 - name: Warn when mail_use_letsencrypt is true but cert files are missing
   ansible.builtin.debug:
@@ -117,13 +60,13 @@
     owner: root
     group: root
     mode: '0755'
-  when: not (mail_use_letsencrypt_effective | default(mail_use_letsencrypt | default(false)) | bool)
+  when: not (mail_use_letsencrypt_effective | default(false) | bool)
 
 - name: Generate local CA private key
   ansible.builtin.command:
     argv: [openssl, genrsa, -out, "{{ mail_ssl_dir }}/ca.key", "4096"]
     creates: "{{ mail_ssl_dir }}/ca.key"
-  when: not (mail_use_letsencrypt_effective | default(mail_use_letsencrypt | default(false)) | bool)
+  when: not (mail_use_letsencrypt_effective | default(false) | bool)
 
 - name: Set permissions on CA private key
   ansible.builtin.file:
@@ -131,7 +74,7 @@
     owner: root
     group: root
     mode: '0600'
-  when: not (mail_use_letsencrypt_effective | default(mail_use_letsencrypt | default(false)) | bool)
+  when: not (mail_use_letsencrypt_effective | default(false) | bool)
 
 - name: Generate local CA certificate
   ansible.builtin.command:
@@ -149,7 +92,7 @@
       - -subj
       - "/CN=Local Dev CA/O={{ domain }}"
     creates: "{{ mail_ssl_dir }}/ca.crt"
-  when: not (mail_use_letsencrypt_effective | default(mail_use_letsencrypt | default(false)) | bool)
+  when: not (mail_use_letsencrypt_effective | default(false) | bool)
 
 - name: Generate server private key
   ansible.builtin.command:
