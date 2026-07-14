@@ -25,12 +25,17 @@ if [ "$EUID" -eq 0 ] && [ -z "${SUDO_USER:-}" ]; then
 fi
 
 if [ -n "${SUDO_USER:-}" ] && [ "${SUDO_USER}" != "root" ]; then
-    # A human user exists (e.g. 'admin' on dev VM) — clone into their home directory
+    # A human user exists (e.g. 'admin' when running with sudo) — use their home directory
     USER_HOME=$(getent passwd "${SUDO_USER}" | cut -d: -f6 || echo "/home/${SUDO_USER}")
 else
-    # No human user yet (fresh prod server) — use /root explicitly.
-    # $HOME can be unset or '/' on some providers (e.g. Contabo), so never rely on it here.
-    USER_HOME="/root"
+    # When running as root (sudo or direct), prefer /root. When running as a regular
+    # user (curl | bash without sudo), use the current user's $HOME so files like
+    # ~/.vault_pass are written to the invoking user's home rather than /root.
+    if [ "$EUID" -eq 0 ]; then
+        USER_HOME="/root"
+    else
+        USER_HOME="${HOME:-/home/$(whoami)}"
+    fi
 fi
 
 REPO_DIR="${USER_HOME}/vps"
