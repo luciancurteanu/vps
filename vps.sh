@@ -1073,10 +1073,16 @@ main() {
         db_tunnel
         exit 0
     fi
-    # Only create admin user, generate keys and prepare SSH config during a full install (install core).
-    # This avoids creating or modifying the admin user on other commands (create/remove host, etc.).
+    # Create admin user, generate keys and prepare SSH config during a full
+    # install (install core). For `create host` we only need to generate keys
+    # and prepare SSH config — do NOT run create_admin_user for create/remove/ssl.
     if [[ "$ACTION $MODULE" == "install core" ]]; then
         create_admin_user || exit 1
+        generate_ssh_keys || exit 1
+        setup_ssh_config || exit 1
+    elif [[ "$ACTION $MODULE" == "create host" ]]; then
+        # Ensure inventory SSH key exists and sync public key to vault, but
+        # avoid creating or modifying the local admin user account.
         generate_ssh_keys || exit 1
         setup_ssh_config || exit 1
     fi
