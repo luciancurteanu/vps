@@ -300,23 +300,38 @@
       ansible.builtin.set_fact:
         vhost_ip: "{{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address) }}"
       when: domain == master_domain
-
-    - name: Configure hosts file for master domain
-      ansible.builtin.lineinfile:
-        path: /etc/hosts
-        line: "{{ item }}"
-        state: present
-      with_items:
-        - "127.0.0.1 localhost.localdomain localhost"
-        - "{{ vhost_ip }} {{ domain }} www.{{ domain }}"
-        - "{{ vhost_ip }} mail.{{ domain }}"
-        - "{{ vhost_ip }} cpanel.{{ domain }}"
+    - name: Backup existing /etc/hosts
+      ansible.builtin.copy:
+        src: /etc/hosts
+        dest: "/root/hosts.backup.{{ ansible_date_time.iso8601_basic }}"
+        remote_src: yes
       when: domain == master_domain
 
-    - name: Configure hosts file for regular domain
+    - name: Disable cloud-init manage_etc_hosts (drop-in)
+      ansible.builtin.copy:
+        dest: /etc/cloud/cloud.cfg.d/99-disable-manage-hosts.cfg
+        content: |
+          manage_etc_hosts: False
+        owner: root
+        group: root
+        mode: '0644'
+      when: domain == master_domain
+
+    - name: Deploy /etc/hosts from template (override entire file)
+      ansible.builtin.template:
+        src: "{{ playbook_dir | dirname }}/templates/hosts/hosts.j2"
+        dest: /etc/hosts
+        owner: root
+        group: root
+        mode: '0644'
+        backup: yes
+      when: domain == master_domain
+
+    - name: Append hosts entries for regular domain
       ansible.builtin.lineinfile:
         path: /etc/hosts
-        line: "{{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address) }} {{ domain }} www.{{ domain }}"
+        line: "{{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address) }} {{ domain }} {{ user }}"
+        insertafter: EOF
         state: present
       when: domain != master_domain
 

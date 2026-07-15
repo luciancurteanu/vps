@@ -181,7 +181,10 @@ PYEOF
             vault_opts="$VAULT_PASSWORD_FILE"
         fi
 
-        if ! ansible-vault encrypt "$VAULT_FILE" $vault_opts; then
+        # Some Ansible versions require an explicit encrypt-vault-id when
+        # multiple vault ids are configured. Specify the default vault id to
+        # ensure encrypt uses the expected identity.
+        if ! ansible-vault $vault_opts --encrypt-vault-id=default encrypt "$VAULT_FILE"; then
             echo -e "${RED}Warning: Updated $VAULT_FILE but failed to re-encrypt it.${RESET}"
             return 1
         fi
@@ -870,7 +873,8 @@ PYEOF
                 vault_opts="$VAULT_PASSWORD_FILE"
             fi
 
-            if ! ansible-vault encrypt "$secrets_file" $vault_opts; then
+            # See note above re: explicit vault id on encrypt
+            if ! ansible-vault $vault_opts --encrypt-vault-id=default encrypt "$secrets_file"; then
                 echo -e "${RED}Warning: Updated $secrets_file but failed to re-encrypt it.${RESET}"
                 exit 1
             fi

@@ -1,0 +1,11 @@
+# Managed by Ansible — do not edit manually
+# Generated for {{ domain }} on {{ ansible_date_time.iso8601 }}
+
+# Localhost
+127.0.0.1   localhost.localdomain localhost
+::1         localhost.localdomain localhost
+
+# Host entries for {{ domain }}
+{{ vhost_ip }}    {{ domain }} {{ user }}
+{{ vhost_ip }}    mail.{{ domain }} {{ user }}
+{{ vhost_ip }}    cpanel.{{ domain }} {{ user }}
