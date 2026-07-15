@@ -241,6 +241,15 @@
     group: "{{ mail_group }}"
   notify: restart dovecot
 
+- name: Deploy Dovecot LDA/LMTP config (includes LMTP unix_listener for Postfix)
+  ansible.builtin.template:
+    src: dovecot/conf.d/15-lda.conf.j2
+    dest: /etc/dovecot/conf.d/15-lda.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart dovecot
+
 - name: Ensure Dovecot service is running and enabled
   ansible.builtin.systemd:
     name: dovecot
