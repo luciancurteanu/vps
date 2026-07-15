@@ -261,6 +261,42 @@
         - filestore
       when: remove_roundcube | default(true)
 
+    - name: Find Dovecot config files that reference the domain
+      ansible.builtin.shell: "grep -RIl --exclude-dir='conf.d' '{{ domain }}' /etc/dovecot || true"
+      register: dovecot_match_files
+      changed_when: false
+
+    - name: Backup matched Dovecot files
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "{{ item }}.bak.vps_cleanup"
+        remote_src: yes
+      loop: "{{ dovecot_match_files.stdout_lines }}"
+      when: dovecot_match_files.stdout_lines | length > 0 and remove_dovecot | default(true)
+
+    - name: Remove matched Dovecot files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop: "{{ dovecot_match_files.stdout_lines }}"
+      when: dovecot_match_files.stdout_lines | length > 0 and remove_dovecot | default(true)
+
+    - name: Remove typical Dovecot maildirs for the domain
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "/var/vmail/{{ domain }}"
+        - "/var/mail/vhosts/{{ domain }}"
+        - "/home/{{ user }}/Maildir"
+      when: remove_dovecot | default(true)
+
+    - name: Restart Dovecot
+      ansible.builtin.service:
+        name: dovecot
+        state: restarted
+      when: remove_dovecot | default(true)
+
   handlers:
     - name: Restart Nginx
       ansible.builtin.service:
