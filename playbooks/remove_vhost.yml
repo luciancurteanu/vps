@@ -25,10 +25,11 @@
         path: "/etc/nginx/sites-available/{{ domain }}.conf"
       register: nginx_conf
 
-    - name: Fail if virtual host doesn't exist
-      ansible.builtin.fail:
-        msg: "Virtual host for {{ domain }} does not exist."
-      when: not nginx_conf.stat.exists
+
+      - name: Fail if virtual host doesn't exist (disabled by default)
+        ansible.builtin.fail:
+          msg: "Virtual host for {{ domain }} does not exist. Set 'enforce_vhost_exists=true' to make this fail instead of continuing with cleanup."
+        when: not nginx_conf.stat.exists and (enforce_vhost_exists | default(false))
 
   tasks:
     - name: Backup website files
@@ -87,6 +88,39 @@
       ansible.builtin.debug:
         msg: "Website backup created at: {{ backup_result.dest | default('Backup failed') }}"
       when: backup_result is defined
+
+      - name: Remove mail database entries for domain (users)
+        community.mysql.mysql_query:
+          login_db: "{{ mail_db_name | default('mailserver') }}"
+          login_user: "{{ mail_db_user }}"
+          login_password: "{{ mail_db_password }}"
+          login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
+          query: "DELETE FROM users WHERE domain=%s"
+          positional_args:
+            - "{{ domain }}"
+        when: remove_db | default(true)
+
+      - name: Remove mail database entries for domain (domains)
+        community.mysql.mysql_query:
+          login_db: "{{ mail_db_name | default('mailserver') }}"
+          login_user: "{{ mail_db_user }}"
+          login_password: "{{ mail_db_password }}"
+          login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
+          query: "DELETE FROM domains WHERE domain=%s"
+          positional_args:
+            - "{{ domain }}"
+        when: remove_db | default(true)
+
+      - name: Remove mail database entries for domain (aliases)
+        community.mysql.mysql_query:
+          login_db: "{{ mail_db_name | default('mailserver') }}"
+          login_user: "{{ mail_db_user }}"
+          login_password: "{{ mail_db_password }}"
+          login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
+          query: "DELETE FROM aliases WHERE domain=%s"
+          positional_args:
+            - "{{ domain }}"
+        when: remove_db | default(true)
 
   handlers:
     - name: Restart Nginx
