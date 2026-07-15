@@ -133,6 +133,51 @@
             - "{{ domain }}"
         when: remove_db | default(true)
 
+      - name: Remove Roundcube users for domain
+        community.mysql.mysql_query:
+          login_db: "{{ roundcube_db_name | default('roundcube') }}"
+          login_user: "{{ roundcube_db_user | default('roundcube') }}"
+          login_password: "{{ roundcube_db_password | default(vault_roundcube_db_password | default(omit)) }}"
+          login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
+          query: "DELETE FROM users WHERE username LIKE CONCAT('%@', %s)"
+          positional_args:
+            - "{{ domain }}"
+        when: remove_roundcube | default(true)
+
+      - name: Remove Roundcube email entries from collected_addresses, contacts, identities
+        community.mysql.mysql_query:
+          login_db: "{{ roundcube_db_name | default('roundcube') }}"
+          login_user: "{{ roundcube_db_user | default('roundcube') }}"
+          login_password: "{{ roundcube_db_password | default(vault_roundcube_db_password | default(omit)) }}"
+          login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
+          query: "DELETE FROM {{ item }} WHERE email LIKE CONCAT('%@', %s)"
+          positional_args:
+            - "{{ domain }}"
+        loop:
+          - collected_addresses
+          - contacts
+          - identities
+        when: remove_roundcube | default(true)
+
+      - name: Remove orphaned Roundcube rows referencing deleted users
+        community.mysql.mysql_query:
+          login_db: "{{ roundcube_db_name | default('roundcube') }}"
+          login_user: "{{ roundcube_db_user | default('roundcube') }}"
+          login_password: "{{ roundcube_db_password | default(vault_roundcube_db_password | default(omit)) }}"
+          login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
+          query: "DELETE FROM {{ item }} WHERE user_id IS NOT NULL AND user_id NOT IN (SELECT user_id FROM users)"
+        loop:
+          - cache
+          - cache_index
+          - cache_thread
+          - cache_messages
+          - contactgroups
+          - responses
+          - dictionary
+          - searches
+          - filestore
+        when: remove_roundcube | default(true)
+
   handlers:
     - name: Restart Nginx
       ansible.builtin.service:
