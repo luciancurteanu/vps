@@ -223,7 +223,7 @@
         login_user: "{{ roundcube_db_user | default(omit) }}"
         login_password: "{{ roundcube_db_password | default(vault_roundcube_db_password | default(omit)) }}"
         login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
-        query: "DELETE FROM users WHERE username LIKE CONCAT('%@', %s)"
+        query: "DELETE FROM users WHERE username LIKE CONCAT('%%@', %s)"
         positional_args:
           - "{{ domain }}"
       when: remove_roundcube | default(true)
@@ -234,7 +234,7 @@
         login_user: "{{ roundcube_db_user | default(omit) }}"
         login_password: "{{ roundcube_db_password | default(vault_roundcube_db_password | default(omit)) }}"
         login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
-        query: "DELETE FROM {{ item }} WHERE email LIKE CONCAT('%@', %s)"
+          query: "DELETE FROM {{ item }} WHERE email LIKE CONCAT('%%@', %s)"
         positional_args:
           - "{{ domain }}"
       loop:
