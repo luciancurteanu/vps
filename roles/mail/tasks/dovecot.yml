@@ -214,7 +214,8 @@
     name: mailuser
     host: "{{ item }}"
     password: "{{ vault_mail_db_password | default(mail_db_password | default('')) }}"
-    priv: "mailserver.*:SELECT"
+    # Grant SELECT plus write privileges required by create-host tasks (idempotent)
+    priv: "mailserver.*:SELECT,INSERT,UPDATE,DELETE"
     plugin: mysql_native_password
     state: present
   loop:
