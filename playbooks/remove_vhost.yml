@@ -12,6 +12,11 @@
       - domain
       - user
     document_root: "/home/{{ domain }}"
+    # cleanup defaults
+    remove_user: true
+    remove_hosts: true
+    remove_db: true
+    enforce_vhost_exists: false
 
   pre_tasks:
     - name: Verify required variables are defined
@@ -24,12 +29,10 @@
       ansible.builtin.stat:
         path: "/etc/nginx/sites-available/{{ domain }}.conf"
       register: nginx_conf
-
-
-      - name: Fail if virtual host doesn't exist (disabled by default)
-        ansible.builtin.fail:
-          msg: "Virtual host for {{ domain }} does not exist. Set 'enforce_vhost_exists=true' to make this fail instead of continuing with cleanup."
-        when: not nginx_conf.stat.exists and (enforce_vhost_exists | default(false))
+    - name: Fail if virtual host doesn't exist (disabled by default)
+      ansible.builtin.fail:
+        msg: "Virtual host for {{ domain }} does not exist. Set 'enforce_vhost_exists=true' to make this fail instead of continuing with cleanup."
+      when: not nginx_conf.stat.exists and (enforce_vhost_exists | default(false))
 
   tasks:
     - name: Backup website files
@@ -82,12 +85,20 @@
         name: "{{ user }}"
         state: absent
         remove: true
-      when: remove_user | default(false)
+      when: remove_user | default(true)
 
     - name: Display backup information
       ansible.builtin.debug:
         msg: "Website backup created at: {{ backup_result.dest | default('Backup failed') }}"
       when: backup_result is defined
+
+    - name: Remove domain entries from /etc/hosts
+      ansible.builtin.replace:
+        path: /etc/hosts
+        regexp: ".*\\b({{ domain }}|www\.{{ domain }}|mail\.{{ domain }}|cpanel\.{{ domain }})\\b.*\n?"
+        replace: ''
+        backup: yes
+      when: remove_hosts | default(true)
 
       - name: Remove mail database entries for domain (users)
         community.mysql.mysql_query:
