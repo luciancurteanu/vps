@@ -211,8 +211,9 @@
         login_user: "{{ mail_db_user | default(omit) }}"
         login_password: "{{ mail_db_password | default(omit) }}"
         login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
-        query: "DELETE FROM aliases WHERE domain=%s"
+        query: "DELETE FROM aliases WHERE destination LIKE CONCAT('%@', %s) OR source LIKE CONCAT('%@', %s)"
         positional_args:
+          - "{{ domain }}"
           - "{{ domain }}"
       when: remove_db | default(true)
 
