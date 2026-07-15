@@ -1073,9 +1073,13 @@ main() {
         db_tunnel
         exit 0
     fi
-    create_admin_user || exit 1
-    generate_ssh_keys || exit 1
-    setup_ssh_config || exit 1
+    # Only create admin user, generate keys and prepare SSH config during a full install (install core).
+    # This avoids creating or modifying the admin user on other commands (create/remove host, etc.).
+    if [[ "$ACTION $MODULE" == "install core" ]]; then
+        create_admin_user || exit 1
+        generate_ssh_keys || exit 1
+        setup_ssh_config || exit 1
+    fi
     check_ansible
     # git_pull
     run_ansible
