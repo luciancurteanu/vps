@@ -103,7 +103,7 @@
     - name: Remove domain entries from /etc/hosts
       ansible.builtin.replace:
         path: /etc/hosts
-        regexp: ".*\\b({{ domain }}|www\.{{ domain }}|mail\.{{ domain }}|cpanel\.{{ domain }})\\b.*\n?"
+        regexp: '.*\b({{ domain }}|www\.{{ domain }}|mail\.{{ domain }}|cpanel\.{{ domain }})\b.*\n?'
         replace: ''
         backup: yes
       when: remove_hosts | default(true)
