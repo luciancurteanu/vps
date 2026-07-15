@@ -8,8 +8,8 @@ listen = *, ::
 
 # Mail location
 mail_location = maildir:/var/vmail/%d/%n
-mail_uid = vmail
-mail_gid = vmail
+mail_uid = {{ mail_user }}
+mail_gid = {{ mail_group }}
 first_valid_uid = {{ mail_uid | default(5000) }}
 last_valid_uid = {{ mail_uid | default(5000) }}
 

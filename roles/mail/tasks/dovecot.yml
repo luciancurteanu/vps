@@ -229,7 +229,7 @@
     src: dovecot/dovecot-mysql.conf.ext.j2
     dest: /etc/dovecot/dovecot-sql.conf.ext
     owner: root
-    group: dovecot
+    group: "{{ mail_group }}"
     mode: '0640'
   notify: restart dovecot
 
@@ -238,7 +238,7 @@
     src: dovecot/conf.d/10-auth.conf.j2
     dest: /etc/dovecot/conf.d/10-auth.conf
     owner: root
-    group: root
+    group: "{{ mail_group }}"
   notify: restart dovecot
 
 - name: Ensure Dovecot service is running and enabled

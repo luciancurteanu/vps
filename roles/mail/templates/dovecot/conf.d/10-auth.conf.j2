@@ -12,8 +12,8 @@ auth_mechanisms = plain login
 service auth {
   unix_listener auth-userdb {
     mode = 0600
-    user = vmail
-    group = vmail
+    user = {{ mail_user }}
+    group = {{ mail_group }}
   }
 
   unix_listener /var/spool/postfix/private/auth {
@@ -24,9 +24,9 @@ service auth {
 
   unix_listener auth-master {
     mode = 0600
-    user = vmail
-    group = vmail
+    user = {{ mail_user }}
+    group = {{ mail_group }}
   }
 
-  user = dovecot
+  user = {{ dovecot_user | default('dovecot') }}
 }
