@@ -130,9 +130,22 @@ write_vault_admin_ssh_public_key() {
         return 1
     fi
 
+    local was_encrypted=0
     if head -1 "$VAULT_FILE" | grep -q '^\$ANSIBLE_VAULT'; then
-        echo -e "${YELLOW}Vault file is encrypted; skipping automatic write to $VAULT_FILE.${RESET}"
-        return 0
+        was_encrypted=1
+        echo -e "${YELLOW}Vault file is encrypted; attempting to decrypt $VAULT_FILE for update...${RESET}"
+
+        local vault_opts=""
+        if [[ -n "$ASK_VAULT_PASS" ]]; then
+            vault_opts="--ask-vault-pass"
+        elif [[ -n "$VAULT_PASSWORD_FILE" ]]; then
+            vault_opts="$VAULT_PASSWORD_FILE"
+        fi
+
+        if ! ansible-vault decrypt "$VAULT_FILE" $vault_opts; then
+            echo -e "${RED}Error: Failed to decrypt $VAULT_FILE. Provide --ask-vault-pass or --vault-password-file when invoking the script.${RESET}"
+            return 1
+        fi
     fi
 
     python3 - "$VAULT_FILE" "$public_key_line" <<'PYEOF'
@@ -159,6 +172,20 @@ with open(vault_file, 'w', encoding='utf-8') as handle:
 
 print('Updated vault_admin_ssh_public_key in {}'.format(vault_file))
 PYEOF
+
+    if [ "$was_encrypted" -eq 1 ]; then
+        local vault_opts=""
+        if [[ -n "$ASK_VAULT_PASS" ]]; then
+            vault_opts="--ask-vault-pass"
+        elif [[ -n "$VAULT_PASSWORD_FILE" ]]; then
+            vault_opts="$VAULT_PASSWORD_FILE"
+        fi
+
+        if ! ansible-vault encrypt "$VAULT_FILE" $vault_opts; then
+            echo -e "${RED}Warning: Updated $VAULT_FILE but failed to re-encrypt it.${RESET}"
+            return 1
+        fi
+    fi
 }
 
 resolve_inventory_private_key() {
@@ -478,6 +505,12 @@ parse_args() {
     if [[ -z "$USER" && -n "$DOMAIN" ]]; then
         USER=$(echo "$DOMAIN" | awk -F. '{print $(NF-1)}')
     fi
+
+    # If no vault options were provided but a default vault password file
+    # exists at ~/.vault_pass, use it automatically to avoid prompting.
+    if [[ -z "$ASK_VAULT_PASS" && -z "$VAULT_PASSWORD_FILE" && -f "$HOME/.vault_pass" ]]; then
+        VAULT_PASSWORD_FILE="--vault-password-file=$HOME/.vault_pass"
+    fi
 }
 
 # Create an admin user with passwordless sudo privileges
@@ -753,10 +786,23 @@ sync_keys() {
         exit 1
     fi
 
+    local secrets_was_encrypted=0
     if head -1 "$secrets_file" | grep -q '^\$ANSIBLE_VAULT'; then
-        echo -e "${RED}secrets.yml is encrypted. Decrypt it first:${RESET}"
-        echo -e "  ansible-vault decrypt vars/secrets.yml"
-        exit 1
+        secrets_was_encrypted=1
+        echo -e "${YELLOW}secrets.yml is encrypted; attempting to decrypt for update...${RESET}"
+
+        local vault_opts=""
+        if [[ -n "$ASK_VAULT_PASS" ]]; then
+            vault_opts="--ask-vault-pass"
+        elif [[ -n "$VAULT_PASSWORD_FILE" ]]; then
+            vault_opts="$VAULT_PASSWORD_FILE"
+        fi
+
+        if ! ansible-vault decrypt "$secrets_file" $vault_opts; then
+            echo -e "${RED}Error: Failed to decrypt $secrets_file. Provide --ask-vault-pass or --vault-password-file when invoking the script.${RESET}"
+            rm -f "$tmp_keys"
+            exit 1
+        fi
     fi
 
     local tmp_keys
@@ -815,6 +861,21 @@ PYEOF
     rm -f "$tmp_keys"
 
     if [ $exit_code -eq 0 ]; then
+        # Re-encrypt if it was encrypted before
+        if [ "$secrets_was_encrypted" -eq 1 ]; then
+            local vault_opts=""
+            if [[ -n "$ASK_VAULT_PASS" ]]; then
+                vault_opts="--ask-vault-pass"
+            elif [[ -n "$VAULT_PASSWORD_FILE" ]]; then
+                vault_opts="$VAULT_PASSWORD_FILE"
+            fi
+
+            if ! ansible-vault encrypt "$secrets_file" $vault_opts; then
+                echo -e "${RED}Warning: Updated $secrets_file but failed to re-encrypt it.${RESET}"
+                exit 1
+            fi
+        fi
+
         echo -e "${GREEN}secrets.yml updated. Run the playbook to sync keys to the server:${RESET}"
         echo -e "  ${BOLD}./vps.sh install core --domain=\$DOMAIN${RESET}"
     else
@@ -1019,41 +1080,9 @@ run_ansible() {
         log "${GREEN}Operation completed successfully in ${minutes}m ${seconds}s${RESET}"
         log "${GREEN}Full log saved to: $log_file${RESET}"
 
-        # Auto-run SSL setup after install core or create host (only for .test dev domains)
-        if [[ "$ACTION $MODULE" == "install core" || "$ACTION $MODULE" == "create host" ]] && [[ -n "$DOMAIN" ]]; then
-            tld="${DOMAIN##*.}"
-            if [[ "$tld" == "test" ]]; then
-                log "${GREEN}Dev domain (.test) — auto-running SSL setup for ${DOMAIN}...${RESET}"
-                ssl_log_file="$PROJECT_ROOT/logs/vps-install-ssl-${timestamp}.log"
-                {
-                    echo "========================================"
-                    echo "VPS SSL Auto-run Log"
-                    echo "========================================"
-                    echo "Date: $(date '+%Y-%m-%d %H:%M:%S')"
-                    echo "Domain: $DOMAIN"
-                    echo "========================================"
-                    echo ""
-                } > "$ssl_log_file"
-                ansible-playbook "$PROJECT_ROOT/playbooks/ssl.yml" \
-                    -e "domain=${DOMAIN}" -e "user=${USER}" \
-                    $ASK_SSH_PASS $VAULT_OPTS 2>&1 | tee -a "$ssl_log_file"
-                ssl_exit_code=${PIPESTATUS[0]}
-                if [ $ssl_exit_code -eq 0 ]; then
-                    log "${GREEN}SSL setup completed.${RESET}"
-                    ca_cert="$PROJECT_ROOT/temp/${DOMAIN}-local-ca.crt"
-                    log "${YELLOW}CA cert fetched → import for green HTTPS in your browser:${RESET}"
-                    log "  ${BOLD}File: $ca_cert${RESET}"
-                    log "  ${BOLD}Windows:${RESET} Double-click → Install → Local Machine → Trusted Root Certification Authorities"
-                    log "  ${BOLD}Firefox:${RESET} Settings → Privacy & Security → View Certificates → Authorities → Import"
-                else
-                    log "${YELLOW}SSL setup failed (exit $ssl_exit_code). Run manually: ./vps.sh install ssl --domain=${DOMAIN}${RESET}"
-                    log "${YELLOW}SSL log: $ssl_log_file${RESET}"
-                fi
-            else
-                log "${YELLOW}Production domain — run SSL separately when ready:${RESET}"
-                log "  ${BOLD}./vps.sh install ssl --domain=${DOMAIN}${RESET}"
-            fi
-        fi
+        # Auto-run SSL setup removed to avoid errors with tee and interactive
+        # vault prompts. Run SSL separately when needed:
+        #   ./vps.sh install ssl --domain=${DOMAIN}
     else
         log "${RED}Operation failed with exit code $ansible_exit_code${RESET}"
         log "${RED}Check log for details: $log_file${RESET}"
