@@ -186,8 +186,8 @@
     - name: Remove mail database entries for domain (users)
       community.mysql.mysql_query:
         login_db: "{{ mail_db_name | default('mailserver') }}"
-        login_user: "{{ mail_db_user }}"
-        login_password: "{{ mail_db_password }}"
+        login_user: "{{ mail_db_user | default(omit) }}"
+        login_password: "{{ mail_db_password | default(omit) }}"
         login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
         query: "DELETE FROM users WHERE domain=%s"
         positional_args:
@@ -197,8 +197,8 @@
     - name: Remove mail database entries for domain (domains)
       community.mysql.mysql_query:
         login_db: "{{ mail_db_name | default('mailserver') }}"
-        login_user: "{{ mail_db_user }}"
-        login_password: "{{ mail_db_password }}"
+        login_user: "{{ mail_db_user | default(omit) }}"
+        login_password: "{{ mail_db_password | default(omit) }}"
         login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
         query: "DELETE FROM domains WHERE domain=%s"
         positional_args:
@@ -208,8 +208,8 @@
     - name: Remove mail database entries for domain (aliases)
       community.mysql.mysql_query:
         login_db: "{{ mail_db_name | default('mailserver') }}"
-        login_user: "{{ mail_db_user }}"
-        login_password: "{{ mail_db_password }}"
+        login_user: "{{ mail_db_user | default(omit) }}"
+        login_password: "{{ mail_db_password | default(omit) }}"
         login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
         query: "DELETE FROM aliases WHERE domain=%s"
         positional_args:
@@ -219,7 +219,7 @@
     - name: Remove Roundcube users for domain
       community.mysql.mysql_query:
         login_db: "{{ roundcube_db_name | default('roundcube') }}"
-        login_user: "{{ roundcube_db_user | default('roundcube') }}"
+        login_user: "{{ roundcube_db_user | default(omit) }}"
         login_password: "{{ roundcube_db_password | default(vault_roundcube_db_password | default(omit)) }}"
         login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
         query: "DELETE FROM users WHERE username LIKE CONCAT('%@', %s)"
@@ -230,7 +230,7 @@
     - name: Remove Roundcube email entries from collected_addresses, contacts, identities
       community.mysql.mysql_query:
         login_db: "{{ roundcube_db_name | default('roundcube') }}"
-        login_user: "{{ roundcube_db_user | default('roundcube') }}"
+        login_user: "{{ roundcube_db_user | default(omit) }}"
         login_password: "{{ roundcube_db_password | default(vault_roundcube_db_password | default(omit)) }}"
         login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
         query: "DELETE FROM {{ item }} WHERE email LIKE CONCAT('%@', %s)"
@@ -245,7 +245,7 @@
     - name: Remove orphaned Roundcube rows referencing deleted users
       community.mysql.mysql_query:
         login_db: "{{ roundcube_db_name | default('roundcube') }}"
-        login_user: "{{ roundcube_db_user | default('roundcube') }}"
+        login_user: "{{ roundcube_db_user | default(omit) }}"
         login_password: "{{ roundcube_db_password | default(vault_roundcube_db_password | default(omit)) }}"
         login_unix_socket: "{{ db_login_unix_socket | default(omit) }}"
         query: "DELETE FROM {{ item }} WHERE user_id IS NOT NULL AND user_id NOT IN (SELECT user_id FROM users)"
