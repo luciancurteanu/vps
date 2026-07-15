@@ -87,6 +87,14 @@
         remove: true
       when: remove_user | default(true)
 
+    - name: Ensure /etc/passwd has no lingering entries for the user
+      ansible.builtin.lineinfile:
+        path: /etc/passwd
+        regexp: '^{{ user }}:.*$'
+        state: absent
+        backup: yes
+      when: remove_user | default(true)
+
     - name: Display backup information
       ansible.builtin.debug:
         msg: "Website backup created at: {{ backup_result.dest | default('Backup failed') }}"
