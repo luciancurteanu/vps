@@ -208,6 +208,30 @@
     group: root
   notify: restart dovecot
 
+# Ensure mail DB user exists with vault-backed password and minimal privileges
+- name: Ensure mail DB user present with vault password and SELECT grants
+  community.mysql.mysql_user:
+    name: mailuser
+    host: "{{ item }}"
+    password: "{{ vault_mail_db_password | default(mail_db_password | default('')) }}"
+    priv: "mailserver.*:SELECT"
+    plugin: mysql_native_password
+    state: present
+  loop:
+    - '127.0.0.1'
+    - 'localhost'
+  no_log: true
+
+# Deploy SQL auth config for Dovecot (used by 10-auth.conf)
+- name: Deploy Dovecot SQL auth config
+  ansible.builtin.template:
+    src: dovecot/dovecot-mysql.conf.ext.j2
+    dest: /etc/dovecot/dovecot-sql.conf.ext
+    owner: root
+    group: dovecot
+    mode: '0640'
+  notify: restart dovecot
+
 - name: Configure Dovecot authentication
   ansible.builtin.template:
     src: dovecot/conf.d/10-auth.conf.j2

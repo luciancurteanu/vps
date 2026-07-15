@@ -51,7 +51,8 @@ bantime = -1
 findtime = 86400
 
 [mariadb]
-enabled = {{ (install_mariadb | default(false) and stat_mariadb_log.stat.exists) | ternary('true','false') }}
+# Allow explicit override via `security_enable_mariadb_jail`; otherwise enable when MariaDB is installed
+enabled = {{ security_enable_mariadb_jail | default((install_mariadb | default(false) and stat_mariadb_log.stat.exists)) | ternary('true','false') }}
 backend = polling
 ignorelogfail = true
 port = {{ db_port | default(3306) }}
