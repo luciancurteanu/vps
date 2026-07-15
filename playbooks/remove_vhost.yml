@@ -108,6 +108,81 @@
         backup: yes
       when: remove_hosts | default(true)
 
+    - name: Remove OpenDKIM key directory for the domain
+      ansible.builtin.file:
+        path: "/etc/opendkim/keys/{{ domain }}"
+        state: absent
+      when: remove_opendkim | default(true)
+
+    - name: Remove OpenDKIM KeyTable entries for domain
+      ansible.builtin.replace:
+        path: /etc/opendkim/KeyTable
+        regexp: ".*\\b{{ domain }}\\b.*\n?"
+        replace: ''
+        backup: yes
+      when: remove_opendkim | default(true)
+
+    - name: Remove OpenDKIM SigningTable entries for domain
+      ansible.builtin.replace:
+        path: /etc/opendkim/SigningTable
+        regexp: ".*\\b{{ domain }}\\b.*\n?"
+        replace: ''
+        backup: yes
+      when: remove_opendkim | default(true)
+
+    - name: Check for Postfix map files
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      register: postfix_map
+      loop:
+        - /etc/postfix/virtual
+        - /etc/postfix/transport
+      when: remove_postfix | default(true)
+
+    - name: Remove domain entries from Postfix maps
+      ansible.builtin.replace:
+        path: "{{ item }}"
+        regexp: ".*\\b{{ domain }}\\b.*\n?"
+        replace: ''
+        backup: yes
+      loop:
+        - /etc/postfix/virtual
+        - /etc/postfix/transport
+      when: remove_postfix | default(true)
+
+    - name: Rebuild Postfix maps if present
+      ansible.builtin.command:
+        cmd: "postmap {{ item }}"
+      loop:
+        - /etc/postfix/virtual
+        - /etc/postfix/transport
+      when: remove_postfix | default(true)
+      failed_when: false
+
+    - name: Restart Postfix
+      ansible.builtin.service:
+        name: postfix
+        state: restarted
+      when: remove_postfix | default(true)
+
+    - name: Attempt to remove Let's Encrypt certificate using certbot (if installed)
+      ansible.builtin.command:
+        cmd: "certbot delete --cert-name {{ domain }} --non-interactive --quiet"
+      register: certbot_delete
+      failed_when: false
+      changed_when: certbot_delete.rc == 0
+      when: remove_ssl | default(true)
+
+    - name: Remove Let's Encrypt directories/files for domain
+      ansible.builtin.file:
+        path: "/etc/letsencrypt/{{ item }}"
+        state: absent
+      loop:
+        - "live/{{ domain }}"
+        - "archive/{{ domain }}"
+        - "renewal/{{ domain }}.conf"
+      when: remove_ssl | default(true)
+
       - name: Remove mail database entries for domain (users)
         community.mysql.mysql_query:
           login_db: "{{ mail_db_name | default('mailserver') }}"
