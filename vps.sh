@@ -181,12 +181,20 @@ PYEOF
             vault_opts="$VAULT_PASSWORD_FILE"
         fi
 
-        # Some Ansible versions require an explicit encrypt-vault-id when
-        # multiple vault ids are configured. Specify the default vault id to
-        # ensure encrypt uses the expected identity.
-        if ! ansible-vault $vault_opts --encrypt-vault-id=default encrypt "$VAULT_FILE"; then
-            echo -e "${RED}Warning: Updated $VAULT_FILE but failed to re-encrypt it.${RESET}"
-            return 1
+        # Some Ansible versions support --encrypt-vault-id; others don't. Try
+        # the modern form first, then fall back to a plain encrypt if it fails.
+        if ! ansible-vault $vault_opts --encrypt-vault-id=default encrypt "$VAULT_FILE" 2>/tmp/ansible_vault_encrypt.err; then
+            if ansible-vault $vault_opts encrypt "$VAULT_FILE" 2>/tmp/ansible_vault_encrypt2.err; then
+                :
+            else
+                echo -e "${RED}Warning: Updated $VAULT_FILE but failed to re-encrypt it.${RESET}"
+                echo "ansible-vault output (attempts):"
+                sed -n '1,200p' /tmp/ansible_vault_encrypt.err 2>/dev/null || true
+                sed -n '1,200p' /tmp/ansible_vault_encrypt2.err 2>/dev/null || true
+                rm -f /tmp/ansible_vault_encrypt.err /tmp/ansible_vault_encrypt2.err
+                return 1
+            fi
+            rm -f /tmp/ansible_vault_encrypt.err /tmp/ansible_vault_encrypt2.err
         fi
     fi
 }
@@ -873,10 +881,17 @@ PYEOF
                 vault_opts="$VAULT_PASSWORD_FILE"
             fi
 
-            # See note above re: explicit vault id on encrypt
-            if ! ansible-vault $vault_opts --encrypt-vault-id=default encrypt "$secrets_file"; then
-                echo -e "${RED}Warning: Updated $secrets_file but failed to re-encrypt it.${RESET}"
-                exit 1
+            # See note above re: explicit vault id on encrypt. Try modern form
+            # then fallback to plain encrypt for older ansible versions.
+            if ! ansible-vault $vault_opts --encrypt-vault-id=default encrypt "$secrets_file" 2>/tmp/ansible_vault_encrypt.err; then
+                if ! ansible-vault $vault_opts encrypt "$secrets_file" 2>/tmp/ansible_vault_encrypt2.err; then
+                    echo -e "${RED}Warning: Updated $secrets_file but failed to re-encrypt it.${RESET}"
+                    sed -n '1,200p' /tmp/ansible_vault_encrypt.err 2>/dev/null || true
+                    sed -n '1,200p' /tmp/ansible_vault_encrypt2.err 2>/dev/null || true
+                    rm -f /tmp/ansible_vault_encrypt.err /tmp/ansible_vault_encrypt2.err
+                    exit 1
+                fi
+                rm -f /tmp/ansible_vault_encrypt.err /tmp/ansible_vault_encrypt2.err
             fi
         fi
 
@@ -1118,11 +1133,18 @@ main() {
         generate_ssh_keys || exit 1
         setup_ssh_config || exit 1
     elif [[ "$ACTION $MODULE" == "create host" ]]; then
-        # Ensure inventory SSH key exists but DO NOT sync the public key into
-        # the vault/secrets.yml during a host create operation. Vault updates
-        # should only occur during a full "install core" run.
-        generate_ssh_keys || exit 1
-        setup_ssh_config nosync || exit 1
+        # For create host, only generate the admin SSH keys and prepare full
+        # SSH/vault sync when this domain is the configured master_domain.
+        # Otherwise, skip admin user/key creation and only ensure inventory
+        # key presence via setup_ssh_config nosync (which won't write vault).
+        master_domain_val=$(read_yaml_scalar "$CONFIG_FILE" "master_domain" "")
+        if [[ -n "$master_domain_val" && "$DOMAIN" == "$master_domain_val" ]]; then
+            generate_ssh_keys || exit 1
+            setup_ssh_config || exit 1
+        else
+            # Ensure inventory private key exists for ansible but do not alter vault
+            setup_ssh_config nosync || exit 1
+        fi
     fi
     check_ansible
     # git_pull
