@@ -1,0 +1,46 @@
+---
+- name: Render credentials email only
+  hosts: localhost
+  connection: local
+  become: true
+  gather_facts: false
+  vars_files:
+    - ../vars/secrets.yml
+  tasks:
+    - name: Slurp private key
+      ansible.builtin.slurp:
+        src: "/home/{{ domain }}/.ssh/id_rsa"
+      register: slurped_private_key
+      ignore_errors: true
+
+    - name: Set variables for rendering
+      ansible.builtin.set_fact:
+        private_key_b64: "{{ slurped_private_key.content | default('') }}"
+        secrets_b64: "{{ lookup('file', playbook_dir + '/../vars/secrets.yml') | b64encode }}"
+        all_b64: "{{ lookup('file', playbook_dir + '/../vars/all.yml') | default(lookup('file', playbook_dir + '/../inventory/group_vars/all.yml')) | b64encode }}"
+
+    - name: Ensure creds directory exists
+      ansible.builtin.file:
+        path: /root/vps/creds
+        state: directory
+        owner: root
+        group: root
+        mode: '0750'
+
+    - name: Render credentials email to file
+      ansible.builtin.template:
+        src: "{{ playbook_dir | dirname }}/roles/mail/templates/creds-email.eml.j2"
+        dest: "/root/vps/creds/creds-{{ domain }}.eml"
+        owner: root
+        group: root
+        mode: '0600'
+      vars:
+        boundary: "===={{ lookup('pipe','date +%s') }}===="
+        filename: "{{ user }}_private_key"
+        private_key_b64: "{{ private_key_b64 | default('') }}"
+        secrets_b64: "{{ secrets_b64 | default('') }}"
+        all_b64: "{{ all_b64 | default('') }}"
+        username: "{{ user }}"
+        password: "{{ '' }}"
+        ip: "{{ vhost_ip | default('') }}"
+        ssh_port: 22

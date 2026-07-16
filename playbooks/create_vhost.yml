@@ -438,8 +438,8 @@
             group: opendkim
             mode: "{{ item.mode }}"
           loop:
-            - { name: 'default.private', mode: '0640' }
-            - { name: 'default.txt',     mode: '0640' }
+            - { name: 'default.private', mode: '0600' }
+            - { name: 'default.txt',     mode: '0644' }
 
         - name: Add domain to OpenDKIM KeyTable
           ansible.builtin.lineinfile:

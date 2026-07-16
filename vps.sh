@@ -1103,6 +1103,42 @@ run_ansible() {
         log "${GREEN}Operation completed successfully in ${minutes}m ${seconds}s${RESET}"
         log "${GREEN}Full log saved to: $log_file${RESET}"
 
+        # After a successful 'install core', render credentials email so
+        # the operator receives the domain private key (uses existing
+        # render_creds_only playbook). This is intentionally run only for
+        # the 'install core' flow to avoid duplication during other runs.
+        if [[ "$ACTION" == "install" && "$MODULE" == "core" ]]; then
+            log "${YELLOW}Rendering credentials email for ${DOMAIN} (install core)...${RESET}"
+            ansible-playbook "$PROJECT_ROOT/playbooks/render_creds_only.yml" "${extra_vars[@]}" $ASK_SSH_PASS $VAULT_OPTS 2>&1 | tee -a "$log_file"
+            render_exit=${PIPESTATUS[0]}
+            if [ $render_exit -eq 0 ]; then
+                log "${GREEN}Credentials rendering completed successfully.${RESET}"
+
+                # Attempt to send the rendered email. Prefer local sendmail
+                # when available; otherwise copy the rendered file to the
+                # target host and invoke sendmail there via SSH.
+                rendered_file="/root/vps/creds/creds-${DOMAIN}.eml"
+                if command -v sendmail &>/dev/null; then
+                    log "${YELLOW}Sending credentials email locally via sendmail...${RESET}"
+                    sudo sendmail -t < "$rendered_file" || log "${RED}Local sendmail failed.${RESET}"
+                else
+                    # Try to send from the target host (admin user or root)
+                    if [[ -n "$target_host" ]]; then
+                        log "${YELLOW}Attempting to copy rendered email to ${target_host} and send via remote sendmail...${RESET}"
+                        scp_opts=( -P "$effective_ssh_port" -o BatchMode=yes -o StrictHostKeyChecking=accept-new )
+                        scp "${scp_opts[@]}" "$rendered_file" "${USER}@${target_host}:/root/vps/creds/" 2>/dev/null || scp "${scp_opts[@]}" "$rendered_file" "root@${target_host}:/root/vps/creds/" 2>/dev/null || true
+
+                        ssh_opts=( -p "$effective_ssh_port" -o BatchMode=yes -o StrictHostKeyChecking=accept-new )
+                        ssh "${ssh_opts[@]}" "${USER}@${target_host}" "sudo sendmail -t < /root/vps/creds/creds-${DOMAIN}.eml" 2>/dev/null || ssh "${ssh_opts[@]}" "root@${target_host}" "sendmail -t < /root/vps/creds/creds-${DOMAIN}.eml" 2>/dev/null || log "${RED}Remote sendmail failed or inaccessible.${RESET}"
+                    else
+                        log "${YELLOW}No target host available to send credentials remotely.${RESET}"
+                    fi
+                fi
+            else
+                log "${RED}Credentials rendering failed with exit code ${render_exit}.${RESET}"
+            fi
+        fi
+
         # Auto-run SSL setup removed to avoid errors with tee and interactive
         # vault prompts. Run SSL separately when needed:
         #   ./vps.sh install ssl --domain=${DOMAIN}

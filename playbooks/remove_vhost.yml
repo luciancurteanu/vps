@@ -91,10 +91,8 @@
         state: absent
       when: remove_logrotate | default(true)
 
-    - name: Remove generated credentials file(s)
-      ansible.builtin.file:
-        path: "/root/vps/creds/creds-{{ domain }}.eml"
-        state: absent
+    - name: Remove generated credentials file(s) for this domain
+      ansible.builtin.shell: "rm -f /root/vps/creds/creds-{{ domain }}*.eml || true"
       when: remove_creds | default(true)
 
     - name: Remove creds directory if empty (best-effort)
