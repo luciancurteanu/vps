@@ -22,6 +22,7 @@
     ssl_cert_file: "{{ ssl_local_dir + '/server.crt' if is_dev_domain else '/etc/letsencrypt/live/' + domain + '/fullchain.pem' }}"
     ssl_cert_key: "{{ ssl_local_dir + '/server.key' if is_dev_domain else '/etc/letsencrypt/live/' + domain + '/privkey.pem' }}"
     ssl_ca_file: "{{ ssl_local_dir + '/ca.crt' if is_dev_domain else '/etc/letsencrypt/live/' + domain + '/chain.pem' }}"
+    cert_renewal_alert_email: "{{ email }}"
 
   pre_tasks:
     - name: Verify required variables are defined
@@ -210,12 +211,18 @@
       when: not is_dev_domain
 
     - name: Symlink certbot from venv onto PATH
+      ansible.builtin.stat:
+        path: /opt/certbot-venv/bin/certbot
+      register: certbot_venv_bin
+      when: not is_dev_domain
+
+    - name: Create symlink to certbot if venv binary exists
       ansible.builtin.file:
         src: /opt/certbot-venv/bin/certbot
         dest: /usr/local/bin/certbot
         state: link
         force: true
-      when: not is_dev_domain
+      when: not is_dev_domain and certbot_venv_bin.stat.exists | default(false)
 
     - name: Create Dynu credentials file
       ansible.builtin.copy:
@@ -249,15 +256,25 @@
         --domains {{ certbot_domains }}
         {{ '--force-renewal' if force_renewal else '' }}
       register: certbot_result
-      changed_when: "'Congratulations! Your certificate and chain have been saved' in certbot_result.stdout"
       when: not is_dev_domain and (not cert_file.stat.exists or force_renewal)
+
+    - name: Stat certificate file after certbot run
+      ansible.builtin.stat:
+        path: "/etc/letsencrypt/live/{{ domain }}/fullchain.pem"
+      register: cert_file_after
+      when: not is_dev_domain and (not cert_file.stat.exists or force_renewal)
+
+    - name: Fail if certbot did not produce certificate
+      ansible.builtin.fail:
+        msg: "Certbot run completed but certificate not found at /etc/letsencrypt/live/{{ domain }}/fullchain.pem"
+      when: not is_dev_domain and (not cert_file.stat.exists or force_renewal) and not cert_file_after.stat.exists
 
     - name: Install cronjob for certificate renewal
       ansible.builtin.cron:
         name: "Certbot automatic renewal"
         job: >-
           /usr/local/bin/certbot renew --quiet --non-interactive ||
-          { echo -e "From: root@$(hostname --fqdn)\nTo: evpscloud@gmail.com\nSubject: [ALERT] SSL Renewal Failed on $(hostname)\n\nCertbot renewal failed at $(date)" | /sbin/sendmail -t; }
+          { echo -e "From: root@$(hostname --fqdn)\nTo: {{ cert_renewal_alert_email | default(email) }}\nSubject: [ALERT] SSL Renewal Failed on $(hostname)\n\nCertbot renewal failed at $(date)" | /sbin/sendmail -t; }
         minute: "0"
         hour: "3"
         weekday: "1"  # Monday
@@ -273,6 +290,122 @@
     - name: Output certificate information
       ansible.builtin.debug:
         msg: "{{ cert_info.stdout_lines }}"
+      when: not is_dev_domain
+
+    # ── Dynu DNS: ensure DMARC, SPF and DKIM TXT records exist (prod only) ──
+    - name: Ensure Dynu API token is present
+      ansible.builtin.assert:
+        that:
+          - vault_dynu_api_token is defined
+          - vault_dynu_api_token | length > 0
+        fail_msg: "vault_dynu_api_token is required to manage DNS records via Dynu"
+      when: not is_dev_domain
+
+    - name: Lookup Dynu DNS services
+      ansible.builtin.uri:
+        url: "https://api.dynu.com/v2/dns"
+        method: GET
+        headers:
+          API-Key: "{{ vault_dynu_api_token }}"
+        return_content: yes
+        status_code: 200
+      register: dynu_dns_list
+      when: not is_dev_domain
+
+    - name: Find Dynu zone id for domain
+      ansible.builtin.set_fact:
+        dynu_zone_id: >-
+          {{ ((dynu_dns_list.json | default([]) | selectattr('domainName','equalto', domain) | map(attribute='id') | list)
+             + (dynu_dns_list.json | default([]) | selectattr('name','equalto', domain) | map(attribute='id') | list)).0 }}
+      when: not is_dev_domain
+
+    - name: Fail if Dynu zone not found for domain
+      ansible.builtin.fail:
+        msg: "Dynu DNS zone for '{{ domain }}' not found. Ensure the domain is present in your Dynu account."
+      when: not is_dev_domain and (dynu_zone_id is not defined or dynu_zone_id == None)
+
+    - name: Read DKIM TXT file into variable
+      ansible.builtin.command: "cat /etc/opendkim/keys/{{ domain }}/default.txt"
+      register: dkim_txt
+      changed_when: false
+      failed_when: dkim_txt.rc not in [0,1]
+      when: not is_dev_domain
+
+    - name: Normalize DKIM TXT value (remove parentheses, quotes and whitespace)
+      ansible.builtin.set_fact:
+        dkim_value: "{{ dkim_txt.stdout | default('') | regex_replace('\\(|\\)','') | regex_replace('"','') | regex_replace('\\s+','') | trim }}"
+      when: not is_dev_domain
+
+    - name: Prepare DNS TXT records list
+      ansible.builtin.set_fact:
+        dynu_desired_records:
+          - hostname: "_dmarc"
+              type: "TXT"
+            ttl: 3600
+            value: "v=DMARC1; p=reject;"
+            - hostname: "@"
+              type: "SPF"
+            ttl: 3600
+            value: "v=spf1 a include:spf.protection.outlook.com include:_spf.google.com include:_spf.mail.yahoo.com -all"
+            - hostname: "default._domainkey"
+              type: "TXT"
+            ttl: 120
+            value: "{{ dkim_value }}"
+      when: not is_dev_domain
+
+    - name: Ensure Dynu TXT records exist (create or update)
+      vars: {}
+      block:
+        - name: Compute Dynu node name from requested hostname
+          ansible.builtin.set_fact:
+            dynu_node_name: >-
+              {{ (item.hostname == '@') | ternary('', (item.hostname | regex_replace('\.' ~ domain ~ '$',''))) }}
+
+        - name: Build Dynu record body
+          ansible.builtin.set_fact:
+            dynu_record_body: >-
+              {{ {'nodeName': dynu_node_name, 'recordType': item.type, 'ttl': item.ttl, 'textData': item.value, 'state': true} }}
+
+        - name: Get existing records for Dynu zone
+          ansible.builtin.uri:
+            url: "https://api.dynu.com/v2/dns/{{ dynu_zone_id }}/record"
+            method: GET
+            headers:
+              API-Key: "{{ vault_dynu_api_token }}"
+            return_content: yes
+            status_code: 200
+          register: dynu_zone_records
+
+        - name: Find matching record id
+          ansible.builtin.set_fact:
+            dynu_existing_record_id: >-
+              {{ (((dynu_zone_records.json | default([]) | selectattr('nodeName','equalto', dynu_node_name) | map(attribute='id') | list)
+                  + (dynu_zone_records.json | default([]) | selectattr('hostname','equalto', (dynu_node_name == '' and domain or dynu_node_name ~ '.' ~ domain)) | map(attribute='id') | list)).0) | default(None) }}
+
+        - name: Update existing Dynu record if present
+          ansible.builtin.uri:
+            url: "https://api.dynu.com/v2/dns/{{ dynu_zone_id }}/record/{{ dynu_existing_record_id }}"
+            method: POST
+            headers:
+              API-Key: "{{ vault_dynu_api_token }}"
+              Content-Type: "application/json"
+            body: "{{ dynu_record_body }}"
+            body_format: json
+            status_code: [200,201,204]
+          when: dynu_existing_record_id is defined and dynu_existing_record_id != None
+
+        - name: Create Dynu record when missing
+          ansible.builtin.uri:
+            url: "https://api.dynu.com/v2/dns/{{ dynu_zone_id }}/record"
+            method: POST
+            headers:
+              API-Key: "{{ vault_dynu_api_token }}"
+              Content-Type: "application/json"
+            body: "{{ dynu_record_body }}"
+            body_format: json
+            status_code: [200,201]
+          when: dynu_existing_record_id is not defined or dynu_existing_record_id == None
+      loop: "{{ dynu_desired_records }}"
       when: not is_dev_domain
 
     # ── Shared: enable SSL in all nginx/app configs ─────────────────────────────
@@ -416,6 +549,7 @@
         - install_mail | default(true)
         - domain == master_domain
         - postfix_maincf_stat.stat.exists | default(false)
+        - cert_file.stat.exists | default(false)
       notify: Restart Postfix
 
     - name: Update Webmin nginx proxy configuration with SSL enabled
@@ -443,7 +577,7 @@
         mail_ssl_cert: "{{ ssl_cert_file }}"
         mail_ssl_key: "{{ ssl_cert_key }}"
         mail_ssl_ca: "{{ ssl_ca_file }}"
-      when: install_mail | default(true) and domain == master_domain
+      when: install_mail | default(true) and domain == master_domain and cert_file.stat.exists | default(false)
       notify: Restart Dovecot
 
     - name: Check if Webmin miniserv.conf exists
