@@ -1,0 +1,63 @@
+From: admin@{{ domain }}
+To: contact@{{ domain }}
+Subject: Credentials and setup for {{ domain }} SSH key
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="{{ boundary }}"
+
+--{{ boundary }}
+Content-Type: text/plain; charset="utf-8"
+
+Hello {{ username }},
+
+Attached you will find the private SSH key and configuration artifacts for {{ domain }}.
+Files included:
+ - Private SSH key: {{ filename | default(username + '_private_key') }}
+
+Credentials
+Username: {{ username }}
+Password: {{ password | default('N/A') }}
+
+Quick setup instructions (Windows PowerShell):
+
+1) Save the attached private key to your .ssh folder:
+	- Linux/macOS: ~/.ssh/{{ filename | default(username + '_private_key') }}
+	- Windows (PowerShell): $env:USERPROFILE\\.ssh\\{{ filename | default(username + '_private_key') }}
+
+2) Generate the public key from the private key:
+
+Quick setup instructions (Windows PowerShell):
+
+1) Save the attached private key to your .ssh folder:
+	- PowerShell: $env:USERPROFILE\\.ssh\\{{ filename | default(username + '_private_key') }}
+	- CMD: %USERPROFILE%\\.ssh\\{{ filename | default(username + '_private_key') }}
+
+2) Generate the public key from the private key (PowerShell):
+	ssh-keygen -y -f "$env:USERPROFILE\\.ssh\\{{ filename | default(username + '_private_key') }}" > "$env:USERPROFILE\\.ssh\\{{ filename | default(username + '_public_key') }}.pub"
+
+3) Example SSH config entry (Windows OpenSSH format, edit %USERPROFILE%\\.ssh\\config):
+	Host {{ domain }} {{ ip | default('IP_ADDRESS') }}
+		HostName {{ ip | default('IP_ADDRESS') }}
+		Port {{ ssh_port | default(22) }}
+		User {{ username }}
+		IdentityFile $env:USERPROFILE\\.ssh\\{{ filename | default(username + '_private_key') }}
+		IdentitiesOnly yes
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="{{ filename | default(username + '_private_key') }}"
+
+{{ private_key_b64 }}
+
+--{{ boundary }}
+Content-Type: application/octet-stream; name="secrets.yml"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="secrets.yml"
+
+{{ secrets_b64 | default('') }}
+
+--{{ boundary }}
+Content-Type: application/octet-stream; name="all.yml"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="all.yml"
+
+{{ all_b64 | default('') }}
+
+--{{ boundary }}--

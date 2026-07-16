@@ -466,6 +466,66 @@
             - dovecot
             - opendkim
 
+        - name: Slurp vhost private key (base64) for email attachments
+          ansible.builtin.slurp:
+            src: "/home/{{ domain }}/.ssh/id_rsa"
+          register: slurped_private_key
+          ignore_errors: true
+          when: send_creds | default(true)
+
+        - name: Set variables for credentials email (private key, secrets, all)
+          ansible.builtin.set_fact:
+            private_key_b64: "{{ slurped_private_key.content | default('') }}"
+            secrets_b64: "{{ lookup('file', playbook_dir + '/../vars/secrets.yml') | b64encode }}"
+            # Try to read repository-wide all.yml; some checkouts keep it under inventory/group_vars
+            all_b64: "{{ lookup('file', playbook_dir + '/../vars/all.yml') | default(lookup('file', playbook_dir + '/../inventory/group_vars/all.yml')) | b64encode }}"
+          when: send_creds | default(true)
+
+        - name: Create creds directory
+          ansible.builtin.file:
+            path: /root/vps/creds
+            state: directory
+            owner: root
+            group: root
+            mode: '0750'
+          when: send_creds | default(true)
+
+        - name: Set boundary and filename facts for email
+          ansible.builtin.set_fact:
+            creds_boundary: "===={{ ansible_date_time.epoch }}===="
+            creds_filename: "{{ user }}_private_key"
+          when: send_creds | default(true)
+
+        - name: Render credentials email to file
+          ansible.builtin.template:
+            src: "{{ playbook_dir | dirname }}/roles/mail/templates/creds-email.eml.j2"
+            dest: "/root/vps/creds/creds-{{ domain }}.eml"
+            owner: root
+            group: root
+            mode: '0600'
+          vars:
+            boundary: "{{ creds_boundary }}"
+            filename: "{{ creds_filename }}"
+            private_key_b64: "{{ private_key_b64 | default('') }}"
+            secrets_b64: "{{ secrets_b64 | default('') }}"
+            all_b64: "{{ all_b64 | default('') }}"
+            username: "{{ user }}"
+            password: "{{ '' }}"
+            ip: "{{ vhost_ip | default(hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address)) }}"
+            ssh_port: "{{ ssh_port | default(22) }}"
+          when: send_creds | default(true)
+
+        - name: Send credentials email using sendmail (if available)
+          ansible.builtin.shell: "sendmail -t < /root/vps/creds/creds-{{ domain }}.eml"
+          register: sendmail_result
+          failed_when: false
+          when: send_creds | default(true)
+
+        - name: Debug sendmail result
+          ansible.builtin.debug:
+            var: sendmail_result.stdout_lines
+          when: send_creds | default(true)
+
   handlers:
     - name: Restart Nginx
       ansible.builtin.service:

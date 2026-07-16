@@ -958,6 +958,10 @@ setup_ssh_config() {
     local ADMIN_USER
     ADMIN_USER="$(load_admin_user)"
 
+    # Optional first arg: "nosync" to avoid writing vault_admin_ssh_public_key
+    local sync_mode
+    sync_mode="${1:-sync}"
+
     if [[ -z "$DOMAIN" ]]; then
         return 0
     fi
@@ -966,7 +970,7 @@ setup_ssh_config() {
     selected_private_key="$(resolve_inventory_private_key "$DOMAIN" "$ADMIN_USER")" || return 1
     selected_public_key="$(public_key_line_from_private_key "$selected_private_key")" || return 1
 
-    if [ -n "$selected_public_key" ]; then
+    if [ -n "$selected_public_key" ] && [ "$sync_mode" != "nosync" ]; then
         write_vault_admin_ssh_public_key "$selected_public_key" || return 1
         echo -e "${GREEN}Replaced vault_admin_ssh_public_key in $VAULT_FILE from setup_ssh_config${RESET}"
     fi
@@ -1114,10 +1118,11 @@ main() {
         generate_ssh_keys || exit 1
         setup_ssh_config || exit 1
     elif [[ "$ACTION $MODULE" == "create host" ]]; then
-        # Ensure inventory SSH key exists and sync public key to vault, but
-        # avoid creating or modifying the local admin user account.
+        # Ensure inventory SSH key exists but DO NOT sync the public key into
+        # the vault/secrets.yml during a host create operation. Vault updates
+        # should only occur during a full "install core" run.
         generate_ssh_keys || exit 1
-        setup_ssh_config || exit 1
+        setup_ssh_config nosync || exit 1
     fi
     check_ansible
     # git_pull
