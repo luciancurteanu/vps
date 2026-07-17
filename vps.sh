@@ -140,11 +140,53 @@ write_vault_admin_ssh_public_key() {
             vault_opts="--ask-vault-pass"
         elif [[ -n "$VAULT_PASSWORD_FILE" ]]; then
             vault_opts="$VAULT_PASSWORD_FILE"
+        else
+            # Auto-detect common vault password files before prompting.
+            if [ -f "$HOME/.vault_pass" ]; then
+                vault_opts="--vault-password-file=$HOME/.vault_pass"
+            elif [ -f "$PROJECT_ROOT/.vault_pass" ]; then
+                vault_opts="--vault-password-file=$PROJECT_ROOT/.vault_pass"
+            elif [ -f /root/.vault_pass ]; then
+                vault_opts="--vault-password-file=/root/.vault_pass"
+            elif [ -t 0 ]; then
+                # Interactive shell: prompt for vault password
+                vault_opts="--ask-vault-pass"
+            else
+                echo -e "${RED}Error: Vault is encrypted but no vault password option provided and no common password file found.${RESET}"
+                echo -e "Provide --ask-vault-pass or --vault-password-file when invoking the script, or create $HOME/.vault_pass or $PROJECT_ROOT/.vault_pass.${RESET}"
+                return 1
+            fi
         fi
 
-        if ! ansible-vault decrypt "$VAULT_FILE" $vault_opts; then
-            echo -e "${RED}Error: Failed to decrypt $VAULT_FILE. Provide --ask-vault-pass or --vault-password-file when invoking the script.${RESET}"
-            return 1
+        # If the installed ansible-vault doesn't support --vault-password-file
+        # or --ask-vault-pass, fall back to an 'expect' automation if a
+        # password file is available. Detect support first.
+        if ansible-vault --help 2>&1 | grep -q -- '--vault-password-file'; then
+            if ! ansible-vault $vault_opts decrypt "$VAULT_FILE"; then
+                echo -e "${RED}Error: Failed to decrypt $VAULT_FILE. Provide --ask-vault-pass or --vault-password-file when invoking the script.${RESET}"
+                return 1
+            fi
+        else
+            # ansible-vault variant without the convenient flags. Try expect
+            # automation with a candidate password file if present.
+            expect_used=0
+            for cand in "$HOME/.vault_pass" "$PROJECT_ROOT/.vault_pass" /root/.vault_pass "$PROJECT_ROOT/vars/.vault_pass" /etc/ansible/vault_pass; do
+                [ -f "$cand" ] || continue
+                if ensure_expect_installed; then
+                    pw=$(<"$cand")
+                    # decrypt
+                    expect -c "spawn ansible-vault decrypt \"$VAULT_FILE\"; expect \"Vault password:\"; send \"$pw\\r\"; expect eof" >/dev/null 2>&1 || continue
+                    vault_opts="--vault-password-file=$cand"
+                    expect_used=1
+                    break
+                fi
+            done
+
+            if [ "$expect_used" -ne 1 ]; then
+                echo -e "${RED}Error: ansible-vault on this system does not support --vault-password-file/--ask-vault-pass and 'expect' is not available to automate prompts.${RESET}"
+                echo -e "Install a newer Ansible or 'expect', or provide the password interactively using --ask-vault-pass.${RESET}"
+                return 1
+            fi
         fi
     fi
 
@@ -179,22 +221,58 @@ PYEOF
             vault_opts="--ask-vault-pass"
         elif [[ -n "$VAULT_PASSWORD_FILE" ]]; then
             vault_opts="$VAULT_PASSWORD_FILE"
+        else
+            if [ -f "$HOME/.vault_pass" ]; then
+                vault_opts="--vault-password-file=$HOME/.vault_pass"
+            elif [ -f "$PROJECT_ROOT/.vault_pass" ]; then
+                vault_opts="--vault-password-file=$PROJECT_ROOT/.vault_pass"
+            elif [ -f /root/.vault_pass ]; then
+                vault_opts="--vault-password-file=/root/.vault_pass"
+            elif [ -t 0 ]; then
+                vault_opts="--ask-vault-pass"
+            else
+                echo -e "${RED}Error: secrets.yml is encrypted but no vault password option provided and no common password file found.${RESET}"
+                echo -e "Provide --ask-vault-pass or --vault-password-file when invoking the script, or create $HOME/.vault_pass or $PROJECT_ROOT/.vault_pass.${RESET}"
+                rm -f "$tmp_keys"
+                exit 1
+            fi
         fi
 
-        # Some Ansible versions support --encrypt-vault-id; others don't. Try
-        # the modern form first, then fall back to a plain encrypt if it fails.
-        if ! ansible-vault $vault_opts --encrypt-vault-id=default encrypt "$VAULT_FILE" 2>/tmp/ansible_vault_encrypt.err; then
-            if ansible-vault $vault_opts encrypt "$VAULT_FILE" 2>/tmp/ansible_vault_encrypt2.err; then
-                :
-            else
-                echo -e "${RED}Warning: Updated $VAULT_FILE but failed to re-encrypt it.${RESET}"
-                echo "ansible-vault output (attempts):"
-                sed -n '1,200p' /tmp/ansible_vault_encrypt.err 2>/dev/null || true
-                sed -n '1,200p' /tmp/ansible_vault_encrypt2.err 2>/dev/null || true
+        # Try encrypting in a way compatible with different ansible-vault
+        # variants. Prefer passing recognized flags; when flags aren't
+        # supported, fall back to automating the interactive prompt using
+        # expect and a candidate password file.
+        if ansible-vault --help 2>&1 | grep -q -- '--vault-password-file'; then
+            if ! ansible-vault $vault_opts encrypt "$VAULT_FILE" 2>/tmp/ansible_vault_encrypt.err; then
+                if ! ansible-vault $vault_opts --encrypt-vault-id=default encrypt "$VAULT_FILE" 2>/tmp/ansible_vault_encrypt2.err; then
+                    echo -e "${RED}Warning: Updated $VAULT_FILE but failed to re-encrypt it.${RESET}"
+                    echo "ansible-vault output (attempts):"
+                    sed -n '1,200p' /tmp/ansible_vault_encrypt.err 2>/dev/null || true
+                    sed -n '1,200p' /tmp/ansible_vault_encrypt2.err 2>/dev/null || true
+                    rm -f /tmp/ansible_vault_encrypt.err /tmp/ansible_vault_encrypt2.err
+                    return 1
+                fi
                 rm -f /tmp/ansible_vault_encrypt.err /tmp/ansible_vault_encrypt2.err
+            fi
+        else
+            # Use expect to run encrypt interactively if we have a password file
+            expect_used=0
+            for cand in "$HOME/.vault_pass" "$PROJECT_ROOT/.vault_pass" /root/.vault_pass "$PROJECT_ROOT/vars/.vault_pass" /etc/ansible/vault_pass; do
+                [ -f "$cand" ] || continue
+                if ensure_expect_installed; then
+                    pw=$(<"$cand")
+                    # encrypt: supply password twice (new password + confirm)
+                    expect -c "spawn ansible-vault encrypt \"$VAULT_FILE\"; expect \"New Vault password:\"; send \"$pw\\r\"; expect \"Confirm New Vault password:\"; send \"$pw\\r\"; expect eof" >/dev/null 2>&1 || continue
+                    vault_opts="--vault-password-file=$cand"
+                    expect_used=1
+                    break
+                fi
+            done
+            if [ "$expect_used" -ne 1 ]; then
+                echo -e "${RED}Warning: Updated $VAULT_FILE but failed to re-encrypt it.${RESET}"
+                echo -e "ansible-vault on this system doesn't support CLI password flags and 'expect' isn't available to automate prompts. Re-encrypt manually or install a newer Ansible.'${RESET}"
                 return 1
             fi
-            rm -f /tmp/ansible_vault_encrypt.err /tmp/ansible_vault_encrypt2.err
         fi
     fi
 }
@@ -428,6 +506,24 @@ check_ansible() {
             exit 1
         fi
     fi
+}
+
+# Ensure 'expect' is available; try to install it if missing
+ensure_expect_installed() {
+    if command -v expect >/dev/null 2>&1; then
+        return 0
+    fi
+    echo -e "${YELLOW}Expect is not installed; attempting to install expect...${RESET}"
+    if command -v apt >/dev/null 2>&1; then
+        sudo apt update -y && sudo apt install -y expect || return 1
+    elif command -v dnf >/dev/null 2>&1; then
+        sudo dnf install -y expect || return 1
+    elif command -v yum >/dev/null 2>&1; then
+        sudo yum install -y expect || return 1
+    else
+        return 1
+    fi
+    command -v expect >/dev/null 2>&1
 }
 
 # Parse arguments
@@ -809,10 +905,31 @@ sync_keys() {
             vault_opts="$VAULT_PASSWORD_FILE"
         fi
 
-        if ! ansible-vault decrypt "$secrets_file" $vault_opts; then
-            echo -e "${RED}Error: Failed to decrypt $secrets_file. Provide --ask-vault-pass or --vault-password-file when invoking the script.${RESET}"
-            rm -f "$tmp_keys"
-            exit 1
+        # Detect whether ansible-vault supports password-file/ask flags
+        if ansible-vault --help 2>&1 | grep -q -- '--vault-password-file'; then
+            if ! ansible-vault $vault_opts decrypt "$secrets_file"; then
+                echo -e "${RED}Error: Failed to decrypt $secrets_file. Provide --ask-vault-pass or --vault-password-file when invoking the script.${RESET}"
+                rm -f "$tmp_keys"
+                exit 1
+            fi
+        else
+            # Try expect-based automation with a known password file
+            expect_used=0
+            for cand in "$HOME/.vault_pass" "$PROJECT_ROOT/.vault_pass" /root/.vault_pass "$PROJECT_ROOT/vars/.vault_pass" /etc/ansible/vault_pass; do
+                [ -f "$cand" ] || continue
+                if ensure_expect_installed; then
+                    pw=$(<"$cand")
+                    expect -c "spawn ansible-vault decrypt \"$secrets_file\"; expect \"Vault password:\"; send \"$pw\\r\"; expect eof" >/dev/null 2>&1 || continue
+                    vault_opts="--vault-password-file=$cand"
+                    expect_used=1
+                    break
+                fi
+            done
+            if [ "$expect_used" -ne 1 ]; then
+                echo -e "${RED}Error: Failed to decrypt $secrets_file. Provide --ask-vault-pass or --vault-password-file when invoking the script.${RESET}"
+                rm -f "$tmp_keys"
+                exit 1
+            fi
         fi
     fi
 
@@ -883,15 +1000,33 @@ PYEOF
 
             # See note above re: explicit vault id on encrypt. Try modern form
             # then fallback to plain encrypt for older ansible versions.
-            if ! ansible-vault $vault_opts --encrypt-vault-id=default encrypt "$secrets_file" 2>/tmp/ansible_vault_encrypt.err; then
-                if ! ansible-vault $vault_opts encrypt "$secrets_file" 2>/tmp/ansible_vault_encrypt2.err; then
-                    echo -e "${RED}Warning: Updated $secrets_file but failed to re-encrypt it.${RESET}"
-                    sed -n '1,200p' /tmp/ansible_vault_encrypt.err 2>/dev/null || true
-                    sed -n '1,200p' /tmp/ansible_vault_encrypt2.err 2>/dev/null || true
+            if ansible-vault --help 2>&1 | grep -q -- '--vault-password-file'; then
+                if ! ansible-vault $vault_opts encrypt "$secrets_file" 2>/tmp/ansible_vault_encrypt.err; then
+                    if ! ansible-vault $vault_opts --encrypt-vault-id=default encrypt "$secrets_file" 2>/tmp/ansible_vault_encrypt2.err; then
+                        echo -e "${RED}Warning: Updated $secrets_file but failed to re-encrypt it.${RESET}"
+                        sed -n '1,200p' /tmp/ansible_vault_encrypt.err 2>/dev/null || true
+                        sed -n '1,200p' /tmp/ansible_vault_encrypt2.err 2>/dev/null || true
+                        rm -f /tmp/ansible_vault_encrypt.err /tmp/ansible_vault_encrypt2.err
+                        exit 1
+                    fi
                     rm -f /tmp/ansible_vault_encrypt.err /tmp/ansible_vault_encrypt2.err
+                fi
+            else
+                expect_used=0
+                for cand in "$HOME/.vault_pass" "$PROJECT_ROOT/.vault_pass" /root/.vault_pass "$PROJECT_ROOT/vars/.vault_pass" /etc/ansible/vault_pass; do
+                    [ -f "$cand" ] || continue
+                    if command -v expect >/dev/null 2>&1; then
+                        pw=$(<"$cand")
+                        expect -c "spawn ansible-vault encrypt \"$secrets_file\"; expect \"New Vault password:\"; send \"$pw\\r\"; expect \"Confirm New Vault password:\"; send \"$pw\\r\"; expect eof" >/dev/null 2>&1 || continue
+                        vault_opts="--vault-password-file=$cand"
+                        expect_used=1
+                        break
+                    fi
+                done
+                if [ "$expect_used" -ne 1 ]; then
+                    echo -e "${RED}Warning: Updated $secrets_file but failed to re-encrypt it.${RESET}"
                     exit 1
                 fi
-                rm -f /tmp/ansible_vault_encrypt.err /tmp/ansible_vault_encrypt2.err
             fi
         fi
 
