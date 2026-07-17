@@ -22,8 +22,8 @@
     ssl_cert_file: "{{ ssl_local_dir + '/server.crt' if is_dev_domain else '/etc/letsencrypt/live/' + domain + '/fullchain.pem' }}"
     ssl_cert_key: "{{ ssl_local_dir + '/server.key' if is_dev_domain else '/etc/letsencrypt/live/' + domain + '/privkey.pem' }}"
     ssl_ca_file: "{{ ssl_local_dir + '/ca.crt' if is_dev_domain else '/etc/letsencrypt/live/' + domain + '/chain.pem' }}"
-    cert_renewal_alert_email: "{{ email }}"
-
+    #cert_renewal_alert_email: "{{ email }}"
+    cert_renewal_alert_email: "evpscloud@gmail.com"
   pre_tasks:
     - name: Verify required variables are defined
       ansible.builtin.assert:
@@ -188,6 +188,15 @@
         fail_msg: "vault_dynu_api_token is missing or empty in vars/secrets.yml — cannot obtain Let's Encrypt certificate"
       when: not is_dev_domain
 
+    - name: Add mail and cpanel CNAME records when this is the master domain
+      ansible.builtin.set_fact:
+        dynu_desired_records: >-
+          {{ dynu_desired_records + [
+            {'hostname': 'mail', 'type': 'CNAME', 'ttl': 3600, 'host': domain},
+            {'hostname': 'cpanel', 'type': 'CNAME', 'ttl': 3600, 'host': domain}
+          ] }}
+      when: not is_dev_domain and domain == master_domain
+
     - name: Install python3-pip and venv (RedHat/CentOS)
       ansible.builtin.dnf:
         name: [python3-pip, python3-virtualenv]
@@ -340,17 +349,25 @@
       ansible.builtin.set_fact:
         dynu_desired_records:
           - hostname: "_dmarc"
-              type: "TXT"
+            type: "TXT"
             ttl: 3600
             value: "v=DMARC1; p=reject;"
-            - hostname: "@"
-              type: "SPF"
+          - hostname: "@"
+            type: "SPF"
             ttl: 3600
             value: "v=spf1 a include:spf.protection.outlook.com include:_spf.google.com include:_spf.mail.yahoo.com -all"
-            - hostname: "default._domainkey"
-              type: "TXT"
+          - hostname: "default._domainkey"
+            type: "TXT"
             ttl: 120
             value: "{{ dkim_value }}"
+          - hostname: "www"
+            type: "CNAME"
+            ttl: 3600
+            host: "{{ domain }}"
+          - hostname: "_smtp._tls"
+            type: "TXT"
+            ttl: 3600
+            value: "v=TLSRPTv1; rua=mailto:contact@{{ domain }}"
       when: not is_dev_domain
 
     - name: Ensure Dynu TXT records exist (create or update)
@@ -363,8 +380,14 @@
 
         - name: Build Dynu record body
           ansible.builtin.set_fact:
-            dynu_record_body: >-
-              {{ {'nodeName': dynu_node_name, 'recordType': item.type, 'ttl': item.ttl, 'textData': item.value, 'state': true} }}
+              dynu_record_body: |-
+                {% if item.type == 'MX' %}
+                {{ {'nodeName': dynu_node_name, 'recordType': item.type, 'ttl': item.ttl, 'host': (item.host | default(item.value)), 'priority': (item.priority | default(10)), 'state': true} }}
+                {% elif item.type == 'CNAME' %}
+                {{ {'nodeName': dynu_node_name, 'recordType': item.type, 'ttl': item.ttl, 'host': (item.host | default(item.value)), 'state': true} }}
+                {% else %}
+                {{ {'nodeName': dynu_node_name, 'recordType': item.type, 'ttl': item.ttl, 'textData': item.value, 'state': true} }}
+                {% endif %}
 
         - name: Get existing records for Dynu zone
           ansible.builtin.uri:

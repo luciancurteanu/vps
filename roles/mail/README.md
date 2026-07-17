@@ -106,7 +106,7 @@ For the mail server to work properly, you need to set up these DNS records:
 
 3. **DKIM record**: (generated during installation)
    ```
-   mail._domainkey.yourdomain.com. IN TXT "v=DKIM1; k=rsa; p=MIIBIjANBgk..."
+   default._domainkey.yourdomain.com. IN TXT "v=DKIM1; k=rsa; p=MIIBIjANBgk..."
    ```
 
 4. **DMARC record**:

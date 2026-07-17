@@ -61,19 +61,19 @@
 
 - name: Check if DKIM keys already exist
   ansible.builtin.stat:
-    path: /etc/opendkim/keys/{{ domain }}/mail.private
+    path: /etc/opendkim/keys/{{ domain }}/default.private
   register: dkim_key
   when: domain is defined
 
 - name: Generate DKIM keys
-  shell: opendkim-genkey -D /etc/opendkim/keys/{{ domain }}/ -d {{ domain }} -s mail
+  shell: opendkim-genkey -D /etc/opendkim/keys/{{ domain }}/ -d {{ domain }} -s default
   args:
-    creates: /etc/opendkim/keys/{{ domain }}/mail.private
+    creates: /etc/opendkim/keys/{{ domain }}/default.private
   when: domain is defined and not dkim_key.stat.exists
 
 - name: Set proper ownership for DKIM private key
   ansible.builtin.file:
-    path: "/etc/opendkim/keys/{{ domain }}/mail.private"
+    path: "/etc/opendkim/keys/{{ domain }}/default.private"
     owner: opendkim
     mode: '0600'
     group: opendkim
@@ -81,14 +81,14 @@
 
 - name: Set proper ownership for DKIM public key
   ansible.builtin.file:
-    path: "/etc/opendkim/keys/{{ domain }}/mail.txt"
+    path: "/etc/opendkim/keys/{{ domain }}/default.txt"
     owner: opendkim
     mode: '0640'
     group: opendkim
   when: domain is defined
 
 - name: Display DKIM DNS record information
-  shell: cat /etc/opendkim/keys/{{ domain }}/mail.txt
+  shell: cat /etc/opendkim/keys/{{ domain }}/default.txt
   register: dkim_txt
   changed_when: false
   when: domain is defined
