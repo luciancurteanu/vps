@@ -7,17 +7,52 @@
   vars_files:
     - ../vars/secrets.yml
   tasks:
-    - name: Slurp private key
+    - name: Load inventory hosts.yml
+      ansible.builtin.set_fact:
+        hosts_yaml: "{{ lookup('file', playbook_dir + '/../inventory/hosts.yml') | from_yaml }}"
+      ignore_errors: true
+
+    - name: Set master_domain from inventory if not defined
+      ansible.builtin.set_fact:
+        master_domain: "{{ (hosts_yaml.all.children.primary.hosts | dict2items | map(attribute='key') | list)[0] }}"
+      when: master_domain is not defined and hosts_yaml is defined
+
+    - name: Stat domain private key path
+      ansible.builtin.stat:
+        path: "/home/{{ domain }}/.ssh/id_rsa"
+      register: dom_key_stat
+
+    - name: Stat admin private key path
+      ansible.builtin.stat:
+        path: "/home/{{ admin_user }}/.ssh/id_rsa"
+      register: admin_key_stat
+
+    - name: Choose existing private key path
+      ansible.builtin.set_fact:
+        chosen_key_path: "{{ '/home/' + domain + '/.ssh/id_rsa' if dom_key_stat.stat.exists else ('/home/' + admin_user + '/.ssh/id_rsa' if admin_key_stat.stat.exists else '') }}"
+
+    - name: Slurp chosen private key (domain or admin)
       ansible.builtin.slurp:
-        src: "/home/{{ domain }}/.ssh/id_rsa"
+        src: "{{ chosen_key_path }}"
+      when: chosen_key_path != ''
       register: slurped_private_key
       ignore_errors: true
+
+    - name: Stat vars/all.yml
+      ansible.builtin.stat:
+        path: "{{ playbook_dir + '/../vars/all.yml' }}"
+      register: vars_all_stat
+
+    - name: Stat inventory/group_vars/all.yml
+      ansible.builtin.stat:
+        path: "{{ playbook_dir + '/../inventory/group_vars/all.yml' }}"
+      register: gv_all_stat
 
     - name: Set variables for rendering
       ansible.builtin.set_fact:
         private_key_b64: "{{ slurped_private_key.content | default('') }}"
         secrets_b64: "{{ lookup('file', playbook_dir + '/../vars/secrets.yml') | b64encode }}"
-        all_b64: "{{ lookup('file', playbook_dir + '/../vars/all.yml') | default(lookup('file', playbook_dir + '/../inventory/group_vars/all.yml')) | b64encode }}"
+        all_b64: "{{ (lookup('file', playbook_dir + '/../vars/all.yml') | b64encode) if vars_all_stat.stat.exists else ((lookup('file', playbook_dir + '/../inventory/group_vars/all.yml') | b64encode) if gv_all_stat.stat.exists else '') }}"
 
     - name: Ensure creds directory exists
       ansible.builtin.file:
@@ -26,6 +61,11 @@
         owner: root
         group: root
         mode: '0750'
+
+    - name: Ensure `user` variable is defined for rendering
+      ansible.builtin.set_fact:
+        user: "{{ domain_user | default(domain.split('.')[-2]) }}"
+      when: user is not defined
 
     - name: Render credentials email to file
       ansible.builtin.template:
