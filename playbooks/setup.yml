@@ -18,11 +18,17 @@
 
     - name: Ensure /etc/hosts has an entry for the domain
       tags: ['setup']
-      ansible.builtin.lineinfile:
+      ansible.builtin.blockinfile:
         path: /etc/hosts
         create: true
-        regexp: '(^\\s*{{ ansible_default_ipv4.address | default("127.0.0.1") }}\\s+{{ domain }})|(^.*\\s{{ domain }}$)'
-        line: "{{ ansible_default_ipv4.address | default('127.0.0.1') }} {{ domain }} {{ inventory_hostname }}"
+        marker: "# {mark} ANSIBLE MANAGED DOMAIN HOSTS {{ domain }}"
+        block: |
+          {{ _host_ip }} {{ domain }} {{ user | default(inventory_hostname) }}
+          {{ _host_ip }} www.{{ domain }} {{ user | default(inventory_hostname) }}
+          {{ _host_ip }} mail.{{ domain }} {{ user | default(inventory_hostname) }}
+          {{ _host_ip }} cpanel.{{ domain }} {{ user | default(inventory_hostname) }}
+      vars:
+        _host_ip: "{{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address | default('127.0.0.1')) }}"
       when: domain is defined
 
     - name: Install fail2ban package (and EPEL on RedHat)
@@ -602,6 +608,284 @@
       tags: ['setup']
       ansible.builtin.debug:
         msg: "Service check results: {{ service_status.results | map(attribute='stdout') | list }}"
+
+    - name: Set Dynu DNS automation gate for core install
+      tags: ['setup', 'dns']
+      ansible.builtin.set_fact:
+        dynu_core_manage_dns: >-
+          {{
+            (domain is defined)
+            and (domain == (master_domain | default(inventory_hostname)))
+            and (domain.split('.')[-1] != 'test')
+            and (vault_dynu_api_token is defined)
+            and (vault_dynu_api_token | length > 0)
+          }}
+
+    - name: Warn when Dynu DNS automation is skipped (missing API token)
+      tags: ['setup', 'dns']
+      ansible.builtin.debug:
+        msg: "Skipping Dynu DNS automation on core install because vault_dynu_api_token is missing/empty."
+      when:
+        - domain is defined
+        - domain == (master_domain | default(inventory_hostname))
+        - (vault_dynu_api_token is not defined) or (vault_dynu_api_token | length == 0)
+
+    - name: Manage Dynu DNS records for master domain during core install
+      tags: ['setup', 'dns']
+      when: dynu_core_manage_dns | default(false)
+      block:
+        - name: Lookup Dynu DNS zones
+          ansible.builtin.uri:
+            url: "https://api.dynu.com/v2/dns"
+            method: GET
+            headers:
+              API-Key: "{{ vault_dynu_api_token }}"
+            return_content: yes
+            status_code: 200
+          register: dynu_core_dns_list
+
+        - name: Build Dynu zones list
+          ansible.builtin.set_fact:
+            dynu_core_zones: "{{ dynu_core_dns_list.json.domains | default(dynu_core_dns_list.json | default([])) }}"
+
+        - name: Resolve Dynu forward zone id for master domain
+          ansible.builtin.set_fact:
+            dynu_core_zone_id: >-
+              {{
+                ((dynu_core_zones | selectattr('domainName','equalto', domain) | map(attribute='id') | list)
+                + (dynu_core_zones | selectattr('name','equalto', domain) | map(attribute='id') | list)) | first
+              }}
+
+        - name: Fail when Dynu forward zone is missing
+          ansible.builtin.fail:
+            msg: "Dynu DNS zone for '{{ domain }}' not found. Add the domain to Dynu before running core setup."
+          when: dynu_core_zone_id is not defined or dynu_core_zone_id == None
+
+        - name: Prepare Dynu CNAME/MX records for master domain
+          ansible.builtin.set_fact:
+            dynu_core_desired_records:
+              - hostname: "www"
+                type: "CNAME"
+                ttl: 3600
+                host: "{{ domain }}"
+              - hostname: "mail"
+                type: "CNAME"
+                ttl: 3600
+                host: "{{ domain }}"
+              - hostname: "cpanel"
+                type: "CNAME"
+                ttl: 3600
+                host: "{{ domain }}"
+              - hostname: "@"
+                type: "MX"
+                ttl: 3600
+                host: "mail.{{ domain }}"
+                priority: 10
+
+        - name: Get existing records for forward zone
+          ansible.builtin.uri:
+            url: "https://api.dynu.com/v2/dns/{{ dynu_core_zone_id }}/record"
+            method: GET
+            headers:
+              API-Key: "{{ vault_dynu_api_token }}"
+            return_content: yes
+            status_code: 200
+          register: dynu_core_forward_records
+
+        - name: Normalize Dynu forward records
+          ansible.builtin.set_fact:
+            dynu_core_forward_records_list: "{{ dynu_core_forward_records.json.records | default(dynu_core_forward_records.json | default([])) }}"
+
+        - name: Update forward record when present
+          ansible.builtin.uri:
+            url: "https://api.dynu.com/v2/dns/{{ dynu_core_zone_id }}/record/{{ dynu_core_existing_record_id }}"
+            method: POST
+            headers:
+              API-Key: "{{ vault_dynu_api_token }}"
+              Content-Type: "application/json"
+            body: "{{ dynu_core_record_body }}"
+            body_format: json
+            status_code: [200, 201, 204]
+          vars:
+            dynu_core_node_name: "{{ (item.hostname == '@') | ternary('', (item.hostname | regex_replace('\\.' ~ domain ~ '$',''))) }}"
+            dynu_core_existing_record_id: >-
+              {{
+                (
+                  (dynu_core_forward_records_list
+                    | selectattr('recordType','equalto', item.type)
+                    | selectattr('nodeName','equalto', dynu_core_node_name)
+                    | map(attribute='id') | list)
+                  +
+                  (dynu_core_forward_records_list
+                    | selectattr('recordType','equalto', item.type)
+                    | selectattr('hostname','equalto', (dynu_core_node_name == '' and domain or dynu_core_node_name ~ '.' ~ domain))
+                    | map(attribute='id') | list)
+                ) | first | default(None)
+              }}
+            dynu_core_record_body: >-
+              {{
+                {'nodeName': dynu_core_node_name, 'recordType': item.type, 'ttl': item.ttl, 'state': true,
+                 'host': item.host, 'priority': (item.priority | default(10))}
+                if item.type == 'MX'
+                else
+                {'nodeName': dynu_core_node_name, 'recordType': item.type, 'ttl': item.ttl, 'state': true,
+                 'host': item.host}
+              }}
+          loop: "{{ dynu_core_desired_records }}"
+          loop_control:
+            label: "{{ item.type }} {{ item.hostname }}"
+          when: dynu_core_existing_record_id is not none
+
+        - name: Create forward record when missing
+          ansible.builtin.uri:
+            url: "https://api.dynu.com/v2/dns/{{ dynu_core_zone_id }}/record"
+            method: POST
+            headers:
+              API-Key: "{{ vault_dynu_api_token }}"
+              Content-Type: "application/json"
+            body: "{{ dynu_core_record_body }}"
+            body_format: json
+            status_code: [200, 201]
+          vars:
+            dynu_core_node_name: "{{ (item.hostname == '@') | ternary('', (item.hostname | regex_replace('\\.' ~ domain ~ '$',''))) }}"
+            dynu_core_existing_record_id: >-
+              {{
+                (
+                  (dynu_core_forward_records_list
+                    | selectattr('recordType','equalto', item.type)
+                    | selectattr('nodeName','equalto', dynu_core_node_name)
+                    | map(attribute='id') | list)
+                  +
+                  (dynu_core_forward_records_list
+                    | selectattr('recordType','equalto', item.type)
+                    | selectattr('hostname','equalto', (dynu_core_node_name == '' and domain or dynu_core_node_name ~ '.' ~ domain))
+                    | map(attribute='id') | list)
+                ) | first | default(None)
+              }}
+            dynu_core_record_body: >-
+              {{
+                {'nodeName': dynu_core_node_name, 'recordType': item.type, 'ttl': item.ttl, 'state': true,
+                 'host': item.host, 'priority': (item.priority | default(10))}
+                if item.type == 'MX'
+                else
+                {'nodeName': dynu_core_node_name, 'recordType': item.type, 'ttl': item.ttl, 'state': true,
+                 'host': item.host}
+              }}
+          loop: "{{ dynu_core_desired_records }}"
+          loop_control:
+            label: "{{ item.type }} {{ item.hostname }}"
+          when: dynu_core_existing_record_id is none
+
+        - name: Compute PTR inputs
+          ansible.builtin.set_fact:
+            dynu_core_host_ip: "{{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address | default('')) }}"
+            dynu_core_ptr_target: "{{ mail_subdomain | default('mail.' ~ domain) }}"
+
+        - name: Build reverse arpa name from host IPv4
+          ansible.builtin.set_fact:
+            dynu_core_ptr_arpa: "{{ (dynu_core_host_ip.split('.') | reverse | join('.')) ~ '.in-addr.arpa' }}"
+          when: dynu_core_host_ip | length > 0
+
+        - name: Initialize reverse zone match state
+          ansible.builtin.set_fact:
+            dynu_core_reverse_zone_name: ""
+            dynu_core_reverse_zone_id: ""
+
+        - name: Find best matching Dynu reverse zone for PTR
+          ansible.builtin.set_fact:
+            dynu_core_reverse_zone_name: "{{ item.name }}"
+            dynu_core_reverse_zone_id: "{{ item.id }}"
+          loop: "{{ dynu_core_zones }}"
+          when:
+            - dynu_core_ptr_arpa is defined
+            - item.name is defined
+            - dynu_core_ptr_arpa is regex('.*' ~ (item.name | regex_escape) ~ '$')
+            - (item.name | length) > (dynu_core_reverse_zone_name | length)
+
+        - name: Warn when Dynu reverse zone is missing (PTR skipped)
+          ansible.builtin.debug:
+            msg: "No matching Dynu reverse zone found for {{ dynu_core_ptr_arpa }}. PTR record was skipped."
+          when: dynu_core_reverse_zone_id | length == 0
+
+        - name: Compute PTR node name for reverse zone
+          ansible.builtin.set_fact:
+            dynu_core_ptr_node_name: >-
+              {{ dynu_core_ptr_arpa
+                 | regex_replace('\.' ~ (dynu_core_reverse_zone_name | regex_escape) ~ '$', '')
+                 | regex_replace('\.$', '') }}
+          when: dynu_core_reverse_zone_id | length > 0
+
+        - name: Get existing records for reverse zone
+          ansible.builtin.uri:
+            url: "https://api.dynu.com/v2/dns/{{ dynu_core_reverse_zone_id }}/record"
+            method: GET
+            headers:
+              API-Key: "{{ vault_dynu_api_token }}"
+            return_content: yes
+            status_code: 200
+          register: dynu_core_reverse_records
+          when: dynu_core_reverse_zone_id | length > 0
+
+        - name: Normalize Dynu reverse records
+          ansible.builtin.set_fact:
+            dynu_core_reverse_records_list: "{{ dynu_core_reverse_records.json.records | default(dynu_core_reverse_records.json | default([])) }}"
+          when: dynu_core_reverse_zone_id | length > 0
+
+        - name: Find existing PTR record id
+          ansible.builtin.set_fact:
+            dynu_core_ptr_record_id: >-
+              {{
+                (
+                  (dynu_core_reverse_records_list
+                    | selectattr('recordType','equalto','PTR')
+                    | selectattr('nodeName','equalto', dynu_core_ptr_node_name)
+                    | map(attribute='id') | list)
+                  +
+                  (dynu_core_reverse_records_list
+                    | selectattr('recordType','equalto','PTR')
+                    | selectattr('nodeName','equalto', dynu_core_ptr_node_name ~ '.')
+                    | map(attribute='id') | list)
+                ) | first | default(None)
+              }}
+          when: dynu_core_reverse_zone_id | length > 0
+
+        - name: Build PTR request body
+          ansible.builtin.set_fact:
+            dynu_core_ptr_body:
+              nodeName: "{{ dynu_core_ptr_node_name }}"
+              recordType: "PTR"
+              ttl: 3600
+              state: true
+              host: "{{ dynu_core_ptr_target }}"
+          when: dynu_core_reverse_zone_id | length > 0
+
+        - name: Update PTR record when present
+          ansible.builtin.uri:
+            url: "https://api.dynu.com/v2/dns/{{ dynu_core_reverse_zone_id }}/record/{{ dynu_core_ptr_record_id }}"
+            method: POST
+            headers:
+              API-Key: "{{ vault_dynu_api_token }}"
+              Content-Type: "application/json"
+            body: "{{ dynu_core_ptr_body }}"
+            body_format: json
+            status_code: [200, 201, 204]
+          when:
+            - dynu_core_reverse_zone_id | length > 0
+            - dynu_core_ptr_record_id is not none
+
+        - name: Create PTR record when missing
+          ansible.builtin.uri:
+            url: "https://api.dynu.com/v2/dns/{{ dynu_core_reverse_zone_id }}/record"
+            method: POST
+            headers:
+              API-Key: "{{ vault_dynu_api_token }}"
+              Content-Type: "application/json"
+            body: "{{ dynu_core_ptr_body }}"
+            body_format: json
+            status_code: [200, 201]
+          when:
+            - dynu_core_reverse_zone_id | length > 0
+            - dynu_core_ptr_record_id is none
 
     - name: Setup complete notification
       tags: ['setup']

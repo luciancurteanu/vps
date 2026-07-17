@@ -403,10 +403,7 @@
             recurse: true
           with_items:
             - "contact"
-            - "support"
-            - "no-reply"
-            - "copyright"
-            - "privacy"
+            - "hello"
 
     - name: Configure OpenDKIM for regular domain
       when: domain != master_domain
