@@ -27,9 +27,38 @@
         path: "/home/{{ admin_user }}/.ssh/id_rsa"
       register: admin_key_stat
 
-    - name: Choose existing private key path
+    - name: Create domain .ssh directory when missing and admin key exists
+      ansible.builtin.file:
+        path: "/home/{{ domain }}/.ssh"
+        state: directory
+        owner: "{{ domain_user | default(user | default(admin_user)) }}"
+        group: "{{ domain_user | default(user | default(admin_user)) }}"
+        mode: '0700'
+      when: not dom_key_stat.stat.exists and admin_key_stat.stat.exists
+
+    - name: Copy admin private key into domain .ssh when domain key missing
+      ansible.builtin.copy:
+        src: "/home/{{ admin_user }}/.ssh/id_rsa"
+        dest: "/home/{{ domain }}/.ssh/id_rsa"
+        remote_src: true
+        owner: "{{ domain_user | default(user | default(admin_user)) }}"
+        group: "{{ domain_user | default(user | default(admin_user)) }}"
+        mode: '0600'
+      when: not dom_key_stat.stat.exists and admin_key_stat.stat.exists
+
+    - name: Copy admin public key into domain .ssh when domain key missing
+      ansible.builtin.copy:
+        src: "/home/{{ admin_user }}/.ssh/id_rsa.pub"
+        dest: "/home/{{ domain }}/.ssh/id_rsa.pub"
+        remote_src: true
+        owner: "{{ domain_user | default(user | default(admin_user)) }}"
+        group: "{{ domain_user | default(user | default(admin_user)) }}"
+        mode: '0644'
+      when: not dom_key_stat.stat.exists and admin_key_stat.stat.exists
+
+    - name: Choose existing/private key path (prefer domain path)
       ansible.builtin.set_fact:
-        chosen_key_path: "{{ '/home/' + domain + '/.ssh/id_rsa' if dom_key_stat.stat.exists else ('/home/' + admin_user + '/.ssh/id_rsa' if admin_key_stat.stat.exists else '') }}"
+        chosen_key_path: "{{ '/home/' + domain + '/.ssh/id_rsa' if (dom_key_stat.stat.exists or admin_key_stat.stat.exists) else '' }}"
 
     - name: Slurp chosen private key (domain or admin)
       ansible.builtin.slurp:
