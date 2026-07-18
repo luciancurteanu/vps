@@ -1,6 +1,7 @@
 [Unit]
 Description=GoProxy Service
-After=network.target
+Wants=network-online.target tor.service
+After=network-online.target tor.service
 
 [Service]
 User=goproxy

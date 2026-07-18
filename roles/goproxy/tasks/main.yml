@@ -26,6 +26,14 @@
     owner: "{{ goproxy_user }}"
     group: "{{ goproxy_user }}"
 
+- name: Ensure GoProxy Ansible temporary directory exists
+  ansible.builtin.file:
+    path: "{{ goproxy_home }}/.ansible/tmp"
+    state: directory
+    owner: "{{ goproxy_user }}"
+    group: "{{ goproxy_user }}"
+    mode: '0700'
+
 - name: Check installed Go version
   ansible.builtin.command: "{{ go_binary_path }} version"
   register: go_version_check
@@ -189,6 +197,10 @@
   environment: "{{ goproxy_command_env }}"
   become: true
   become_user: "{{ goproxy_user }}"
+  register: goproxy_mod_download
+  retries: 3
+  delay: 10
+  until: goproxy_mod_download.rc == 0
   when: goproxy_build_required | bool
 
 - name: Tidy Go modules
@@ -198,6 +210,10 @@
   environment: "{{ goproxy_command_env }}"
   become: true
   become_user: "{{ goproxy_user }}"
+  register: goproxy_mod_tidy
+  retries: 3
+  delay: 10
+  until: goproxy_mod_tidy.rc == 0
   when: goproxy_build_required | bool
 
 - name: Build GoProxy binary
@@ -207,6 +223,10 @@
   environment: "{{ goproxy_command_env }}"
   become: true
   become_user: "{{ goproxy_user }}"
+  register: goproxy_build
+  retries: 3
+  delay: 10
+  until: goproxy_build.rc == 0
   when: goproxy_build_required | bool
 
 - name: Refresh GoProxy binary metadata
