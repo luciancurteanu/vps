@@ -11,7 +11,9 @@
       tags: ['setup']
       ansible.builtin.copy:
         dest: /etc/cloud/cloud.cfg.d/99-disable-manage-hosts.cfg
-        content: "manage_etc_hosts: false\n"
+        content: |
+          manage_etc_hosts: false
+          preserve_hostname: true
         owner: root
         group: root
         mode: '0644'
