@@ -183,6 +183,20 @@
     msg: "Dovecot TLS cert or key missing at /etc/pki/dovecot. Ensure /etc/pki/dovecot/certs/dovecot.pem and /etc/pki/dovecot/private/dovecot.pem exist."
   when: not (dovecot_system_cert_after.stat.exists and dovecot_system_key_after.stat.exists)
 
+- name: Ensure OpenSSL is installed for Dovecot TLS assets
+  ansible.builtin.package:
+    name: openssl
+    state: present
+
+- name: Generate Dovecot DH parameters
+  ansible.builtin.command: >-
+    /usr/bin/openssl dhparam
+    -out {{ dovecot_ssl_dh_path | default('/etc/dovecot/dh.pem') }}
+    2048
+  args:
+    creates: "{{ dovecot_ssl_dh_path | default('/etc/dovecot/dh.pem') }}"
+  notify: restart dovecot
+
 - name: Backup Dovecot SSL config
   ansible.builtin.copy:
     src: /etc/dovecot/conf.d/10-ssl.conf
