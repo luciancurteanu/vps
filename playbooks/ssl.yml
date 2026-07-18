@@ -18,6 +18,7 @@
     # Prefer explicit mail_use_letsencrypt variable when set: if mail_use_letsencrypt is false => dev.
     is_dev_domain: "{{ (mail_use_letsencrypt is defined and (not mail_use_letsencrypt)) or (domain.split('.')[-1] == 'test') }}"
     ssl_local_dir: "/etc/ssl/local/{{ domain }}"
+    mail_ssl_dir: "{{ ssl_local_dir }}"
     # Cert paths — resolved based on domain TLD
     ssl_cert_file: "{{ ssl_local_dir + '/server.crt' if is_dev_domain else '/etc/letsencrypt/live/' + domain + '/fullchain.pem' }}"
     ssl_cert_key: "{{ ssl_local_dir + '/server.key' if is_dev_domain else '/etc/letsencrypt/live/' + domain + '/privkey.pem' }}"
@@ -233,6 +234,15 @@
         force: true
       when: not is_dev_domain and certbot_venv_bin.stat.exists | default(false)
 
+    - name: Ensure Dynu credentials directory exists
+      ansible.builtin.file:
+        path: "{{ dynu_credentials_file | dirname }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      when: not is_dev_domain
+
     - name: Create Dynu credentials file
       ansible.builtin.copy:
         dest: "{{ dynu_credentials_file }}"
@@ -321,17 +331,35 @@
       register: dynu_dns_list
       when: not is_dev_domain
 
+    - name: Normalize Dynu DNS services payload
+      ansible.builtin.set_fact:
+        dynu_dns_entries: >-
+          {{
+            (dynu_dns_list.json.dnsDomains
+              | default(dynu_dns_list.json.domains
+              | default(dynu_dns_list.json.data
+              | default([]))))
+            if (dynu_dns_list.json is mapping)
+            else (dynu_dns_list.json | default([]))
+          }}
+      when: not is_dev_domain
+
     - name: Find Dynu zone id for domain
       ansible.builtin.set_fact:
         dynu_zone_id: >-
-          {{ ((dynu_dns_list.json | default([]) | selectattr('domainName','equalto', domain) | map(attribute='id') | list)
-             + (dynu_dns_list.json | default([]) | selectattr('name','equalto', domain) | map(attribute='id') | list)).0 }}
+          {{ (
+              (dynu_dns_entries | default([]) | select('mapping') | selectattr('domainName', 'defined') | selectattr('domainName', 'equalto', domain) | map(attribute='id') | list)
+              +
+              (dynu_dns_entries | default([]) | select('mapping') | selectattr('name', 'defined') | selectattr('name', 'equalto', domain) | map(attribute='id') | list)
+              +
+              (dynu_dns_entries | default([]) | select('mapping') | selectattr('name', 'defined') | selectattr('name', 'equalto', domain) | map(attribute='domainId') | list)
+            ) | first | default(None) }}
       when: not is_dev_domain
 
     - name: Fail if Dynu zone not found for domain
       ansible.builtin.fail:
         msg: "Dynu DNS zone for '{{ domain }}' not found. Ensure the domain is present in your Dynu account."
-      when: not is_dev_domain and (dynu_zone_id is not defined or dynu_zone_id == None)
+      when: not is_dev_domain and (dynu_zone_id is not defined or dynu_zone_id == None or (dynu_zone_id | string | trim | length == 0))
 
     - name: Read DKIM TXT file into variable
       ansible.builtin.command: "cat /etc/opendkim/keys/{{ domain }}/default.txt"
@@ -340,22 +368,34 @@
       failed_when: dkim_txt.rc not in [0,1]
       when: not is_dev_domain
 
-    - name: Normalize DKIM TXT value (remove parentheses, quotes and whitespace)
+    - name: Compact DKIM TXT source
       ansible.builtin.set_fact:
-        dkim_value: >-
-          {{ dkim_txt.stdout | default('') | regex_replace('\\(|\\)','') | regex_replace('"','') | regex_replace('\\s+','') | trim }}
+        dkim_txt_compact: "{{ dkim_txt.stdout | default('') | replace('\n','') | replace('\r','') | replace('\t','') | regex_replace('\\x22','') | replace(' ','') | trim }}"
       when: not is_dev_domain
+
+    - name: Normalize DKIM TXT value (extract valid DKIM policy payload)
+      ansible.builtin.set_fact:
+        dkim_value: "{{ (('v=DKIM1;' ~ (dkim_txt_compact.split('v=DKIM1;')[-1])) | string).split(');')[0] if ('v=DKIM1;' in (dkim_txt_compact | default(''))) else '' }}"
+      when: not is_dev_domain
+
+    - name: Warn when DKIM TXT file is missing or empty
+      ansible.builtin.debug:
+        msg: >-
+          DKIM TXT source not found or empty at /etc/opendkim/keys/{{ domain }}/default.txt.
+          Continuing SSL/DNS setup without default._domainkey TXT record.
+      when: not is_dev_domain and (dkim_value | default('') | length == 0)
 
     - name: Prepare DNS TXT records list
       ansible.builtin.set_fact:
         dynu_desired_records: >-
-          {{ (dynu_desired_records | default([])) + [
-            {'hostname': '_dmarc', 'type': 'TXT', 'ttl': 3600, 'value': 'v=DMARC1; p=reject;'},
-            {'hostname': '@', 'type': 'SPF', 'ttl': 3600, 'value': "v=spf1 a include:spf.protection.outlook.com include:_spf.google.com include:_spf.mail.yahoo.com -all"},
-            {'hostname': 'default._domainkey', 'type': 'TXT', 'ttl': 120, 'value': dkim_value},
-            {'hostname': 'www', 'type': 'CNAME', 'ttl': 3600, 'host': domain},
-            {'hostname': '_smtp._tls', 'type': 'TXT', 'ttl': 3600, 'value': "v=TLSRPTv1; rua=mailto:contact@%s" % domain}
-          ] }}
+          {{ (dynu_desired_records | default([]))
+             + [
+               {'hostname': '_dmarc', 'type': 'TXT', 'ttl': 3600, 'value': 'v=DMARC1; p=reject;'},
+              {'hostname': '@', 'type': 'TXT', 'ttl': 3600, 'value': "v=spf1 a include:spf.protection.outlook.com include:_spf.google.com include:_spf.mail.yahoo.com -all"},
+               {'hostname': 'www', 'type': 'CNAME', 'ttl': 3600, 'host': domain},
+               {'hostname': '_smtp._tls', 'type': 'TXT', 'ttl': 3600, 'value': "v=TLSRPTv1; rua=mailto:contact@%s" % domain}
+             ]
+             + ([{'hostname': 'default._domainkey', 'type': 'TXT', 'ttl': 120, 'value': dkim_value}] if (dkim_value | default('') | length > 0) else []) }}
       when: not is_dev_domain
 
     - name: Get existing records for Dynu zone
@@ -369,13 +409,22 @@
       register: dynu_zone_records
       when: not is_dev_domain
 
+    - name: Normalize Dynu zone records payload
+      ansible.builtin.set_fact:
+        dynu_zone_record_entries: >-
+          {{
+            (dynu_zone_records.json.dnsRecords
+              | default(dynu_zone_records.json.records
+              | default(dynu_zone_records.json.data
+              | default([]))))
+            if (dynu_zone_records.json is mapping)
+            else (dynu_zone_records.json | default([]))
+          }}
+      when: not is_dev_domain
+
     - name: Update existing Dynu record if present
       ansible.builtin.uri:
-        url: >-
-          https://api.dynu.com/v2/dns/{{ dynu_zone_id }}/record/{{ (
-            (dynu_zone_records.json | default([]) | selectattr('nodeName','equalto', ((item.hostname == '@') | ternary('', (item.hostname | regex_replace('\.' ~ domain ~ '$','')))) ) | map(attribute='id') | list)
-            + (dynu_zone_records.json | default([]) | selectattr('hostname','equalto', ( ((item.hostname == '@') | ternary('', (item.hostname | regex_replace('\.' ~ domain ~ '$',''))) ) == '' and domain or (item.hostname | regex_replace('\.' ~ domain ~ '$','')) ~ '.' ~ domain) ) | map(attribute='id') | list)
-          ).0 }}
+        url: "https://api.dynu.com/v2/dns/{{ dynu_zone_id }}/record/{{ dynu_record_id }}"
         method: POST
         headers:
           API-Key: "{{ vault_dynu_api_token }}"
@@ -393,11 +442,29 @@
       loop: "{{ dynu_desired_records | default([]) }}"
       loop_control:
         loop_var: item
-      when: not is_dev_domain and (
-        ((dynu_zone_records.json | default([]) | selectattr('nodeName','equalto', ((item.hostname == '@') | ternary('', (item.hostname | regex_replace('\.' ~ domain ~ '$','')))) ) | map(attribute='id') | list)
-         + (dynu_zone_records.json | default([]) | selectattr('hostname','equalto', ( ((item.hostname == '@') | ternary('', (item.hostname | regex_replace('\.' ~ domain ~ '$',''))) ) == '' and domain or (item.hostname | regex_replace('\.' ~ domain ~ '$','')) ~ '.' ~ domain) ) | map(attribute='id') | list)).0 is defined and (
-        ((dynu_zone_records.json | default([]) | selectattr('nodeName','equalto', ((item.hostname == '@') | ternary('', (item.hostname | regex_replace('\.' ~ domain ~ '$','')))) ) | map(attribute='id') | list)
-         + (dynu_zone_records.json | default([]) | selectattr('hostname','equalto', ( ((item.hostname == '@') | ternary('', (item.hostname | regex_replace('\.' ~ domain ~ '$',''))) ) == '' and domain or (item.hostname | regex_replace('\.' ~ domain ~ '$','')) ~ '.' ~ domain) ) | map(attribute='id') | list)).0 != None )
+      vars:
+        dynu_node_name: "{{ (item.hostname == '@') | ternary('', (item.hostname | regex_replace('\\.' ~ domain ~ '$',''))) }}"
+        dynu_hostname_fqdn: "{{ (dynu_node_name == '') | ternary(domain, dynu_node_name ~ '.' ~ domain) }}"
+        dynu_record_type: "{{ item.type | upper }}"
+        dynu_record_id: >-
+          {{ (
+               (dynu_zone_record_entries | default([])
+                 | select('mapping')
+                 | selectattr('recordType', 'defined')
+                 | selectattr('recordType', 'equalto', dynu_record_type)
+                 | selectattr('nodeName','defined')
+                 | selectattr('nodeName','equalto', dynu_node_name)
+                 | map(attribute='id') | list)
+               +
+               (dynu_zone_record_entries | default([])
+                 | select('mapping')
+                 | selectattr('recordType', 'defined')
+                 | selectattr('recordType', 'equalto', dynu_record_type)
+                 | selectattr('hostname','defined')
+                 | selectattr('hostname','equalto', dynu_hostname_fqdn)
+                 | map(attribute='id') | list)
+             ) | first | default(None) }}
+      when: not is_dev_domain and dynu_record_id is not none
 
     - name: Create Dynu record when missing
       ansible.builtin.uri:
@@ -419,11 +486,37 @@
       loop: "{{ dynu_desired_records | default([]) }}"
       loop_control:
         loop_var: item
-      when: not is_dev_domain and (
-        ((dynu_zone_records.json | default([]) | selectattr('nodeName','equalto', ((item.hostname == '@') | ternary('', (item.hostname | regex_replace('\.' ~ domain ~ '$','')))) ) | map(attribute='id') | list)
-         + (dynu_zone_records.json | default([]) | selectattr('hostname','equalto', ( ((item.hostname == '@') | ternary('', (item.hostname | regex_replace('\.' ~ domain ~ '$',''))) ) == '' and domain or (item.hostname | regex_replace('\.' ~ domain ~ '$','')) ~ '.' ~ domain) ) | map(attribute='id') | list)).0 is not defined or (
-        ((dynu_zone_records.json | default([]) | selectattr('nodeName','equalto', ((item.hostname == '@') | ternary('', (item.hostname | regex_replace('\.' ~ domain ~ '$','')))) ) | map(attribute='id') | list)
-         + (dynu_zone_records.json | default([]) | selectattr('hostname','equalto', ( ((item.hostname == '@') | ternary('', (item.hostname | regex_replace('\.' ~ domain ~ '$',''))) ) == '' and domain or (item.hostname | regex_replace('\.' ~ domain ~ '$','')) ~ '.' ~ domain) ) | map(attribute='id') | list)).0 == None )
+      vars:
+        dynu_node_name: "{{ (item.hostname == '@') | ternary('', (item.hostname | regex_replace('\\.' ~ domain ~ '$',''))) }}"
+        dynu_hostname_fqdn: "{{ (dynu_node_name == '') | ternary(domain, dynu_node_name ~ '.' ~ domain) }}"
+        dynu_record_type: "{{ item.type | upper }}"
+        dynu_record_id: >-
+          {{ (
+               (dynu_zone_record_entries | default([])
+                 | select('mapping')
+                 | selectattr('recordType', 'defined')
+                 | selectattr('recordType', 'equalto', dynu_record_type)
+                 | selectattr('nodeName','defined')
+                 | selectattr('nodeName','equalto', dynu_node_name)
+                 | map(attribute='id') | list)
+               +
+               (dynu_zone_record_entries | default([])
+                 | select('mapping')
+                 | selectattr('recordType', 'defined')
+                 | selectattr('recordType', 'equalto', dynu_record_type)
+                 | selectattr('hostname','defined')
+                 | selectattr('hostname','equalto', dynu_hostname_fqdn)
+                 | map(attribute='id') | list)
+             ) | first | default(None) }}
+      when: not is_dev_domain and dynu_record_id is none
+
+    - name: PTR / rDNS reminder for mail reputation
+      ansible.builtin.debug:
+        msg: >-
+          PTR (reverse DNS) is managed by your VPS/IP provider, not by Dynu zone records.
+          Ensure reverse DNS for IPv4/IPv6 points to your mail hostname (typically {{ mail_subdomain | default('mail.' ~ domain) }})
+          and that forward DNS for that hostname resolves back to this server IP.
+      when: not is_dev_domain
 
     # ── Shared: enable SSL in all nginx/app configs ─────────────────────────────
 
