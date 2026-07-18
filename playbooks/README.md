@@ -36,7 +36,7 @@ Creates a new virtual host configuration for hosting an additional website.
   - Creates PHP-FPM pool
   - Configures mail for the domain
   - Sets proper permissions
-  - Configures SFTP access if master domain
+  - Configures SFTP access for each normal host, excluding `cpanel.*` and `mail.*` service subdomains
 
 ### remove_vhost.yml
 
@@ -52,6 +52,7 @@ Removes a virtual host configuration and optionally its files.
   - Removes website files (optional)
   - Removes SSL certificates (optional)
   - Removes system user (optional)
+  - Removes per-host SFTP SSHD rules and SFTP group membership
 
 ### ssl.yml
 

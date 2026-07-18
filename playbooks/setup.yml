@@ -240,7 +240,10 @@
       ansible.builtin.group:
         name: sftp
         state: present
-      when: domain is defined
+      when:
+        - domain is defined
+        - domain == (master_domain | default(inventory_hostname))
+        - domain.split('.')[0] not in ['cpanel', 'mail']
 
     - name: Add master domain user to SFTP group
       tags: ['setup', 'sftp']
@@ -251,6 +254,8 @@
       when:
         - domain is defined
         - user is defined
+        - domain == (master_domain | default(inventory_hostname))
+        - domain.split('.')[0] not in ['cpanel', 'mail']
 
     - name: Configure SFTP group restrictions in SSH
       tags: ['setup', 'sftp']
@@ -267,7 +272,10 @@
             X11Forwarding no
         marker: "# {mark} ANSIBLE MANAGED SFTP CONFIGURATION"
       notify: Restart SSH
-      when: domain is defined
+      when:
+        - domain is defined
+        - domain == (master_domain | default(inventory_hostname))
+        - domain.split('.')[0] not in ['cpanel', 'mail']
 
     - name: Configure per-user SFTP chroot in SSH
       tags: ['setup', 'sftp']
@@ -283,6 +291,8 @@
       when:
         - domain is defined
         - user is defined
+        - domain == (master_domain | default(inventory_hostname))
+        - domain.split('.')[0] not in ['cpanel', 'mail']
 
     - name: Create .ssh directory for domain user
       tags: ['setup', 'sftp']
@@ -295,6 +305,8 @@
       when:
         - domain is defined
         - user is defined
+        - domain == (master_domain | default(inventory_hostname))
+        - domain.split('.')[0] not in ['cpanel', 'mail']
 
     - name: Authorize admin SSH key for domain user
       tags: ['setup', 'sftp']
@@ -307,6 +319,8 @@
         - user is defined
         - admin_ssh_public_key is defined
         - admin_ssh_public_key != ''
+        - domain == (master_domain | default(inventory_hostname))
+        - domain.split('.')[0] not in ['cpanel', 'mail']
 
     - name: Set SELinux ssh_home_t context for domain user .ssh directory
       tags: ['setup', 'sftp', 'selinux']
@@ -316,6 +330,8 @@
         - domain is defined
         - ansible_selinux is defined
         - ansible_selinux.status == "enabled"
+        - domain == (master_domain | default(inventory_hostname))
+        - domain.split('.')[0] not in ['cpanel', 'mail']
       changed_when: false
       failed_when: false
 
@@ -326,6 +342,8 @@
         - domain is defined
         - ansible_selinux is defined
         - ansible_selinux.status == "enabled"
+        - domain == (master_domain | default(inventory_hostname))
+        - domain.split('.')[0] not in ['cpanel', 'mail']
       changed_when: false
 
     - name: Set master domain user umask to 0002 (group-writable files)

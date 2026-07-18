@@ -85,7 +85,7 @@ ansible-playbook --syntax-check playbooks/create_vhost.yml -i inventory/hosts.ym
     - `goproxy` (proxy service)
   - System artefacts created:
     - system users, backups, log directories, SSL directories for master domain
-    - master-specific SFTP group and SSH Match rules
+    - SFTP group membership and SSH Match rules for the master inventory domain user only, not `cpanel.*` or `mail.*`
     - DNS/subdomain templates (`mail.`, `cpanel.`) and mail service DB entries
 
 - Non-master virtual host (lucian.com) — `./vps.sh create host --domain=lucian.com`
@@ -96,7 +96,7 @@ ansible-playbook --syntax-check playbooks/create_vhost.yml -i inventory/hosts.ym
     - configure PHP-FPM pool (`/etc/php-fpm.d/lucian.com.conf`)
     - configure nginx vhost (`/etc/nginx/sites-available/lucian.com.conf`)
     - add domain entries to Postfix/OpenDKIM configuration (virtual maps, keys)
-    - set file permissions and SFTP user membership only if master-specific tasks are required
+    - set file permissions, SFTP group membership, and per-user SSHD Match rules for normal domains; `cpanel.*` and `mail.*` are skipped
 
 These behaviors assume `master_domain: "{{ domain | default(inventory_hostname) }}"` is set so the CLI `--domain` designates the master for that run.
 

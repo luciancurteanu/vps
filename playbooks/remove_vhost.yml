@@ -22,6 +22,7 @@
     remove_creds: true
     remove_sftp_group: true
     remove_mail_subdomain: true
+    sftp_group: sftp
 
   pre_tasks:
     - name: Verify required variables are defined
@@ -117,6 +118,22 @@
       ansible.builtin.shell: "killall -KILL -u {{ user }} 2>/dev/null || true"
       ignore_errors: true
       when: remove_user | default(true)
+
+    - name: Remove user from SFTP group before account cleanup
+      ansible.builtin.command:
+        argv: [gpasswd, -d, "{{ user }}", "{{ sftp_group }}"]
+      register: remove_user_sftp_group
+      changed_when: remove_user_sftp_group.rc == 0
+      failed_when: false
+      when: domain.split('.')[0] not in ['cpanel', 'mail']
+
+    - name: Remove per-user SFTP chroot block from SSH config
+      ansible.builtin.blockinfile:
+        path: /etc/ssh/sshd_config
+        marker: "# {mark} ANSIBLE MANAGED SFTP CHROOT {{ domain }}"
+        state: absent
+      notify: Restart SSH
+      when: domain.split('.')[0] not in ['cpanel', 'mail']
 
     - name: Kill any individual remaining PIDs for the user
       ansible.builtin.shell: |
@@ -225,11 +242,40 @@
       when: remove_postfix | default(true)
       failed_when: false
 
-    - name: Remove SFTP group if it was created for master domain
-      ansible.builtin.group:
-        name: "{{ sftp_group | default('sftp') }}"
-        state: absent
+    - name: Check remaining SFTP group members
+      ansible.builtin.command:
+        argv: [getent, group, "{{ sftp_group }}"]
+      register: sftp_group_entry
+      changed_when: false
+      failed_when: false
       when: domain == master_domain and remove_sftp_group | default(true)
+
+    - name: Set remaining SFTP group members fact
+      ansible.builtin.set_fact:
+        sftp_group_remaining_members: "{{ (sftp_group_entry.stdout.split(':')[3] | default('')).split(',') | reject('equalto', '') | list }}"
+      when:
+        - domain == master_domain
+        - remove_sftp_group | default(true)
+        - sftp_group_entry.rc == 0
+
+    - name: Remove SFTP group if it is empty after master domain removal
+      ansible.builtin.group:
+        name: "{{ sftp_group }}"
+        state: absent
+      when:
+        - domain == master_domain
+        - remove_sftp_group | default(true)
+        - sftp_group_entry.rc == 0
+        - sftp_group_remaining_members | default([]) | length == 0
+
+    - name: Warn when SFTP group is kept because other users remain
+      ansible.builtin.debug:
+        msg: "Keeping SFTP group '{{ sftp_group }}' because it still has members: {{ sftp_group_remaining_members | join(', ') }}"
+      when:
+        - domain == master_domain
+        - remove_sftp_group | default(true)
+        - sftp_group_entry.rc == 0
+        - sftp_group_remaining_members | default([]) | length > 0
 
     - name: Restart Postfix
       ansible.builtin.service:
@@ -384,4 +430,9 @@
     - name: Restart PHP-FPM
       ansible.builtin.service:
         name: php-fpm.service
+        state: restarted
+
+    - name: Restart SSH
+      ansible.builtin.service:
+        name: sshd
         state: restarted
