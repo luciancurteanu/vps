@@ -177,6 +177,29 @@
     - "virtual"
     - "spool"
 
+- name: Create default mailbox Maildir directories
+  ansible.builtin.file:
+    path: "/var/vmail/{{ domain }}/{{ item }}"
+    state: directory
+    owner: "{{ mail_user }}"
+    group: "{{ mail_group }}"
+    mode: '0700'
+  loop:
+    - contact
+    - hello
+    - noreply
+  when: domain is defined
+
+- name: Create default mailbox Maildir subdirectories
+  ansible.builtin.file:
+    path: "/var/vmail/{{ domain }}/{{ item.0 }}/{{ item.1 }}"
+    state: directory
+    owner: "{{ mail_user }}"
+    group: "{{ mail_group }}"
+    mode: '0700'
+  loop: "{{ ['contact', 'hello', 'noreply'] | product(['cur', 'new', 'tmp']) | list }}"
+  when: domain is defined
+
 - name: Ensure mail log directory exists
   ansible.builtin.file:
     path: "/home/{{ domain }}/logs"

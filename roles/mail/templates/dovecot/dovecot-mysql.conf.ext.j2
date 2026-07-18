@@ -7,7 +7,7 @@ driver = mysql
 {% set _vmail_gid = vmail_gid | default(5000) %}
 # Default to localhost and port 3307 unless overridden. Use TCP connect which avoids
 # potential unsupported 'socket' tokens in some Dovecot builds.
-connect = host=127.0.0.1 port={{ db_port | default(3307) }} dbname={{ mail_db_name }} user={{ mail_db_user }}{% if _db_pass %} password={{ _db_pass }}{% endif %}
+connect = host=127.0.0.1 port={{ db_port | default(3307) }} dbname={{ mail_db_name }} user={{ mail_db_user }}{{ (' password=' ~ _db_pass) if _db_pass else '' }}
 default_pass_scheme = SHA512-CRYPT
 
 # User query
