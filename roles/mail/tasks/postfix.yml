@@ -9,9 +9,39 @@
       - cyrus-sasl-plain
     state: present
 
-- name: Set mail_use_letsencrypt_effective (simplified)
+- name: Check Let's Encrypt fullchain for Postfix
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ domain }}/fullchain.pem"
+  register: mail_le_cert_stat
+  when: mail_use_letsencrypt | default(false) | bool
+
+- name: Check Let's Encrypt private key for Postfix
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ domain }}/privkey.pem"
+  register: mail_le_key_stat
+  when: mail_use_letsencrypt | default(false) | bool
+
+- name: Check Let's Encrypt chain for Postfix
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ domain }}/chain.pem"
+  register: mail_le_chain_stat
+  when: mail_use_letsencrypt | default(false) | bool
+
+- name: Set mail_use_letsencrypt_effective
   ansible.builtin.set_fact:
-    mail_use_letsencrypt_effective: "{{ mail_use_letsencrypt | default(false) | bool }}"
+    mail_use_letsencrypt_effective: >-
+      {{
+        (mail_use_letsencrypt | default(false) | bool)
+        and (mail_le_cert_stat.stat.exists | default(false))
+        and (mail_le_key_stat.stat.exists | default(false))
+        and (mail_le_chain_stat.stat.exists | default(false))
+      }}
+
+- name: Set effective Postfix TLS paths
+  ansible.builtin.set_fact:
+    postfix_cert_effective: "{{ '/etc/letsencrypt/live/' ~ domain ~ '/fullchain.pem' if (mail_use_letsencrypt_effective | bool) else postfix_cert }}"
+    postfix_key_effective: "{{ '/etc/letsencrypt/live/' ~ domain ~ '/privkey.pem' if (mail_use_letsencrypt_effective | bool) else postfix_key }}"
+    postfix_ca_effective: "{{ '/etc/letsencrypt/live/' ~ domain ~ '/chain.pem' if (mail_use_letsencrypt_effective | bool) else postfix_ca }}"
 
 - name: Warn when mail_use_letsencrypt is true but cert files are missing
   ansible.builtin.debug:
@@ -199,7 +229,8 @@
     src: postfix/mysql-virtual-mailbox-domains.cf.j2
     dest: /etc/postfix/mysql-virtual-mailbox-domains.cf
     owner: root
-    group: root
+    group: postfix
+    mode: '0640'
   notify: restart postfix
 
 - name: Configure virtual mailbox maps
@@ -207,7 +238,8 @@
     src: postfix/mysql-virtual-mailbox-maps.cf.j2
     dest: /etc/postfix/mysql-virtual-mailbox-maps.cf
     owner: root
-    group: root
+    group: postfix
+    mode: '0640'
   notify: restart postfix
 
 - name: Configure virtual alias maps
@@ -215,7 +247,8 @@
     src: postfix/mysql-virtual-alias-maps.cf.j2
     dest: /etc/postfix/mysql-virtual-alias-maps.cf
     owner: root
-    group: root
+    group: postfix
+    mode: '0640'
   notify: restart postfix
 
 - name: Configure email domains

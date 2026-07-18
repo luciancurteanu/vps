@@ -146,6 +146,7 @@ This prevents partial SSL configuration from breaking services when `mail_use_le
 
 This automatically:
 - ✅ Obtains Let's Encrypt SSL certificates for all subdomains
+- ✅ Ensures shared Let's Encrypt nginx TLS files exist (`options-ssl-nginx.conf`, `ssl-dhparams.pem`)
 - ✅ Configures HTTPS redirects
 - ✅ Enables secure cookies
 - ✅ Updates all services to use SSL
@@ -178,6 +179,7 @@ If Let's Encrypt files already exist before `install ssl` runs, the effective SS
 
 **This command:**
 - Obtains Let's Encrypt certificates for: `example.com`, `mail.example.com`, `cpanel.example.com`
+- Ensures nginx can reload by creating the shared Let's Encrypt SSL options include and DH params file
 - Configures nginx to redirect HTTP → HTTPS for all sites
 - Enables HTTPS in Roundcube webmail
 - Enables SSL enforcement in Webmin

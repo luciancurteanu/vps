@@ -311,6 +311,49 @@
         msg: "{{ cert_info.stdout_lines }}"
       when: not is_dev_domain
 
+    - name: Ensure Let's Encrypt nginx options include exists
+      ansible.builtin.copy:
+        dest: /etc/letsencrypt/options-ssl-nginx.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          ssl_session_cache shared:le_nginx_SSL:10m;
+          ssl_session_timeout 1440m;
+          ssl_session_tickets off;
+          ssl_protocols TLSv1.2 TLSv1.3;
+          ssl_prefer_server_ciphers off;
+          ssl_ciphers "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305";
+      when: not is_dev_domain
+
+    - name: Locate Certbot packaged DH params
+      ansible.builtin.command:
+        argv: [find, /opt/certbot-venv/lib, -path, "*/certbot/ssl-dhparams.pem", -print, -quit]
+      register: certbot_packaged_dhparams
+      changed_when: false
+      failed_when: false
+      when: not is_dev_domain
+
+    - name: Install Certbot packaged DH params for nginx
+      ansible.builtin.copy:
+        src: "{{ certbot_packaged_dhparams.stdout }}"
+        dest: /etc/letsencrypt/ssl-dhparams.pem
+        owner: root
+        group: root
+        mode: '0644'
+        remote_src: true
+      when:
+        - not is_dev_domain
+        - certbot_packaged_dhparams.stdout | default('') | length > 0
+
+    - name: Generate fallback DH params for nginx
+      ansible.builtin.command:
+        argv: [openssl, dhparam, -out, /etc/letsencrypt/ssl-dhparams.pem, "2048"]
+        creates: /etc/letsencrypt/ssl-dhparams.pem
+      when:
+        - not is_dev_domain
+        - certbot_packaged_dhparams.stdout | default('') | length == 0
+
     # ── Dynu DNS: ensure DMARC, SPF and DKIM TXT records exist (prod only) ──
     - name: Ensure Dynu API token is present
       ansible.builtin.assert:
@@ -630,6 +673,16 @@
         - domain == master_domain
         - postfix_maincf_stat.stat.exists | default(false)
 
+    - name: Repair concatenated Postfix compatibility/TLS line if present
+      ansible.builtin.replace:
+        path: /etc/postfix/main.cf
+        regexp: '^compatibility_level\s*=\s*2smtp_tls_cert_file\s*=.*$'
+        replace: 'compatibility_level = 2'
+      when:
+        - install_mail | default(true)
+        - domain == master_domain
+        - postfix_maincf_stat.stat.exists | default(false)
+
     - name: Ensure Postfix main.cf has trailing blank line before postconf edits
       ansible.builtin.lineinfile:
         path: /etc/postfix/main.cf
@@ -654,6 +707,13 @@
         - "smtp_tls_cert_file={{ ssl_cert_file }}"
         - "smtp_tls_key_file={{ ssl_cert_key }}"
         - "smtp_tls_CAfile={{ ssl_ca_file }}"
+        - "smtpd_use_tls=yes"
+        - "smtpd_tls_security_level=may"
+        - "smtpd_tls_loglevel=1"
+        - "smtpd_tls_session_cache_database=btree:${data_directory}/smtpd_scache"
+        - "smtpd_tls_cert_file={{ ssl_cert_file }}"
+        - "smtpd_tls_key_file={{ ssl_cert_key }}"
+        - "smtpd_tls_CAfile={{ ssl_ca_file }}"
         - "header_checks=regexp:/etc/postfix/header_checks"
       when:
         - install_mail | default(true)

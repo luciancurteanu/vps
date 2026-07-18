@@ -63,6 +63,7 @@ Obtains and installs SSL certificates using Let's Encrypt.
 - **Operations Performed**:
   - Installs Certbot
   - Obtains SSL certificate
+  - Ensures shared Let's Encrypt nginx files exist (`options-ssl-nginx.conf`, `ssl-dhparams.pem`)
   - Sets up auto-renewal
   - Configures Nginx with SSL optimizations
 

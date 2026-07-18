@@ -30,7 +30,11 @@ Behavior:
 - **Files exist** → Postfix and Dovecot use the Let's Encrypt certificate paths.
 - **Files missing** → the role falls back to local certificate paths under `mail_ssl_dir` instead of rendering broken LE references.
 
+For Postfix, both outbound SMTP TLS (`smtp_*`) and inbound SMTP daemon TLS (`smtpd_*`) are configured with the effective certificate paths so port 25, submission, and SMTPS have server certificates available after reload.
+
 This prevents Dovecot/Postfix from failing just because a variable requested Let's Encrypt before certificates had been issued.
+
+Postfix MySQL map files under `/etc/postfix/mysql-virtual-*.cf` contain database credentials and are installed as `root:postfix` with mode `0640`.
 
 ### Webmail vhost: `mail.{{ domain }}`
 
