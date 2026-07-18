@@ -8,8 +8,8 @@ bantime = -1
 findtime = 86400
 maxretry = 3
 # Email notifications
-destemail = {{ mail_admin_email | default('no-reply@' + (domain | default('example.com'))) }}
-sender = {{ mail_admin_email | default('no-reply@' + (domain | default('example.com'))) }}
+destemail = {{ mail_admin_email | default('noreply@' + (domain | default('example.com'))) }}
+sender = {{ mail_admin_email | default('noreply@' + (domain | default('example.com'))) }}
 mta = sendmail
 {% if security_firewall_service | default('iptables') == 'iptables' %}
 banaction = iptables-multiport

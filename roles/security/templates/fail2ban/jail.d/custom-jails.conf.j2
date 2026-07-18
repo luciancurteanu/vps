@@ -4,8 +4,8 @@
 ignoreip = 127.0.0.1/8 192.168.0.1/16
 
 # Email notifications
-destemail = no-reply@<fq-hostname>
-sender = no-reply@<fq-hostname>
+destemail = noreply@<fq-hostname>
+sender = noreply@<fq-hostname>
 action_lc = %(action_)s
           %(mta)s-lc[sender="%(sender)s", dest="%(destemail)s", logpath="%(logpath)s", chain="%(chain)s"]
 

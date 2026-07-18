@@ -388,10 +388,8 @@
               - "{{ domain }}"
           with_items:
             - "contact"
-            - "support"
-            - "no-reply"
-            - "copyright"
-            - "privacy"
+            - "hello"
+            - "noreply"
           changed_when: true
 
         - name: Create mailbox directories
@@ -404,6 +402,7 @@
           with_items:
             - "contact"
             - "hello"
+            - "noreply"
 
     - name: Configure OpenDKIM for regular domain
       when: domain != master_domain

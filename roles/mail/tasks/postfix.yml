@@ -280,10 +280,9 @@
     login_password: "{{ mail_db_password }}"
     query: "INSERT INTO users (email, password, domain) VALUES ('{{ item }}@{{ domain }}', '{{ admin_password_hash }}', '{{ domain }}') ON DUPLICATE KEY UPDATE password='{{ admin_password_hash }}'"
   with_items:
-    - admin
     - contact
-    - postmaster
-    - webmaster
+    - hello
+    - noreply
   when: domain is defined and admin_password_hash is defined
   no_log: true
 
