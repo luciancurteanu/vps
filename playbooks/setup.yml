@@ -666,14 +666,23 @@
 
         - name: Build Dynu zones list
           ansible.builtin.set_fact:
-            dynu_core_zones: "{{ dynu_core_dns_list.json.domains | default(dynu_core_dns_list.json | default([])) }}"
+            dynu_core_zones: >-
+              {{
+                (dynu_core_dns_list.json.dnsDomains
+                  | default(dynu_core_dns_list.json.domains
+                  | default(dynu_core_dns_list.json.data
+                  | default([]))))
+                if (dynu_core_dns_list.json is mapping)
+                else (dynu_core_dns_list.json | default([]))
+              }}
 
         - name: Resolve Dynu forward zone id for master domain
           ansible.builtin.set_fact:
             dynu_core_zone_id: >-
               {{
-                ((dynu_core_zones | selectattr('domainName','equalto', domain) | map(attribute='id') | list)
-                + (dynu_core_zones | selectattr('name','equalto', domain) | map(attribute='id') | list)) | first
+                ((dynu_core_zones | default([]) | select('mapping') | selectattr('domainName','defined') | selectattr('domainName','equalto', domain) | selectattr('id','defined') | map(attribute='id') | list)
+                + (dynu_core_zones | default([]) | select('mapping') | selectattr('name','defined') | selectattr('name','equalto', domain) | selectattr('id','defined') | map(attribute='id') | list)
+                + (dynu_core_zones | default([]) | select('mapping') | selectattr('name','defined') | selectattr('name','equalto', domain) | selectattr('domainId','defined') | map(attribute='domainId') | list)) | first | default(None)
               }}
 
         - name: Fail when Dynu forward zone is missing
@@ -714,7 +723,15 @@
 
         - name: Normalize Dynu forward records
           ansible.builtin.set_fact:
-            dynu_core_forward_records_list: "{{ dynu_core_forward_records.json.records | default(dynu_core_forward_records.json | default([])) }}"
+            dynu_core_forward_records_list: >-
+              {{
+                (dynu_core_forward_records.json.dnsRecords
+                  | default(dynu_core_forward_records.json.records
+                  | default(dynu_core_forward_records.json.data
+                  | default([]))))
+                if (dynu_core_forward_records.json is mapping)
+                else (dynu_core_forward_records.json | default([]))
+              }}
 
         - name: Update forward record when present
           ansible.builtin.uri:
@@ -732,12 +749,20 @@
               {{
                 (
                   (dynu_core_forward_records_list
+                    | default([])
+                    | select('mapping')
+                    | selectattr('recordType','defined')
                     | selectattr('recordType','equalto', item.type)
+                    | selectattr('nodeName','defined')
                     | selectattr('nodeName','equalto', dynu_core_node_name)
                     | map(attribute='id') | list)
                   +
                   (dynu_core_forward_records_list
+                    | default([])
+                    | select('mapping')
+                    | selectattr('recordType','defined')
                     | selectattr('recordType','equalto', item.type)
+                    | selectattr('hostname','defined')
                     | selectattr('hostname','equalto', (dynu_core_node_name == '' and domain or dynu_core_node_name ~ '.' ~ domain))
                     | map(attribute='id') | list)
                 ) | first | default(None)
@@ -772,12 +797,20 @@
               {{
                 (
                   (dynu_core_forward_records_list
+                    | default([])
+                    | select('mapping')
+                    | selectattr('recordType','defined')
                     | selectattr('recordType','equalto', item.type)
+                    | selectattr('nodeName','defined')
                     | selectattr('nodeName','equalto', dynu_core_node_name)
                     | map(attribute='id') | list)
                   +
                   (dynu_core_forward_records_list
+                    | default([])
+                    | select('mapping')
+                    | selectattr('recordType','defined')
                     | selectattr('recordType','equalto', item.type)
+                    | selectattr('hostname','defined')
                     | selectattr('hostname','equalto', (dynu_core_node_name == '' and domain or dynu_core_node_name ~ '.' ~ domain))
                     | map(attribute='id') | list)
                 ) | first | default(None)
@@ -848,7 +881,15 @@
 
         - name: Normalize Dynu reverse records
           ansible.builtin.set_fact:
-            dynu_core_reverse_records_list: "{{ dynu_core_reverse_records.json.records | default(dynu_core_reverse_records.json | default([])) }}"
+            dynu_core_reverse_records_list: >-
+              {{
+                (dynu_core_reverse_records.json.dnsRecords
+                  | default(dynu_core_reverse_records.json.records
+                  | default(dynu_core_reverse_records.json.data
+                  | default([]))))
+                if (dynu_core_reverse_records.json is mapping)
+                else (dynu_core_reverse_records.json | default([]))
+              }}
           when: dynu_core_reverse_zone_id | length > 0
 
         - name: Find existing PTR record id
@@ -857,12 +898,20 @@
               {{
                 (
                   (dynu_core_reverse_records_list
+                    | default([])
+                    | select('mapping')
+                    | selectattr('recordType','defined')
                     | selectattr('recordType','equalto','PTR')
+                    | selectattr('nodeName','defined')
                     | selectattr('nodeName','equalto', dynu_core_ptr_node_name)
                     | map(attribute='id') | list)
                   +
                   (dynu_core_reverse_records_list
+                    | default([])
+                    | select('mapping')
+                    | selectattr('recordType','defined')
                     | selectattr('recordType','equalto','PTR')
+                    | selectattr('nodeName','defined')
                     | selectattr('nodeName','equalto', dynu_core_ptr_node_name ~ '.')
                     | map(attribute='id') | list)
                 ) | first | default(None)
