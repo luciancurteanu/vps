@@ -462,12 +462,86 @@
             - dovecot
             - opendkim
 
+        - name: Ensure vhost SSH directory exists
+          ansible.builtin.file:
+            path: "/home/{{ domain }}/.ssh"
+            state: directory
+            owner: "{{ user }}"
+            group: "{{ vhost_owner }}"
+            mode: '0700'
+          when:
+            - send_creds | default(true)
+            - domain.split('.')[0] not in ['cpanel', 'mail']
+
+        - name: Generate vhost SSH keypair for credentials email
+          ansible.builtin.command:
+            argv:
+              - ssh-keygen
+              - -t
+              - rsa
+              - -b
+              - "4096"
+              - -N
+              - ""
+              - -C
+              - "{{ user }}@{{ domain }}"
+              - -f
+              - "/home/{{ domain }}/.ssh/id_rsa"
+            creates: "/home/{{ domain }}/.ssh/id_rsa"
+          when:
+            - send_creds | default(true)
+            - domain.split('.')[0] not in ['cpanel', 'mail']
+
+        - name: Set permissions for vhost SSH keypair
+          ansible.builtin.file:
+            path: "/home/{{ domain }}/.ssh/{{ item.name }}"
+            owner: "{{ user }}"
+            group: "{{ vhost_owner }}"
+            mode: "{{ item.mode }}"
+          loop:
+            - { name: 'id_rsa', mode: '0600' }
+            - { name: 'id_rsa.pub', mode: '0644' }
+          when:
+            - send_creds | default(true)
+            - domain.split('.')[0] not in ['cpanel', 'mail']
+
+        - name: Read vhost generated public key
+          ansible.builtin.slurp:
+            src: "/home/{{ domain }}/.ssh/id_rsa.pub"
+          register: slurped_vhost_public_key
+          when:
+            - send_creds | default(true)
+            - domain.split('.')[0] not in ['cpanel', 'mail']
+
+        - name: Authorize generated vhost SSH key
+          ansible.posix.authorized_key:
+            user: "{{ user }}"
+            state: present
+            key: "{{ slurped_vhost_public_key.content | b64decode }}"
+          when:
+            - send_creds | default(true)
+            - slurped_vhost_public_key is defined
+            - slurped_vhost_public_key.content is defined
+            - domain.split('.')[0] not in ['cpanel', 'mail']
+
         - name: Slurp vhost private key (base64) for email attachments
           ansible.builtin.slurp:
             src: "/home/{{ domain }}/.ssh/id_rsa"
           register: slurped_private_key
-          ignore_errors: true
-          when: send_creds | default(true)
+          when:
+            - send_creds | default(true)
+            - domain.split('.')[0] not in ['cpanel', 'mail']
+
+        - name: Verify vhost private key is available for credentials email
+          ansible.builtin.assert:
+            that:
+              - slurped_private_key is defined
+              - slurped_private_key.content is defined
+              - slurped_private_key.content | length > 0
+            fail_msg: "Cannot send credentials email because /home/{{ domain }}/.ssh/id_rsa is missing or empty."
+          when:
+            - send_creds | default(true)
+            - domain.split('.')[0] not in ['cpanel', 'mail']
 
         - name: Set variables for credentials email (private key, secrets, all)
           ansible.builtin.set_fact:
