@@ -473,8 +473,7 @@
           ansible.builtin.set_fact:
             private_key_b64: "{{ slurped_private_key.content | default('') }}"
             secrets_b64: "{{ lookup('file', playbook_dir + '/../vars/secrets.yml') | b64encode }}"
-            # Try to read repository-wide all.yml; some checkouts keep it under inventory/group_vars
-            all_b64: "{{ lookup('file', playbook_dir + '/../vars/all.yml') | default(lookup('file', playbook_dir + '/../inventory/group_vars/all.yml')) | b64encode }}"
+            all_b64: "{{ lookup('file', playbook_dir + '/../inventory/group_vars/all.yml') | b64encode }}"
           when: send_creds | default(true)
 
         - name: Create creds directory
