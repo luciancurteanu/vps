@@ -262,6 +262,23 @@
   when: security_fail2ban_enabled | default(true)
   tags: ['fail2ban', 'security']
 
+- name: Generate and install SELinux policy module to allow fail2ban to use curl
+  ansible.builtin.shell: |
+    cd /tmp
+    ausearch -m avc -ts recent | audit2allow -M fail2ban-curl
+    semodule -i fail2ban-curl.pp
+  args:
+    executable: /bin/bash
+  register: fail2ban_curl_semodule
+  changed_when: "'module fail2ban-curl' in fail2ban_curl_semodule.stderr or fail2ban_curl_semodule.rc == 0"
+  failed_when: false
+  when:
+    - security_fail2ban_enabled | default(true)
+    - ansible_selinux is defined
+    - ansible_selinux.status == 'enabled'
+    - ansible_virtualization_type | default('') != 'docker'
+  tags: ['fail2ban', 'selinux', 'security']
+
 - name: Wait for fail2ban socket
   ansible.builtin.wait_for:
     path: /var/run/fail2ban/fail2ban.sock
