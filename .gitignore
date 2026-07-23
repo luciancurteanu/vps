@@ -1,5 +1,6 @@
 # Github
 .github/
+.git/
 
 # VSCode
 .vscode/
@@ -29,3 +30,4 @@ callback_plugins/__pycache__/
 
 # Ignore generated credentials emails
 creds/
+.env

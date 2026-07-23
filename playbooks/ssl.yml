@@ -188,11 +188,17 @@
         fail_msg: "vault_dynu_api_token is missing or empty in vars/secrets.yml — cannot obtain Let's Encrypt certificate"
       when: not is_dev_domain
 
-    - name: Add mail and cpanel CNAME records when this is the master domain
+    - name: Compute master-domain mail DNS values
+      ansible.builtin.set_fact:
+        dynu_mail_ipv4: "{{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address | default('')) }}"
+        dynu_mail_hostname: "{{ mail_subdomain | default('mail.' ~ domain) }}"
+      when: not is_dev_domain and domain == master_domain
+
+    - name: Add mail A and cpanel CNAME records when this is the master domain
       ansible.builtin.set_fact:
         dynu_desired_records: >-
           {{ (dynu_desired_records | default([])) + [
-            {'hostname': 'mail', 'type': 'CNAME', 'ttl': 3600, 'host': domain},
+            {'hostname': 'mail', 'type': 'A', 'ttl': 3600, 'value': dynu_mail_ipv4},
             {'hostname': 'cpanel', 'type': 'CNAME', 'ttl': 3600, 'host': domain}
           ] }}
       when: not is_dev_domain and domain == master_domain
@@ -432,8 +438,8 @@
         dynu_desired_records: >-
           {{ (dynu_desired_records | default([]))
              + [
-               {'hostname': '_dmarc', 'type': 'TXT', 'ttl': 3600, 'value': 'v=DMARC1; p=reject;'},
-              {'hostname': '@', 'type': 'TXT', 'ttl': 3600, 'value': "v=spf1 a include:spf.protection.outlook.com include:_spf.google.com include:_spf.mail.yahoo.com -all"},
+               {'hostname': '_dmarc', 'type': 'TXT', 'ttl': 3600, 'value': 'v=DMARC1; p=' ~ (mail_dmarc_policy | default('quarantine')) ~ '; rua=mailto:' ~ (mail_dmarc_rua | default(mail_admin_email | default('contact@' ~ domain))) ~ '; adkim=r; aspf=r'},
+               {'hostname': '@', 'type': 'TXT', 'ttl': 3600, 'value': 'v=spf1 a mx ip4:' ~ (dynu_mail_ipv4 | default(hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address | default('')))) ~ ' -all'},
                {'hostname': 'www', 'type': 'CNAME', 'ttl': 3600, 'host': domain},
                {'hostname': '_smtp._tls', 'type': 'TXT', 'ttl': 3600, 'value': "v=TLSRPTv1; rua=mailto:contact@%s" % domain}
              ]
@@ -464,6 +470,40 @@
           }}
       when: not is_dev_domain
 
+    - name: Find obsolete mail CNAME record id
+      ansible.builtin.set_fact:
+        dynu_obsolete_mail_cname_record_id: >-
+          {{ (
+               (dynu_zone_record_entries | default([])
+                 | select('mapping')
+                 | selectattr('recordType', 'defined')
+                 | selectattr('recordType', 'equalto', 'CNAME')
+                 | selectattr('nodeName','defined')
+                 | selectattr('nodeName','equalto', 'mail')
+                 | map(attribute='id') | list)
+               +
+               (dynu_zone_record_entries | default([])
+                 | select('mapping')
+                 | selectattr('recordType', 'defined')
+                 | selectattr('recordType', 'equalto', 'CNAME')
+                 | selectattr('hostname','defined')
+                 | selectattr('hostname','equalto', (dynu_mail_hostname | default('mail.' ~ domain)))
+                 | map(attribute='id') | list)
+             ) | first | default(None) }}
+      when: not is_dev_domain and domain == master_domain
+
+    - name: Delete obsolete mail CNAME before creating mail A record
+      ansible.builtin.uri:
+        url: "https://api.dynu.com/v2/dns/{{ dynu_zone_id }}/record/{{ dynu_obsolete_mail_cname_record_id }}"
+        method: DELETE
+        headers:
+          API-Key: "{{ vault_dynu_api_token }}"
+        status_code: [200, 204, 404]
+      when:
+        - not is_dev_domain
+        - domain == master_domain
+        - dynu_obsolete_mail_cname_record_id is not none
+
     - name: Update existing Dynu record if present
       ansible.builtin.uri:
         url: "https://api.dynu.com/v2/dns/{{ dynu_zone_id }}/record/{{ dynu_record_id }}"
@@ -476,7 +516,10 @@
               {'nodeName': ((item.hostname == '@') | ternary('', (item.hostname | regex_replace('\.' ~ domain ~ '$','')))), 'recordType': item.type, 'ttl': item.ttl, 'host': (item.host | default(item.value)), 'priority': (item.priority | default(10)), 'state': true},
               (item.type == 'CNAME') | ternary(
                 {'nodeName': ((item.hostname == '@') | ternary('', (item.hostname | regex_replace('\.' ~ domain ~ '$','')))), 'recordType': item.type, 'ttl': item.ttl, 'host': (item.host | default(item.value)), 'state': true},
-                {'nodeName': ((item.hostname == '@') | ternary('', (item.hostname | regex_replace('\.' ~ domain ~ '$','')))), 'recordType': item.type, 'ttl': item.ttl, 'textData': item.value, 'state': true}
+                (item.type == 'A') | ternary(
+                  {'nodeName': ((item.hostname == '@') | ternary('', (item.hostname | regex_replace('\.' ~ domain ~ '$','')))), 'recordType': item.type, 'ttl': item.ttl, 'ipv4Address': item.value, 'state': true},
+                  {'nodeName': ((item.hostname == '@') | ternary('', (item.hostname | regex_replace('\.' ~ domain ~ '$','')))), 'recordType': item.type, 'ttl': item.ttl, 'textData': item.value, 'state': true}
+                )
               )
             ) }}
         body_format: json
@@ -520,7 +563,10 @@
               {'nodeName': ((item.hostname == '@') | ternary('', (item.hostname | regex_replace('\.' ~ domain ~ '$','')))), 'recordType': item.type, 'ttl': item.ttl, 'host': (item.host | default(item.value)), 'priority': (item.priority | default(10)), 'state': true},
               (item.type == 'CNAME') | ternary(
                 {'nodeName': ((item.hostname == '@') | ternary('', (item.hostname | regex_replace('\.' ~ domain ~ '$','')))), 'recordType': item.type, 'ttl': item.ttl, 'host': (item.host | default(item.value)), 'state': true},
-                {'nodeName': ((item.hostname == '@') | ternary('', (item.hostname | regex_replace('\.' ~ domain ~ '$','')))), 'recordType': item.type, 'ttl': item.ttl, 'textData': item.value, 'state': true}
+                (item.type == 'A') | ternary(
+                  {'nodeName': ((item.hostname == '@') | ternary('', (item.hostname | regex_replace('\.' ~ domain ~ '$','')))), 'recordType': item.type, 'ttl': item.ttl, 'ipv4Address': item.value, 'state': true},
+                  {'nodeName': ((item.hostname == '@') | ternary('', (item.hostname | regex_replace('\.' ~ domain ~ '$','')))), 'recordType': item.type, 'ttl': item.ttl, 'textData': item.value, 'state': true}
+                )
               )
             ) }}
         body_format: json

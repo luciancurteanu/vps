@@ -105,7 +105,7 @@ For the mail server to work properly, you need to set up these DNS records:
 
 2. **SPF record**:
    ```
-   yourdomain.com. IN TXT "v=spf1 a mx ip4:YOUR_SERVER_IP ~all"
+   yourdomain.com. IN TXT "v=spf1 a mx ip4:YOUR_SERVER_IP -all"
    ```
 
 3. **DKIM record**: (generated during installation)
@@ -115,8 +115,16 @@ For the mail server to work properly, you need to set up these DNS records:
 
 4. **DMARC record**:
    ```
-   _dmarc.yourdomain.com. IN TXT "v=DMARC1; p=none; rua=mailto:postmaster@yourdomain.com"
+   _dmarc.yourdomain.com. IN TXT "v=DMARC1; p=quarantine; rua=mailto:contact@yourdomain.com; adkim=r; aspf=r"
    ```
+
+5. **Mail host and reverse DNS**:
+   ```
+   mail.yourdomain.com. IN A YOUR_SERVER_IP
+   YOUR_SERVER_IP PTR mail.yourdomain.com.
+   ```
+
+   Avoid using a CNAME for the MX target. Reverse DNS/PTR is normally configured in your VPS/provider panel, not in the public forward DNS zone.
 
 ## Included Components
 
