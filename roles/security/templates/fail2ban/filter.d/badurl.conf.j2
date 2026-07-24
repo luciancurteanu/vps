@@ -1,6 +1,22 @@
 # {{ ansible_managed }}
-# BadURL fail2ban filter
+# Fail2Ban configuration file
+#
+# Author: Lucian Curteanu 
+# Visit : https://luciancurteanu.com
+#
 
 [Definition]
-failregex = ^<HOST> -.*"(GET|POST|HEAD).*HTTP.*".*(?:(.php.php|//proc/|/GponForm/|/config/getuser|/setup.cgi|/cgi-bin/|/etc/passwd|/cgi/common|/muieblackcat|.git/HEAD|wp-login|/ctrlt/|/wls-wsat/|/wp-content/))"
-ignoreregex =
+
+goodurl = banner\.php
+badurl = wp|\.env|\.sh|\.php.*HTTP|XDEBUG|system|vendor|cgi|console|ignition|download|icap|SiteLoader|mPlayer
+#failregex  = (?i)^<HOST>.*".*?(?:%(badurl)s).*?"
+#failregex = (?i)^<HOST> -.*"(GET|POST|HEAD)\s\/.*(.php|wp-).*"$
+#failregex = ^<HOST>.*".*(x[0-9]).*?"$
+#failregex  = (?i)^<HOST>.*".*?(?:%(badurl)s).*"$
+
+failregex  = (?i)^<HOST>.*".*?(?:%(badurl)s|\\x(?:[0-9A-Fa-f]{2})+).*"$
+
+ignoreregex = (?i)^<HOST>.*".*?(?:%(goodurl)s).*"$
+
+datepattern = ^[^\[]*\[({DATE})
+              {^LN-BEG}

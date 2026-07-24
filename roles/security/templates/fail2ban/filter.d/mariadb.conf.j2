@@ -1,10 +1,31 @@
 # {{ ansible_managed }}
-# MariaDB fail2ban filter
+# Fail2Ban configuration file
+#
+# Author: Lucian Curteanu 
+# Visit : https://luciancurteanu.com
+#
+
+[INCLUDES]
+
+# Read common prefixes. If any customizations available -- read them from
+# common.local
+before = common.conf
 
 [Definition]
-failregex = ^(.*)MariaDB: Access denied for user.*\[<HOST>\]
-            ^(.*)mysqld\[\d+\]: Access denied for user.*\[<HOST>\]
-            ^(.*)ERROR \d+.*Access denied for user.*@ '(<HOST>)'
-            ^(.*)ERROR \d+.*Host '(<HOST>)' is blocked because of many connection errors
-            
-ignoreregex =
+
+_daemon = mysqld
+
+#failregex = ^%(__prefix_line)s(?:(?:\d{6}|\d{4}-\d{2}-\d{2})[ T]\s?\d{1,2}:\d{2}:\d{2} )?(?:\d+ )?\[\w+\] (?:\[[^\]]+\] )*Access denied for user '<F-USER>[^']+</F-USER>'@'<HOST>' (to database '[^']*'|\(using password: (YES|NO)\))*\s*$
+failregex = ^%(__prefix_line)s(?:(?:\d{6}|\d{4}-\d{2}-\d{2})[ T]\s?\d{1,2}:\d{2}:\d{2} )?(?:\d+ )?\[\w+\] (?:\[[^\]]+\] )*Access denied for user '<F-USER>[^']+</F-USER>'@'<HOST>'.*
+			^%(__prefix_line)s(?:(?:\d{6}|\d{4}-\d{2}-\d{2})[ T]\s?\d{1,2}:\d{2}:\d{2} )?(?:\d+ )?\[\w+\] (?:\[[^\]]+\] )*Aborted connection.*'<HOST>'.*
+            ^%(__prefix_line)s(?:(?:\d{6}|\d{4}-\d{2}-\d{2})[ T]\s?\d{1,2}:\d{2}:\d{2} )?(?:\d+ )?\[\w+\] (?:\[[^\]]+\] )*IP address '<HOST>'.*
+ignoreregex = 
+
+# DEV Notes:
+#
+# Technically __prefix_line can equate to an empty string hence it can support
+# syslog and non-syslog at once.
+# Example:
+# 130322 11:26:54 [Warning] Access denied for user 'root'@'127.0.0.1' (using password: YES)
+# [Warning] Aborted connection 1095176 to db: 'unconnected' user: 'unauthenticated' host: '206.168.34.124' (This connection closed normally without authentication)
+# [Warning] IP address '206.168.34.124' could not be resolved: Name or service not known
