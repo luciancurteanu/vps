@@ -7,6 +7,12 @@
     - ../vars/secrets.yml
 
   pre_tasks:
+    - name: Check if /etc/cloud/cloud.cfg.d exists
+      tags: ['setup']
+      ansible.builtin.stat:
+        path: /etc/cloud/cloud.cfg.d
+      register: cloud_cfg_dir
+
     - name: Ensure cloud-init will not overwrite /etc/hosts
       tags: ['setup']
       ansible.builtin.copy:
@@ -17,6 +23,7 @@
         owner: root
         group: root
         mode: '0644'
+      when: cloud_cfg_dir.stat.exists
 
     - name: Ensure /etc/hosts has an entry for the domain
       tags: ['setup']
