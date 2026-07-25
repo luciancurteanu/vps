@@ -8,14 +8,17 @@
 
 # Example: Conditional logging mapping (add to http block in nginx.conf if needed)
 map $remote_addr $log_ip {
-    "192.168.0.1" 0; # Internal network IPs to exclude from logging
-    "1.1.1.1" 0; # Server IPs to exclude from logging
+    "127.0.0.1" 0; # Internal network IPs to exclude from logging
+{# Add the host's primary IPv4 dynamically if available. Only render when a non-empty value exists. #}
+{% set _host_ip = (vhost_ip | default('')) or (ansible_default_ipv4.address if (ansible_default_ipv4 is defined and ansible_default_ipv4.address is defined) else '') %}
+{% if _host_ip | length > 0 %}
+    "{{ _host_ip }}" 0; # Host IPv4 (inventory or gathered fact)
+{% endif %}
     default 1;
 }
 
-map $request_uri $log_uri {
+map $request_uri $loggable {
     ~^/admin/.* 0;           # Exclude admin panel requests
-    ~^/metrics 0;            # Exclude monitoring/metrics endpoints
     ~^/assets/.* 0;          # Exclude static assets directory
     ~.*\.(ico|png|jpg)$ 0;   # Exclude common image file requests
     ~^/videos/.*.(ts|m3u8) 0;# Exclude video streaming files
@@ -39,12 +42,12 @@ server {
     server_name {{ domain }} www.{{ domain }};
 
     root /home/{{ domain }}/public_html;
-    index index.html index.htm index.php;
+    index index.php index.html index.htm;
 
-     # Logging
+    # Logging
     # access_log /home/{{ domain }}/logs/access.log combined;
     # Conditional logging (uncomment and add map directives to nginx.conf http block):
-    access_log /home/{{ domain }}/logs/access.log combined if=$log_uri;
+    access_log /home/{{ domain }}/logs/access.log combined if=$loggable;
     error_log /home/{{ domain }}/logs/error.log;
 
     # SSL Configuration
@@ -154,12 +157,11 @@ server {
     server_name {{ domain }} www.{{ domain }};
 
     root /home/{{ domain }}/public_html;
-    index index.html index.htm index.php;
+    index index.php index.html index.htm;
 
     # Logging
-    access_log /home/{{ domain }}/logs/access.log combined;
-    # Conditional logging (uncomment and add map directives to nginx.conf http block):
-    # access_log /home/{{ domain }}/logs/access.log combined if=$log_uri;
+    # Conditional logging (uses map $request_uri -> $loggable and map $remote_addr -> $log_ip):
+    access_log /home/{{ domain }}/logs/access.log combined if=$loggable;
     error_log /home/{{ domain }}/logs/error.log;
 
     # Security Headers
@@ -171,16 +173,16 @@ server {
     # For allowing iframes only from same domain:
     add_header Content-Security-Policy "frame-ancestors 'self'" always;
 
-    # Let's Encrypt ACME challenge
-    location ^~ /.well-known/acme-challenge/ {
-        allow all;
-        default_type "text/plain";
-    }
-
     # Main location
     location / {
         try_files $uri $uri/ /index.php?$args;
         rewrite ^/(.*)/$ /$1 permanent;
+    }
+
+    # Let's Encrypt ACME challenge
+    location ^~ /.well-known/acme-challenge/ {
+        allow all;
+        default_type "text/plain";
     }
 
     # Static files caching

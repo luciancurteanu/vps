@@ -17,7 +17,9 @@ pm.max_spare_servers = 30
 pm.max_requests = 1000
 
 php_admin_value[sendmail_path] = /usr/local/postfix/bin/sendmail -t -i
-php_admin_value[disable_functions] = eval,assert,create_function,passthru,system,shell_exec,proc_open,popen,pfsockopen,pcntl_exec,pcntl_fork,pcntl_signal,posix_kill,posix_mkfifo,posix_setpgid,posix_setsid,posix_setuid
+# Allow Laravel/Symfony Process usage from FPM pools (remove proc_open/popen).
+# Keep dangerous or CLI-only functions disabled.
+php_admin_value[disable_functions] = eval,create_function,assert,shell_exec,system,passthru,popen,pcntl_exec,pcntl_fork,pcntl_signal,pcntl_alarm,posix_kill,posix_mkfifo,posix_setpgid,posix_setsid,posix_setuid,posix_seteuid,posix_setgid,posix_setegid,dl
 php_admin_flag[expose_php] = off
 php_admin_flag[display_errors] = off
 php_admin_flag[log_errors] = on
