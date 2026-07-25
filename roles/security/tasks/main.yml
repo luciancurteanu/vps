@@ -77,7 +77,7 @@
 
 - name: Configure sendmail-lc action for fail2ban
   ansible.builtin.template:
-    src: fail2ban/sendmail-lc.conf.j2
+    src: fail2ban/action.d/sendmail-lc.conf.j2
     dest: /etc/fail2ban/action.d/sendmail-lc.conf
     owner: root
     group: root
