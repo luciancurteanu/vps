@@ -2,24 +2,48 @@
 # Fail2ban jail configuration
 
 [DEFAULT]
-# Global settings
-ignoreip = 127.0.0.1/8 192.168.0.0/16 {{ security_allowed_ips | default(allowed_ips | default('')) }}
-bantime = -1
-findtime = 86400
-maxretry = 3
+ignoreip = 127.0.0.1/8 ::1 192.168.0.0/16 {{ security_allowed_ips | default(allowed_ips | default('')) }}
+bantime = {{ fail2ban_bantime | default('10m') }}
+findtime = {{ fail2ban_findtime | default('10m') }}
+maxretry = {{ fail2ban_maxretry | default(5) }}
+maxmatches = %(maxretry)s
+backend = {{ fail2ban_backend | default('auto') }}
+usedns = {{ fail2ban_usedns | default('warn') }}
+logencoding = {{ fail2ban_logencoding | default('auto') }}
+enabled = {{ security_fail2ban_enabled | default(false) | ternary('true','false') }}
+mode = normal
+filter = %(__name__)s[mode=%(mode)s]
+
+# Actions and related defaults
+mta = {{ fail2ban_mta | default('sendmail') }}
+protocol = {{ fail2ban_protocol | default('tcp') }}
+chain = {{ fail2ban_chain | default('<known/chain>') }}
+port = {{ fail2ban_port | default('0:65535') }}
+fail2ban_agent = Fail2Ban/%(fail2ban_version)s
+
+banaction = {{ fail2ban_banaction | default('iptables-multiport[blocktype=DROP]') }}
+banaction_allports = {{ fail2ban_banaction_allports | default('iptables-allports[blocktype=DROP]') }}
+
+action_ = %(banaction)s[port="%(port)s", protocol="%(protocol)s", chain="%(chain)s"]
+action_mw = %(action_)s
+            %(mta)s-whois[sender="%(sender)s", dest="%(destemail)s", protocol="%(protocol)s", chain="%(chain)s"]
+action_mwl = %(action_)s
+             %(mta)s-whois-lines[sender="%(sender)s", dest="%(destemail)s", logpath="%(logpath)s", chain="%(chain)s"]
+action_xarf = %(action_)s
+             xarf-login-attack[service=%(__name__)s, sender="%(sender)s", logpath="%(logpath)s", port="%(port)s"]
+action_cf_mwl = cloudflare[cfuser="%(cfemail)s", cftoken="%(cfapikey)s"]
+                %(mta)s-whois-lines[sender="%(sender)s", dest="%(destemail)s", logpath="%(logpath)s", chain="%(chain)s"]
+action_blocklist_de  = blocklist_de[email="%(sender)s", service="%(__name__)s", apikey="%(blocklist_de_apikey)s", agent="%(fail2ban_agent)s"]
+action_abuseipdb = abuseipdb
+
+action_lc = %(action_)s
+         %(mta)s-lc[sender="%(sender)s", dest="%(destemail)s", logpath="%(logpath)s", chain="%(chain)s"]
+
+action = %(action_lc)s
+
 # Email notifications
 destemail = {{ mail_admin_email | default('noreply@' + (domain | default('example.com'))) }}
 sender = {{ mail_admin_email | default('noreply@' + (domain | default('example.com'))) }}
-mta = sendmail
-{% if security_firewall_service | default('iptables') == 'iptables' %}
-banaction = iptables-multiport
-banaction_allports = iptables-allports
-{% else %}
-banaction = firewallcmd-rich-rules
-banaction_allports = firewallcmd-allports
-{% endif %}
-action = %(action_)s
-         %(mta)s-lc[sender="%(sender)s", dest="%(destemail)s", logpath="%(logpath)s", chain="%(chain)s"]
 
 # JAILS
 
