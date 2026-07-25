@@ -610,7 +610,7 @@
 
     - name: Update Nginx virtual host with SSL enabled
       ansible.builtin.template:
-        src: "{{ playbook_dir }}/../templates/nginx/vhost.conf.j2"
+        src: "{{ playbook_dir }}/../roles/nginx/templates/vhost.conf.j2"
         dest: "/etc/nginx/sites-available/{{ domain }}.conf"
         owner: root
         group: root

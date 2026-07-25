@@ -1,67 +1,119 @@
-# Nginx Virtual Host Configuration for {{ domain }}
+#! Ansible managed
+# Virtual host configuration for {{ domain }}
 
-{% if nginx_ssl_enabled | default(false) %}
+{% set site_ssl_enabled = nginx_ssl_enabled_effective | default(nginx_ssl_enabled | default(false)) | bool %}
+{% set site_ssl_cert = nginx_site_ssl_cert_path_effective | default('/etc/letsencrypt/live/' + domain + '/fullchain.pem') %}
+{% set site_ssl_key = nginx_site_ssl_key_path_effective | default('/etc/letsencrypt/live/' + domain + '/privkey.pem') %}
+{% set site_fastcgi_socket = fastcgi_socket | default(php_fpm_listen | default('/run/php-fpm/' ~ (domain | replace('.', '_')) ~ '.sock')) %}
+
+# Example: Conditional logging mapping (add to http block in nginx.conf if needed)
+map $remote_addr $log_ip {
+    "127.0.0.1" 0; # Internal network IPs to exclude from logging
+{# Add the host's primary IPv4 dynamically if available. Only render when a non-empty value exists. #}
+{% set _host_ip = (vhost_ip | default('')) or (ansible_default_ipv4.address if (ansible_default_ipv4 is defined and ansible_default_ipv4.address is defined) else '') %}
+{% if _host_ip | length > 0 %}
+    "{{ _host_ip }}" 0; # Host IPv4 (inventory or gathered fact)
+{% endif %}
+    default 1;
+}
+
+map $request_uri $loggable {
+    ~^/admin/.* 0;           # Exclude admin panel requests
+    ~^/assets/.* 0;          # Exclude static assets directory
+    ~.*\.(ico|png|jpg)$ 0;   # Exclude common image file requests
+    ~^/videos/.*.(ts|m3u8) 0;# Exclude video streaming files
+    default $log_ip;         # Use $log_ip variable for default (combines with IP filtering)
+}
+
+{% if site_ssl_enabled %}
 # HTTP server - redirect to HTTPS
 server {
     listen 80;
     listen [::]:80;
     server_name {{ domain }} www.{{ domain }};
     
-    # Let's Encrypt ACME challenge
-    location ^~ /.well-known/acme-challenge/ {
-        allow all;
-        default_type "text/plain";
-    }
-    
     return 301 https://$server_name$request_uri;
 }
 
 # HTTPS server
 server {
-    listen 443 ssl;
-    listen [::]:443 ssl;
-    http2 on;
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
     server_name {{ domain }} www.{{ domain }};
 
     root /home/{{ domain }}/public_html;
     index index.php index.html index.htm;
 
-    # Access and error logs
-    access_log /home/{{ domain }}/logs/access.log;
+    # Logging
+    # access_log /home/{{ domain }}/logs/access.log combined;
+    # Conditional logging (uncomment and add map directives to nginx.conf http block):
+    access_log /home/{{ domain }}/logs/access.log combined if=$loggable;
     error_log /home/{{ domain }}/logs/error.log;
 
     # SSL Configuration
-    ssl_certificate {{ nginx_ssl_cert | default('/etc/letsencrypt/live/' + domain + '/fullchain.pem') }};
-    ssl_certificate_key {{ nginx_ssl_key | default('/etc/letsencrypt/live/' + domain + '/privkey.pem') }};
+    ssl_certificate {{ site_ssl_cert }};
+    ssl_certificate_key {{ site_ssl_key }};
 
-    # SSL optimization
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 10m;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_prefer_server_ciphers on;
-    ssl_ciphers "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305";
+    # Improve HTTPS performance with session resumption
+   	ssl_session_cache shared:SSL:10m;
+   	ssl_session_timeout 10m;
 
-    # Security headers
-    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
-    add_header X-Content-Type-Options nosniff always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header X-Frame-Options SAMEORIGIN always;
-    add_header Referrer-Policy strict-origin-when-cross-origin always;
+	# Enable server-side protection against BEAST attacks
+  	ssl_protocols TLSv1.2 TLSv1.3;
+	ssl_prefer_server_ciphers on;
+    ssl_ciphers "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384";
 
-    # Favicon handling
-    location = /favicon.ico {
-        log_not_found off;
-        access_log off;
+    # Aditional Security Headers
+	# ref: https://developer.mozilla.org/en-US/docs/Security/HTTP_Strict_Transport_Security
+	add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+
+	# ref: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options
+    # Uncomment if you don't use iframes (choose ONE option):
+	# add_header X-Frame-Options DENY always;
+	# For allowing iframes only from same domain:
+	add_header Content-Security-Policy "frame-ancestors 'self'" always;
+
+	# ref: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Content-Type-Options
+	add_header X-Content-Type-Options nosniff always;
+
+	# ref: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-XSS-Protection
+	add_header X-Xss-Protection "1; mode=block" always;
+
+  	# OCSP stapling 
+	# ref. http://blog.mozilla.org/security/2013/07/29/ocsp-stapling-in-firefox
+  	ssl_stapling on;
+  	ssl_stapling_verify on;
+    resolver 8.8.8.8 8.8.4.4 valid=300s; # Google DNS
+  	resolver_timeout 10s;
+
+    # Main location
+    location / {
+        try_files $uri $uri/ /index.php?$args;
+        rewrite ^/(.*)/$ /$1 permanent;
     }
 
-    # Robots.txt handling
-    location = /robots.txt {
-        allow all;
-        log_not_found off;
-        access_log off;
+    # Static files caching
+    location ~*  \.(css|js|json)$ {
+        access_log        off;
+        log_not_found     off;
+        expires           30d;
+        # add_header Cache-Control "public, immutable";    
     }
 
-    # Let's Encrypt ACME challenge
+    location ~*  \.(jpg|jpeg|png|gif|ico)$ {
+        access_log        off;
+        log_not_found     off;
+        expires           30d;
+		# add_header        Cache-Control "no-store, max-age=0";
+    }
+
+    location ~*  \.(ttf|otf|eot|svg|woff|woff2)$ {
+        access_log        off;
+        log_not_found     off;
+        expires           30d;
+        add_header        Access-Control-Allow-Origin *;
+    }
+
     location ^~ /.well-known/acme-challenge/ {
         allow all;
         default_type "text/plain";
@@ -74,39 +126,23 @@ server {
         log_not_found off;
     }
 
-    # Default location block
-    location / {
-        try_files $uri $uri/ /index.php?$args;
-    }
-
-    # Static files handling with cache
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        expires {{ nginx_static_expires | default('30d') }};
-        add_header Cache-Control "public, no-transform";
+    # Deny access to backup and source files
+    location ~* \.(bak|save|swo|swp|orig|tmp)$ {
+        deny all;
     }
 
     # PHP handler
     location ~ \.php$ {
         try_files $uri =404;
-        fastcgi_split_path_info ^(.+\.php)(/.+)$;
-        fastcgi_pass unix:{{ fastcgi_socket | default('/run/php-fpm/' ~ (domain | replace('.', '_')) ~ '.sock') }};
+        fastcgi_pass unix:{{ site_fastcgi_socket }};
         fastcgi_index index.php;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         include fastcgi_params;
-        fastcgi_intercept_errors on;
-        fastcgi_buffer_size 16k;
-        fastcgi_buffers 4 16k;
-        fastcgi_connect_timeout 300;
-        fastcgi_send_timeout 300;
-        fastcgi_read_timeout 300;
     }
-
-    # Limits
-    client_max_body_size {{ nginx_client_max_body_size | default('64M') }};
 }
 
 {% else %}
-# HTTP server (SSL not enabled)
+# HTTP server
 server {
     listen 80;
     listen [::]:80;
@@ -115,27 +151,52 @@ server {
     root /home/{{ domain }}/public_html;
     index index.php index.html index.htm;
 
-    # Access and error logs
-    access_log /home/{{ domain }}/logs/access.log;
+    # Logging
+    # Conditional logging (uses map $request_uri -> $loggable and map $remote_addr -> $log_ip):
+    access_log /home/{{ domain }}/logs/access.log combined if=$loggable;
     error_log /home/{{ domain }}/logs/error.log;
 
-    # Security headers
-    add_header X-Content-Type-Options nosniff;
-    add_header X-XSS-Protection "1; mode=block";
-    add_header X-Frame-Options SAMEORIGIN;
-    add_header Referrer-Policy strict-origin-when-cross-origin;
+    # Security Headers
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Xss-Protection "1; mode=block" always;
+    # ref: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options
+    # Uncomment if you don't use iframes (choose ONE option):
+    # add_header X-Frame-Options DENY always;
+    # For allowing iframes only from same domain:
+    add_header Content-Security-Policy "frame-ancestors 'self'" always;
 
-    # Favicon handling
-    location = /favicon.ico {
-        log_not_found off;
-        access_log off;
+    # Main location
+    location / {
+        try_files $uri $uri/ /index.php?$args;
+        rewrite ^/(.*)/$ /$1 permanent;
     }
 
-    # Robots.txt handling
-    location = /robots.txt {
+    # Let's Encrypt ACME challenge
+    location ^~ /.well-known/acme-challenge/ {
         allow all;
-        log_not_found off;
-        access_log off;
+        default_type "text/plain";
+    }
+
+    # Static files caching
+    location ~*  \.(css|js|json)$ {
+        access_log        off;
+        log_not_found     off;
+        expires           30d;
+        # add_header Cache-Control "public, immutable";    
+    }
+
+    location ~*  \.(jpg|jpeg|png|gif|ico)$ {
+        access_log        off;
+        log_not_found     off;
+        expires           30d;
+        # add_header        Cache-Control "no-store, max-age=0";
+    }
+
+    location ~*  \.(ttf|otf|eot|svg|woff|woff2)$ {
+        access_log        off;
+        log_not_found     off;
+        expires           30d;
+        add_header        Access-Control-Allow-Origin *;
     }
 
     # Deny access to hidden files
@@ -145,40 +206,18 @@ server {
         log_not_found off;
     }
 
-    # Default location block
-    location / {
-        try_files $uri $uri/ /index.php?$args;
-    }
-
-    # Static files handling with cache
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        expires {{ nginx_static_expires | default('30d') }};
-        add_header Cache-Control "public, no-transform";
+    # Deny access to backup and source files
+    location ~* \.(bak|save|swo|swp|orig|tmp)$ {
+        deny all;
     }
 
     # PHP handler
     location ~ \.php$ {
         try_files $uri =404;
-        fastcgi_split_path_info ^(.+\.php)(/.+)$;
-        fastcgi_pass unix:{{ fastcgi_socket | default('/run/php-fpm/' ~ (domain | replace('.', '_')) ~ '.sock') }};
+        fastcgi_pass unix:{{ site_fastcgi_socket }};
         fastcgi_index index.php;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         include fastcgi_params;
-        fastcgi_intercept_errors on;
-        fastcgi_buffer_size 16k;
-        fastcgi_buffers 4 16k;
-        fastcgi_connect_timeout 300;
-        fastcgi_send_timeout 300;
-        fastcgi_read_timeout 300;
     }
-
-    # Let's Encrypt ACME challenge
-    location ^~ /.well-known/acme-challenge/ {
-        allow all;
-        default_type "text/plain";
-    }
-
-    # Limits
-    client_max_body_size {{ nginx_client_max_body_size | default('64M') }};
 }
 {% endif %}

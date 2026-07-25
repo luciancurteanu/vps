@@ -103,9 +103,19 @@
       with_items:
         - "{{ document_root }}"
         - "/home/{{ domain }}/app"
+        - "/home/{{ domain }}/web"
         - "/home/{{ domain }}/logs"
         - "/home/{{ domain }}/backup"
         - "/home/{{ domain }}/tmp"
+      when: domain.split('.')[0] != 'cpanel'
+
+    - name: Ensure `web` directory has setgid and group-write permissions for Laravel installs
+      ansible.builtin.file:
+        path: "/home/{{ domain }}/web"
+        state: directory
+        owner: "{{ vhost_owner }}"
+        group: "{{ vhost_owner }}"
+        mode: '2775'
       when: domain.split('.')[0] != 'cpanel'
 
     - name: Create log files
@@ -181,7 +191,7 @@
 
     - name: Configure Nginx virtual host
       ansible.builtin.template:
-        src: "{{ playbook_dir | dirname }}/templates/nginx/vhost.conf.j2"
+        src: "{{ playbook_dir }}/../roles/nginx/templates/vhost.conf.j2"
         dest: "/etc/nginx/sites-available/{{ domain }}.conf"
         owner: root
         group: root
