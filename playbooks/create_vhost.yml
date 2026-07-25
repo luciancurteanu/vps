@@ -169,10 +169,15 @@
 
     - name: Configure PHP-FPM pool
       ansible.builtin.template:
-        src: "{{ playbook_dir | dirname }}/templates/php/pool.conf.j2"
+        src: "{{ playbook_dir }}/../roles/php/templates/pool.conf.j2"
         dest: "/etc/php-fpm.d/{{ domain | replace('.', '_') }}.conf"
         owner: root
         group: root
+      vars:
+        pool_domain: "{{ domain }}"
+        pool_user: "{{ vhost_owner }}"
+        nginx_user: "{{ nginx_user | default('nginx') }}"
+        nginx_group: "{{ nginx_group | default('nginx') }}"
       notify: Restart PHP-FPM
 
     - name: Ensure nginx sites-available directory exists
