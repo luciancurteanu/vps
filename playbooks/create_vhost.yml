@@ -138,6 +138,24 @@
         group: "{{ vhost_owner }}"
         mode: '0770'
 
+    - name: Set SELinux fcontext rule for domain web directory
+      community.general.sefcontext:
+        target: "/home/{{ domain }}/web(/.*)?"
+        setype: httpd_sys_rw_content_t
+        state: present
+      when:
+        - domain is defined
+        - ansible_selinux is defined
+        - ansible_selinux.status == "enabled"
+
+    - name: Apply SELinux context to domain web directory
+      ansible.builtin.command: restorecon -FRv /home/{{ domain }}/web
+      when:
+        - domain is defined
+        - ansible_selinux is defined
+        - ansible_selinux.status == "enabled"
+      changed_when: false
+
     - name: Configure log rotation for vhost
       ansible.builtin.copy:
         dest: "/etc/logrotate.d/vhost-{{ domain | replace('.', '-') }}"
