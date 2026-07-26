@@ -10,7 +10,7 @@ maxmatches = %(maxretry)s
 backend = {{ fail2ban_backend | default('auto') }}
 usedns = {{ fail2ban_usedns | default('warn') }}
 logencoding = {{ fail2ban_logencoding | default('auto') }}
-enabled = {{ security_fail2ban_enabled | default(false) | ternary('true','false') }}
+enabled = false
 mode = normal
 filter = %(__name__)s[mode=%(mode)s]
 
