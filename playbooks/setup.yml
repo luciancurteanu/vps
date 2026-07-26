@@ -142,6 +142,7 @@
       loop:
         - { path: "/home/{{ domain }}",            mode: '0755' }
         - { path: "/home/{{ domain }}/public_html", mode: '0755' }
+        - { path: "/home/{{ domain }}/web",         mode: '2775' }
         - { path: "/home/{{ domain }}/logs",        mode: '2775' }
         - { path: "/home/{{ domain }}/backup",      mode: '0750' }
         - { path: "/home/{{ domain }}/tmp",         mode: '0700' }
@@ -179,6 +180,26 @@
     - name: Apply SELinux context to domain logs directory
       tags: ['setup', 'selinux']
       ansible.builtin.command: restorecon -FRv /home/{{ domain }}/logs
+      when:
+        - domain is defined
+        - ansible_selinux is defined
+        - ansible_selinux.status == "enabled"
+      changed_when: false
+
+    - name: Set SELinux fcontext rule for domain web directory
+      tags: ['setup', 'selinux']
+      community.general.sefcontext:
+        target: "/home/{{ domain }}/web(/.*)?"
+        setype: httpd_sys_rw_content_t
+        state: present
+      when:
+        - domain is defined
+        - ansible_selinux is defined
+        - ansible_selinux.status == "enabled"
+
+    - name: Apply SELinux context to domain web directory
+      tags: ['setup', 'selinux']
+      ansible.builtin.command: restorecon -FRv /home/{{ domain }}/web
       when:
         - domain is defined
         - ansible_selinux is defined
