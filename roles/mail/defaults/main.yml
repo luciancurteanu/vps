@@ -60,3 +60,12 @@ dovecot_ca:   "/etc/pki/dovecot/certs/ca.pem"
 postfix_cert: "{{ mail_ssl_dir }}/server.crt"
 postfix_key:  "{{ mail_ssl_dir }}/server.key"
 postfix_ca:   "{{ mail_ssl_dir }}/ca.crt"
+
+# Controls whether the submission (587) and smtps (465) services are present
+# in Postfix's master.cf. Set to false to omit those service listener entries.
+postfix_submission_enable: true
+
+# When true, require TLS for submission (and related settings). This variable is
+# provided as a documented default for role users; templates/handlers can use it
+# to adjust TLS/auth behavior as needed.
+postfix_submission_tls_only: true
