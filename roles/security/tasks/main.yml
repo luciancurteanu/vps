@@ -265,8 +265,16 @@
 - name: Generate and install SELinux policy module to allow fail2ban to use curl
   ansible.builtin.shell: |
     cd /tmp
-    ausearch -m avc -ts recent | audit2allow -M fail2ban-curl
-    semodule -i fail2ban-curl.pp
+    # Generate a policy module from recent AVCs. audit2allow will create
+    # prefix.mod and prefix.pp files; we use a stable prefix but accept whatever
+    # fail2ban-related .pp file is produced and install any matching modules.
+    ausearch -m avc -ts recent | audit2allow -M fail2ban-curl || true
+    # Install any generated fail2ban*.pp modules
+    for f in fail2ban*.pp; do
+      if [ -f "$f" ]; then
+        semodule -i "$f" || true
+      fi
+    done
   args:
     executable: /bin/bash
   register: fail2ban_curl_semodule
