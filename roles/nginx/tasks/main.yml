@@ -105,6 +105,25 @@
     owner: root
     group: root
 
+- name: Ensure SELinux file context for nginx site configuration files
+  community.general.sefcontext:
+    target: '/etc/nginx/sites-available(/.*)?'
+    setype: httpd_config_t
+    state: present
+  when: ansible_selinux.status == "enabled"
+
+- name: Ensure SELinux file context for nginx enabled site symlinks
+  community.general.sefcontext:
+    target: '/etc/nginx/sites-enabled(/.*)?'
+    setype: httpd_config_t
+    state: present
+  when: ansible_selinux.status == "enabled"
+
+- name: Apply SELinux context to nginx site config directories
+  ansible.builtin.command: restorecon -Rv /etc/nginx/sites-available /etc/nginx/sites-enabled
+  when: ansible_selinux.status == "enabled"
+  changed_when: false
+
 - name: Create Nginx runtime directory
   ansible.builtin.file:
     path: /var/run/nginx

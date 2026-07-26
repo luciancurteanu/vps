@@ -332,15 +332,13 @@
         mode: '0644'
       when: domain == master_domain
 
-    - name: Deploy /etc/hosts from template (override entire file)
-      ansible.builtin.template:
-        src: "{{ playbook_dir | dirname }}/templates/hosts/hosts.j2"
-        dest: /etc/hosts
-        owner: root
-        group: root
-        mode: '0644'
-        backup: yes
-      when: domain == master_domain
+    - name: Ensure /etc/hosts contains domain entry for non-master domains
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        line: "{{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address) }} {{ domain }} {{ user }}"
+        insertafter: EOF
+        state: present
+      when: domain != master_domain
 
     - name: Append hosts entries for regular domain
       ansible.builtin.lineinfile:

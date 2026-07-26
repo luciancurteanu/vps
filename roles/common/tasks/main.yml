@@ -16,6 +16,33 @@
   ansible.builtin.timezone:
     name: "{{ common_timezone }}"
 
+# Deploy /etc/hosts for master domain when appropriate
+- name: Determine host IP for /etc/hosts entries (master domain)
+  ansible.builtin.set_fact:
+    vhost_ip: "{{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address) }}"
+  when: domain is defined and domain == master_domain
+
+- name: Deploy /etc/hosts for master domain (override entire file)
+  ansible.builtin.copy:
+    dest: /etc/hosts
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+    content: |
+      # Managed by Ansible — do not edit manually
+      # Generated for {{ domain }} on {{ ansible_date_time.iso8601 }}
+
+      # Localhost
+      127.0.0.1   localhost.localdomain localhost
+      ::1         localhost.localdomain localhost
+
+      # Host entries for {{ domain }}
+      {{ vhost_ip }}  {{ domain }} {{ user }}
+      {{ vhost_ip }}  mail.{{ domain }} {{ user }}
+      {{ vhost_ip }}  cpanel.{{ domain }} {{ user }}
+  when: domain is defined and domain == master_domain
+
 - name: Configure local RTC
   ansible.builtin.command: timedatectl set-local-rtc {{ 'yes' if common_use_local_rtc else 'no' }}
   changed_when: false
