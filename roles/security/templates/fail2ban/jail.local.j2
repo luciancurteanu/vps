@@ -14,6 +14,11 @@ enabled = {{ security_fail2ban_enabled | default(false) | ternary('true','false'
 mode = normal
 filter = %(__name__)s[mode=%(mode)s]
 
+# If true, missing log files for a jail will not cause Fail2Ban to fail on startup.
+# This is useful on fresh installs where optional services (apache/nginx) may not
+# be present yet. Set to 'true' to be permissive, or 'false' to be strict.
+ignorelogfail = {{ fail2ban_ignorelogfail | default(true) | ternary('true','false') }}
+
 # Actions and related defaults
 mta = {{ fail2ban_mta | default('sendmail') }}
 protocol = {{ fail2ban_protocol | default('tcp') }}
