@@ -27,7 +27,7 @@ actionban = ( printf %%b "Subject:<name> banned <ip>
             To: <dest>\n
             Hi,\n
             <name> banned <ip> after <failures> attempts.\n"
-            curl "https://<fq-hostname>/api/ipinfo?jail_name=<name>&ip=<ip>&format=json&auto_save=true&provider=ipregistry"
+    		/usr/bin/curl -fsS --max-time 10 "https://<fq-hostname>/api/ipinfo?jail_name=<name>&ip=<ip>&format=json&auto_save=true&provider=ipregistry" || true
 	        printf %%b "\n\nLines containing failures of <ip> (max <grepmax>)\n";
             %(_grep_logs)s;
             printf %%b "
