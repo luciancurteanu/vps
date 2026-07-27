@@ -27,7 +27,11 @@ actionban = ( printf %%b "Subject:<name> banned <ip>
             To: <dest>\n
             Hi,\n
             <name> banned <ip> after <failures> attempts.\n"
-    		/usr/bin/curl -fsS --max-time 10 "https://<fq-hostname>/api/ipinfo?jail_name=<name>&ip=<ip>&format=json&auto_save=true&provider=ipregistry" || true
+            {% if fail2ban_ipinfo_host is defined and fail2ban_ipinfo_host %}
+            /usr/bin/curl -fsS --max-time 10 "{{ fail2ban_ipinfo_scheme | default('https') }}://{{ fail2ban_ipinfo_host }}{{ fail2ban_ipinfo_path | default('/api/ipinfo') }}?jail_name=<name>&ip=<ip>&format=json&auto_save=true&provider={{ fail2ban_ipinfo_provider | default('ipregistry') }}" || true
+            {% else %}
+            # fail2ban ipinfo host not configured; skipping external API call
+            {% endif %}
 	        printf %%b "\n\nLines containing failures of <ip> (max <grepmax>)\n";
             %(_grep_logs)s;
             printf %%b "
