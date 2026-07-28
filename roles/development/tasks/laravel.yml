@@ -5,6 +5,8 @@
   shell: composer global config bin-dir --absolute
   args:
     executable: /bin/bash
+  environment:
+    COMPOSER_ALLOW_SUPERUSER: "1"
   register: composer_bin_dir
   changed_when: false
 
@@ -17,8 +19,13 @@
   shell: composer global require "laravel/installer:^5.0" --no-interaction
   args:
     executable: /bin/bash
+  environment:
+    COMPOSER_ALLOW_SUPERUSER: "1"
   register: laravel_install
   changed_when: "'Nothing to install, update or remove' not in laravel_install.stdout"
+  retries: 3
+  delay: 15
+  until: laravel_install.rc == 0
   when: not laravel_binary.stat.exists
 
 - name: Add Composer global bin directory to PATH
