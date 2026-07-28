@@ -166,20 +166,7 @@
         - user is defined
         - domain.split('.')[0] != 'cpanel'
 
-    - name: Also ensure user-home logs path exists if different from domain (compat)
-      tags: ['setup']
-      ansible.builtin.file:
-        path: "/home/{{ user }}/logs/access.log"
-        state: touch
-        owner: "{{ user }}"
-        group: "{{ user }}"
-        mode: '0664'
-        access_time: preserve
-        modification_time: preserve
-      when:
-        - domain is defined
-        - user is defined
-        - ('/home/' + user) != ('/home/' + domain)
+    # Compatibility: do not touch the user's home path; ensure domain logs path is used
 
     - name: Set SELinux fcontext rule for domain logs directory
       tags: ['setup', 'selinux']
