@@ -194,8 +194,8 @@
       vars:
         pool_domain: "{{ domain }}"
         pool_user: "{{ vhost_owner }}"
-        nginx_user: "{{ nginx_user | default('nginx') }}"
-        nginx_group: "{{ nginx_group | default('nginx') }}"
+        nginx_user: nginx
+        nginx_group: nginx
       notify: Restart PHP-FPM
 
     - name: Ensure nginx sites-available directory exists
