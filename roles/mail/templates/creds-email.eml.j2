@@ -23,23 +23,18 @@ Quick setup instructions (Windows PowerShell):
 	- Linux/macOS: ~/.ssh/{{ filename | default(username + '_private_key') }}
 	- Windows (PowerShell): $env:USERPROFILE\.ssh\{{ filename | default(username + '_private_key') }}
 
-2) Generate the public key from the private key:
-
-Quick setup instructions (Windows PowerShell):
-
-1) Save the attached private key to your .ssh folder:
-	- PowerShell: $env:USERPROFILE\.ssh\{{ filename | default(username + '_private_key') }}
-	- CMD: %USERPROFILE%\.ssh\{{ filename | default(username + '_private_key') }}
-
 2) Generate the public key from the private key (PowerShell):
 	ssh-keygen -y -f "$env:USERPROFILE\.ssh\{{ filename | default(username + '_private_key') }}" > "$env:USERPROFILE\\.ssh\\{{ filename | default(username + '_public_key') }}.pub"
 
-3) Example SSH config entry (Windows OpenSSH format, edit %USERPROFILE%\\.ssh\\config):
+3) Generate the ppk file for PuTTY (PowerShell) must have WinSCP installed:
+	& "C:\Program Files (x86)\WinSCP\WinSCP.com" /keygen "$env:USERPROFILE\.ssh\{{ filename | default(username + '_private_key') }}" /output="$env:USERPROFILE\.ssh\{{ filename | default(username + '_private_key') }}.ppk"
+
+4) Add SSH config entry (Windows OpenSSH format, edit %USERPROFILE%\.ssh\config):
 	Host {{ domain }} {{ ip | default('IP_ADDRESS') }}
 		HostName {{ ip | default('IP_ADDRESS') }}
 		Port {{ ssh_port | default(22) }}
 		User {{ username }}
-		IdentityFile $env:USERPROFILE\.ssh\{{ filename | default(username + '_private_key') }}
+		IdentityFile %USERPROFILE%\.ssh\{{ filename | default(username + '_private_key') }}
 		IdentitiesOnly yes
 
 --{{ boundary }}
