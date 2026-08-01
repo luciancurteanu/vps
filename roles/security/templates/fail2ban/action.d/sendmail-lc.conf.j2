@@ -21,7 +21,7 @@ norestored = 1
 #          command is executed with Fail2Ban user rights.
 # Tags:    See jail.conf(5) man page
 # Values:  CMD
-actionban = ( printf %%b "Subject:<name> banned <ip> 
+actionban = ( printf %%b "Subject:<name> jail banned <ip> 
             Date: `LC_ALL=C date +"%%a, %%d %%h %%Y %%T %%z"`
             From: <sendername> <<sender>>
             To: <dest>\n

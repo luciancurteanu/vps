@@ -8,7 +8,7 @@ mail_hostname: "{{ mail_subdomain }}"
 
 # Email administrator contact info
 mail_admin_email: "contact@{{ domain }}"
-postmaster_email: "noreply@{{ domain }}"
+postmaster_email: "root@{{ domain }}"
 
 # Database settings for mail services
 mail_db_name: "mailserver"

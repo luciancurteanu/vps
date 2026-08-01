@@ -48,7 +48,7 @@ action = %(action_lc)s
 
 # Email notifications
 destemail = {{ mail_admin_email | default('noreply@' + (domain | default('example.com'))) }}
-sender = {{ mail_admin_email | default('noreply@' + (domain | default('example.com'))) }}
+sender = {{ postmaster_email | default('noreply@' + (domain | default('example.com'))) }}
 
 # JAILS
 
@@ -66,7 +66,7 @@ enabled = {{ install_mail | default(true) | ternary('true','false') }}
 port = pop3,pop3s,imap,imaps,smtp,smtps,submission
 filter = postfix[mode=aggressive]
 logpath = /var/log/maillog
-maxretry = 1
+maxretry = 3
 bantime = -1
 findtime = 86400
 
@@ -75,7 +75,7 @@ enabled = {{ install_mail | default(true) | ternary('true','false') }}
 port = pop3,pop3s,imap,imaps,smtp,smtps,submission
 filter = dovecot[mode=aggressive]
 logpath = /var/log/maillog
-maxretry = 1
+maxretry = 3
 bantime = -1
 findtime = 86400
 
@@ -87,7 +87,7 @@ ignorelogfail = true
 port = {{ db_port | default(3306) }}
 filter = mariadb
 logpath = /var/log/mariadb/mariadb.log
-maxretry = 1
+maxretry = 3
 bantime = -1
 findtime = 86400
 
@@ -97,7 +97,7 @@ backend = polling
 port = http,https
 filter = badbot
 logpath = /home/*/logs/access.log
-maxretry = 1
+maxretry = 3
 bantime = -1
 findtime = 86400
 
@@ -107,6 +107,6 @@ backend = polling
 port = http,https
 filter = badurl
 logpath = /home/*/logs/access.log
-maxretry = 1
+maxretry = 3
 bantime = -1
 findtime = 86400
