@@ -16,6 +16,43 @@
   ansible.builtin.timezone:
     name: "{{ common_timezone }}"
 
+- name: Remove unreachable provider NTP source
+  ansible.builtin.lineinfile:
+    path: /etc/chrony.conf
+    regexp: '^\s*server\s+kabelbox\.local\s+'
+    state: absent
+  when: ansible_os_family == 'RedHat'
+  notify:
+    - Restart chronyd
+    - Step system clock with Chrony
+  tags:
+    - time
+
+- name: Configure public Chrony NTP pools
+  ansible.builtin.blockinfile:
+    path: /etc/chrony.conf
+    marker: "# {mark} ANSIBLE MANAGED SEENOW NTP"
+    block: |
+      pool 0.pool.ntp.org iburst
+      pool 1.pool.ntp.org iburst
+      pool 2.pool.ntp.org iburst
+      pool 3.pool.ntp.org iburst
+  when: ansible_os_family == 'RedHat'
+  notify:
+    - Restart chronyd
+    - Step system clock with Chrony
+  tags:
+    - time
+
+- name: Enable Chrony time synchronization
+  ansible.builtin.systemd:
+    name: chronyd
+    enabled: true
+    state: started
+  when: ansible_os_family == 'RedHat'
+  tags:
+    - time
+
 # Deploy /etc/hosts for master domain when appropriate
 - name: Determine host IP for /etc/hosts entries (master domain)
   ansible.builtin.set_fact:
