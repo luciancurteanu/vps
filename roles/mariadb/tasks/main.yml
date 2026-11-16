@@ -182,36 +182,6 @@
 
 - name: Secure MariaDB installation (module-based)
   block:
-    - name: Try remove anonymous users via socket
-      community.mysql.mysql_query:
-        login_unix_socket: /var/lib/mysql/mysql.sock
-        query: "DELETE FROM mysql.user WHERE User=''; FLUSH PRIVILEGES;"
-      register: remove_anonymous_socket
-      failed_when: false
-
-    - name: Remove anonymous users (password auth fallback)
-      community.mysql.mysql_query:
-        login_user: root
-        login_password: "{{ db_root_password }}"
-        query: "DELETE FROM mysql.user WHERE User=''; FLUSH PRIVILEGES;"
-      when: (remove_anonymous_socket is defined and (remove_anonymous_socket.failed | default(false))) and db_root_password is defined and (db_root_password | length) > 0
-
-    - name: Try remove test database via socket
-      community.mysql.mysql_query:
-        login_unix_socket: /var/lib/mysql/mysql.sock
-        query: "DROP DATABASE IF EXISTS test; DROP DATABASE IF EXISTS Test;"
-      register: remove_test_socket
-      failed_when: false
-
-    - name: Remove test database (password auth fallback)
-      community.mysql.mysql_query:
-        login_user: root
-        login_password: "{{ db_root_password }}"
-        query: "DROP DATABASE IF EXISTS test; DROP DATABASE IF EXISTS Test;"
-      when: (remove_test_socket is defined and (remove_test_socket.failed | default(false))) and db_root_password is defined and (db_root_password | length) > 0
-      failed_when: false
-      changed_when: false
-
     - name: Try disallow root login remotely via socket
       community.mysql.mysql_query:
         login_unix_socket: /var/lib/mysql/mysql.sock
@@ -247,6 +217,48 @@
         owner: mysql
         group: mysql
   when: not mysql_setup_stat.stat.exists
+
+- name: Try remove anonymous MariaDB users on every setup run
+  community.mysql.mysql_query:
+    login_unix_socket: /var/lib/mysql/mysql.sock
+    query: "DELETE FROM mysql.user WHERE User=''; FLUSH PRIVILEGES;"
+  register: remove_anonymous_socket
+  when: db_remove_anonymous_users | default(true) | bool
+  failed_when: false
+
+- name: Remove anonymous MariaDB users with password authentication fallback
+  community.mysql.mysql_query:
+    login_user: root
+    login_password: "{{ db_root_password }}"
+    query: "DELETE FROM mysql.user WHERE User=''; FLUSH PRIVILEGES;"
+  when:
+    - db_remove_anonymous_users | default(true) | bool
+    - remove_anonymous_socket.failed | default(false)
+    - db_root_password is defined
+    - (db_root_password | length) > 0
+  failed_when: false
+  changed_when: false
+
+- name: Try remove test databases on every MariaDB setup run
+  community.mysql.mysql_query:
+    login_unix_socket: /var/lib/mysql/mysql.sock
+    query: "DROP DATABASE IF EXISTS test; DROP DATABASE IF EXISTS Test;"
+  register: remove_test_database_socket
+  when: db_remove_test_database | default(true) | bool
+  failed_when: false
+
+- name: Remove test databases with password authentication fallback
+  community.mysql.mysql_query:
+    login_user: root
+    login_password: "{{ db_root_password }}"
+    query: "DROP DATABASE IF EXISTS test; DROP DATABASE IF EXISTS Test;"
+  when:
+    - db_remove_test_database | default(true) | bool
+    - remove_test_database_socket.failed | default(false)
+    - db_root_password is defined
+    - (db_root_password | length) > 0
+  failed_when: false
+  changed_when: false
 
 # Create specific database users matching the bash script implementation
 - name: Create standard database users (password auth)
@@ -285,13 +297,22 @@
     state: directory
     owner: root
     group: root
+    mode: '0700'
+
+- name: Install per-database MariaDB backup script
+  ansible.builtin.template:
+    src: database-backup.sh.j2
+    dest: /usr/local/sbin/mariadb-backup-and-email.sh
+    owner: root
+    group: root
+    mode: '0700'
 
 - name: Setup automatic database backups
   ansible.builtin.cron:
     name: "Database backup"
     hour: "3"
     minute: "0"
-    job: "mysqldump --defaults-file=/root/.my.cnf --all-databases | gzip > {{ db_backup_dir }}/mysql-all-`date +\\%Y\\%m\\%d-\\%H\\%M\\%S`.sql.gz"
+    job: "/usr/local/sbin/mariadb-backup-and-email.sh"
     user: root
   when: setup_db_backups | default(true)
 

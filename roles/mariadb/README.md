@@ -92,14 +92,19 @@ This role provides a complete MariaDB database solution for production VPS deplo
 |----------|---------|-------------|
 | `db_backup_dir` | `"/var/backups/mysql"` | Backup directory path |
 | `setup_db_backups` | `true` | Enable automated backups |
+| `db_backup_email` | `"evpscloud@gmail.com"` | Recipient for emailed backup archives |
+| `db_backup_retention_days` | `14` | Number of days to retain backup archives |
+| `db_backup_excluded_databases` | `information_schema`, `mysql`, `performance_schema`, `sys`, `test`, `Test` | MariaDB system and test databases excluded from backups |
+
+Backups run daily at 03:00 as root. The managed backup script creates one compressed SQL dump per non-system database, packages the dumps into a single `.tar.gz` archive, stores it in `db_backup_dir`, and sends the archive through the local `/usr/sbin/sendmail` transport.
 
 ### Security Settings
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `db_allow_remote_root` | `false` | Allow root login from remote hosts |
-| `db_remove_test_database` | `true` | Remove test database during setup |
-| `db_remove_anonymous_users` | `true` | Remove anonymous user accounts |
+| `db_remove_test_database` | `true` | Remove `test` and `Test` databases on every MariaDB setup run |
+| `db_remove_anonymous_users` | `true` | Remove anonymous MariaDB user accounts on every setup run |
 
 ## Dependencies
 
@@ -357,7 +362,7 @@ sudo tail -f /var/log/mariadb/mariadb-slow.log
 **Solutions**:
 ```bash
 # Test backup script manually
-sudo /usr/local/bin/mysql-backup.sh
+sudo /usr/local/sbin/mariadb-backup-and-email.sh
 
 # Check backup directory permissions
 sudo ls -la /var/backups/mysql

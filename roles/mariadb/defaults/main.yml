@@ -18,6 +18,15 @@ db_remote_user: "{{ vault_db_remote_user | default('remote_user') }}"
 # Database backup settings
 db_backup_dir: "/var/backups/mysql"
 setup_db_backups: true
+db_backup_email: "evpscloud@gmail.com"
+db_backup_retention_days: 14
+db_backup_excluded_databases:
+  - information_schema
+  - mysql
+  - performance_schema
+  - sys
+  - test
+  - Test
 
 # Performance tuning
 db_optimize_for_server: true

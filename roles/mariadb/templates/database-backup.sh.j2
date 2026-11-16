@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+backup_dir="{{ db_backup_dir }}"
+recipient="{{ db_backup_email }}"
+retention_days="{{ db_backup_retention_days }}"
+timestamp="$(date +%Y%m%d-%H%M%S)"
+work_dir="$(mktemp -d "${backup_dir}/.backup-${timestamp}.XXXXXX")"
+archive_path="${backup_dir}/mariadb-${timestamp}.tar.gz"
+
+cleanup() {
+    rm -rf "${work_dir}"
+}
+trap cleanup EXIT
+
+mapfile -t excluded_databases < <(
+    printf '%s\n' {% for database in db_backup_excluded_databases %}'{{ database }}' {% endfor %}
+)
+
+is_excluded() {
+    local candidate="$1"
+    local excluded
+    for excluded in "${excluded_databases[@]}"; do
+        [[ "${candidate}" == "${excluded}" ]] && return 0
+    done
+    return 1
+}
+
+while IFS= read -r database; do
+    [[ -z "${database}" ]] && continue
+    is_excluded "${database}" && continue
+
+    safe_name="${database//[^A-Za-z0-9_.-]/_}"
+    mariadb-dump \
+        --defaults-file=/root/.my.cnf \
+        --single-transaction \
+        --routines \
+        --events \
+        --triggers \
+        --databases "${database}" \
+        | gzip > "${work_dir}/${safe_name}.sql.gz"
+done < <(mariadb --defaults-file=/root/.my.cnf --batch --skip-column-names --execute='SHOW DATABASES')
+
+if ! find "${work_dir}" -type f -name '*.sql.gz' -print -quit | grep -q .; then
+    echo "No application databases were found to back up" >&2
+    exit 1
+fi
+
+tar -C "${work_dir}" -czf "${archive_path}" .
+chmod 0600 "${archive_path}"
+
+find "${backup_dir}" -maxdepth 1 -type f -name 'mariadb-*.tar.gz' -mtime +"${retention_days}" -delete
+
+boundary="db-backup-${timestamp}"
+{
+    printf 'From: root@%s\n' "$(hostname --fqdn)"
+    printf 'To: %s\n' "${recipient}"
+    printf 'Subject: MariaDB backup from %s (%s)\n' "$(hostname --fqdn)" "${timestamp}"
+    printf 'MIME-Version: 1.0\n'
+    printf 'Content-Type: multipart/mixed; boundary="%s"\n\n' "${boundary}"
+    printf -- '--%s\n' "${boundary}"
+    printf 'Content-Type: text/plain; charset=UTF-8\n\n'
+    printf 'Attached is the MariaDB backup. Each non-system database is stored as a separate compressed SQL dump.\n\n'
+    printf -- '--%s\n' "${boundary}"
+    printf 'Content-Type: application/gzip; name="%s"\n' "$(basename "${archive_path}")"
+    printf 'Content-Disposition: attachment; filename="%s"\n' "$(basename "${archive_path}")"
+    printf 'Content-Transfer-Encoding: base64\n\n'
+    base64 "${archive_path}"
+    printf -- '\n--%s--\n' "${boundary}"
+} | /usr/sbin/sendmail -t
