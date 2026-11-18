@@ -46,8 +46,9 @@
   ansible.builtin.file:
     path: /var/log/mariadb
     state: directory
-    owner: root
-    group: root
+    owner: mysql
+    group: mysql
+    mode: '0755'
 
 - name: Create MariaDB configuration directory
   ansible.builtin.file:
@@ -73,6 +74,10 @@
     owner: root
     group: root
     mode: '0644'
+
+- name: Create MariaDB runtime directory immediately
+  ansible.builtin.command: systemd-tmpfiles --create /etc/tmpfiles.d/mariadb.conf
+  changed_when: false
 
 - name: Backup MariaDB server.cnf
   ansible.builtin.stat:
