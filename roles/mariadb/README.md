@@ -305,6 +305,10 @@ All tasks return 'ok' status on second run - no unnecessary changes made.
 
 **Solutions**:
 ```bash
+# If the log reports that /var/run/mariadb/mariadb.pid cannot be created:
+sudo install -d -o mysql -g mysql -m 0755 /var/run/mariadb
+sudo systemctl start mariadb
+
 # Check logs
 sudo journalctl -xeu mariadb.service
 

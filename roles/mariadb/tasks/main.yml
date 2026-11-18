@@ -56,6 +56,24 @@
     owner: root
     group: root
 
+- name: Create MariaDB runtime directory
+  ansible.builtin.file:
+    path: /var/run/mariadb
+    state: directory
+    owner: mysql
+    group: mysql
+    mode: '0755'
+
+- name: Configure MariaDB runtime directory for boot
+  ansible.builtin.copy:
+    dest: /etc/tmpfiles.d/mariadb.conf
+    content: |
+      # Create the MariaDB runtime directory on boot
+      d /var/run/mariadb 0755 mysql mysql -
+    owner: root
+    group: root
+    mode: '0644'
+
 - name: Backup MariaDB server.cnf
   ansible.builtin.stat:
     path: /etc/my.cnf.d/server.cnf.bak

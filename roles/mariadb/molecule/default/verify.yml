@@ -11,3 +11,17 @@
     - name: Include mariadb role to verify its state
       ansible.builtin.include_role:
         name: mariadb
+
+    - name: Check MariaDB runtime directory
+      ansible.builtin.stat:
+        path: /var/run/mariadb
+      register: mariadb_runtime_directory
+
+    - name: Verify MariaDB runtime directory
+      ansible.builtin.assert:
+        that:
+          - mariadb_runtime_directory.stat.exists
+          - mariadb_runtime_directory.stat.isdir
+          - mariadb_runtime_directory.stat.pw_name == 'mysql'
+          - mariadb_runtime_directory.stat.gr_name == 'mysql'
+        fail_msg: "MariaDB runtime directory is missing or has incorrect ownership"
