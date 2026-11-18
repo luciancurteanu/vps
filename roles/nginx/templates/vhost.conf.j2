@@ -2,8 +2,8 @@
 # Virtual host configuration for {{ domain }}
 
 {% set site_ssl_enabled = nginx_ssl_enabled_effective | default(nginx_ssl_enabled | default(false)) | bool %}
-{% set site_ssl_cert = nginx_site_ssl_cert_path_effective | default('/etc/letsencrypt/live/' + domain + '/fullchain.pem') %}
-{% set site_ssl_key = nginx_site_ssl_key_path_effective | default('/etc/letsencrypt/live/' + domain + '/privkey.pem') %}
+{% set site_ssl_cert = nginx_site_ssl_cert_path_effective | default(nginx_ssl_cert | default('/etc/letsencrypt/live/' + domain + '/fullchain.pem')) %}
+{% set site_ssl_key = nginx_site_ssl_key_path_effective | default(nginx_ssl_key | default('/etc/letsencrypt/live/' + domain + '/privkey.pem')) %}
 {% set site_fastcgi_socket = fastcgi_socket | default(php_fpm_listen | default('/run/php-fpm/' ~ (domain | replace('.', '_')) ~ '.sock')) %}
 
 # Example: Conditional logging mapping (add to http block in nginx.conf if needed)
